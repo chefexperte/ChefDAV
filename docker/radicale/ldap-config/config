@@ -1,0 +1,38 @@
+# Radicale config for local dev with LDAP auth (used by docker-compose.ldap.yml).
+# Point these at your real directory server in production — the values below
+# match the glauth fixture in docker/ldap/.
+# Mounted at /config/config (tomsquest/docker-radicale image layout).
+#
+# Option names follow Radicale 3.9 (ldap_uri / ldap_reader_dn / ldap_secret,
+# and a Python .format() placeholder {0} in ldap_filter).
+
+[server]
+hosts = 0.0.0.0:5232
+max_connections = 20
+timeout = 30
+
+[auth]
+type = ldap
+ldap_uri = ldap://glauth:3893
+ldap_base = ou=users,dc=glauth,dc=com
+# glauth exposes users as cn=<name>; on a real directory this is usually (uid={0})
+ldap_filter = (cn={0})
+ldap_reader_dn = cn=readonly,ou=users,dc=glauth,dc=com
+ldap_secret = readonlypass
+ldap_security = none
+ldap_ssl_verify_mode = NONE
+
+[storage]
+filesystem_folder = /data/collections
+
+[rights]
+# LDAP decides *who* can log in; collection-level access is still file-based.
+# owner_only keeps each user in their own /<user>/ tree. For shared calendars,
+# use type = from_file with a rights file — see docker/ldap/rights.example.
+type = owner_only
+
+[web]
+type = none
+
+[logging]
+level = info

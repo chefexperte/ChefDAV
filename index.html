@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="ChefDAV — a client-side-only CalDAV calendar app written in Rust and compiled to WebAssembly." />
+    <title>ChefDAV · your calendar</title>
+    <link data-trunk rel="icon" href="public/logo.svg" type="image/svg+xml" />
+    <!-- Trunk does not copy public/ automatically; declare the logo so the
+         login page and sidebar can load /logo.svg. -->
+    <link data-trunk rel="copy-file" href="public/logo.svg" />
+    <link data-trunk rel="copy-file" href="public/favicon.svg" />
+    <!-- design tokens are imported by main.css; copy them so /tokens.css exists -->
+    <link data-trunk rel="copy-file" href="style/tokens.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- build the bin target: on wasm32 its main() mounts the app, natively it
+         is the optional static file server for dist/ -->
+    <link data-trunk rel="rust" data-target-name="chef-dav" data-cargo-no-default-features="true" />
+    <!-- trunk compiles this to dist/main.css and injects the link -->
+    <link data-trunk rel="css" href="style/main.css" />
+  </head>
+  <body>
+    <!-- trunk injects the wasm-bindgen glue (chef_dav.js + .wasm) here -->
+  </body>
+</html>

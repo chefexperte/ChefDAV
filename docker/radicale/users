@@ -1,0 +1,4 @@
+# htpasswd file for the dev stack. User: alice, password: secret
+# (bcrypt hash, generated with: python3 -c "import crypt; print(crypt.crypt('secret', crypt.mksalt(crypt.METHOD_BLOWFISH)))")
+# Regenerate with:  docker run --rm httpd:alpine htpasswd -nbB <user> <password> >> docker/radicale/users
+alice:$2b$12$C.CsCg8m8yoNV/SIK6/J7eKLsIVmDuu/d2wQzHrHD4KsekSp0/HF6

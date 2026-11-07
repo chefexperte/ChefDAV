@@ -1,0 +1,38 @@
+name: chef-dav-dev
+
+# Local development stack: Radicale behind a Caddy reverse proxy that answers
+# CORS preflights and adds the Access-Control-* headers, so the WASM app
+# (served from http://127.0.0.1:3100 by `trunk serve`) can talk to it.
+#
+#   docker compose -f docker/docker-compose.yml up -d
+#   (or, without docker group access: podman compose -f docker/docker-compose.yml up -d)
+#
+#   -> CalDAV endpoint with CORS: http://127.0.0.1:8080
+#   -> dev login: alice / secret  (see docker/radicale/users)
+#
+# The tomsquest/docker-radicale image reads its config from /config/config and
+# stores collections in /data/collections.
+
+services:
+  radicale:
+    image: tomsquest/docker-radicale:3.9.0.0
+    restart: unless-stopped
+    expose:
+      - "5232"
+    volumes:
+      - ./radicale/config:/config/config:ro
+      - ./radicale/users:/config/users:ro
+      - radicale-data:/data
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - radicale
+
+volumes:
+  radicale-data:

@@ -1,0 +1,23 @@
+# Example Radicale rights file for shared calendars with LDAP users.
+# (The glauth fixture in glauth.cfg defines alice, bob and a readonly service
+# account; groups are "users" and "calendar-users".)
+# Use with:  [rights]  type = from_file   rights_file = /etc/radicale/rights
+# (mount this file into the container). Syntax: https://radicale.org/3.0.html#rights
+
+# Each user owns their own tree.
+[owner]
+user: .+
+collection: {user}
+permissions: RrWw
+
+# Example: bob may read alice's "shared" calendar, but not write.
+[read-shared]
+user: bob
+collection: alice/shared
+permissions: Rr
+
+# Example: the whole calendar-users LDAP group may read it.
+[group-read]
+user: calendar-users
+collection: alice/shared
+permissions: Rr

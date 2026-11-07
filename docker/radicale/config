@@ -1,0 +1,28 @@
+# Radicale config for local dev (default: htpasswd auth).
+# For LDAP, see ../ldap-config/config and docker-compose.ldap.yml.
+# Mounted at /config/config (tomsquest/docker-radicale image layout).
+
+[server]
+hosts = 0.0.0.0:5232
+max_connections = 20
+timeout = 30
+
+[auth]
+type = htpasswd
+htpasswd_filename = /config/users
+htpasswd_encryption = bcrypt
+
+[storage]
+filesystem_folder = /data/collections
+
+# Who may read/write which collections. `owner_only` gives each user full
+# access to their own /<user>/ tree — the usual setup. For shared calendars,
+# switch to `type = from_file` with a rights file (see ../ldap/rights.example).
+[rights]
+type = owner_only
+
+[web]
+type = none
+
+[logging]
+level = info

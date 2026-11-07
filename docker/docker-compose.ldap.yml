@@ -1,0 +1,26 @@
+name: chef-dav-dev-ldap
+
+# LDAP variant of the dev stack: adds a glauth LDAP server and points Radicale
+# at it ([auth] type = ldap). Start with BOTH compose files:
+#
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.ldap.yml up -d
+#   (or: podman compose -f docker/docker-compose.yml -f docker/docker-compose.ldap.yml up -d)
+#
+# Then log in to ChefDAV with an LDAP user, e.g. alice / secret.
+# For a real deployment, point ldap_url/ldap_base/ldap_filter in
+# docker/radicale/ldap-config/config at your actual directory server.
+
+services:
+  radicale:
+    volumes:
+      - ./radicale/ldap-config/config:/config/config:ro
+      - radicale-data:/data
+
+  glauth:
+    image: glauth/glauth:v2.5.4
+    restart: unless-stopped
+    expose:
+      - "3893"
+    volumes:
+      # the image reads its config from exactly this path
+      - ./ldap/glauth.cfg:/app/config/config.cfg:ro

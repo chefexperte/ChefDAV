@@ -1,0 +1,71 @@
+/* ChefDAV design tokens — the single source of truth for colors, type,
+   radii and shadows. Imported by style/main.css; also copied to /tokens.css
+   at build time so the runtime @import resolves.
+   Palette: warm paper + a fresh mint accent, with a coherent calendar set. */
+
+:root {
+  /* surfaces */
+  --paper: #f4f2ea;
+  --paper-deep: #eae7db;
+  --card: #fffdf8;
+  --line: #dde2d5;
+
+  /* text */
+  --ink: #22251f;
+  --ink-soft: #6c7165;
+  --ink-faint: #99a08f;
+
+  /* brand — mint */
+  --accent: #2f9e7f;
+  --accent-deep: #1f7a61;
+  --accent-soft: #dcf2e8;
+  --accent-ink: #0f3d30;
+
+  /* semantic */
+  --danger: #c0392b;
+  --danger-soft: #fbe9e6;
+  --danger-line: #ecc7c0;
+  --info: #2e86ab;
+
+  /* calendar palette (also used as fallbacks in Rust) */
+  --cal-1: #2f9e7f; /* mint (accent) */
+  --cal-2: #3a86a8; /* sea blue */
+  --cal-3: #6a9e3a; /* olive */
+  --cal-4: #8e6fc1; /* violet */
+  --cal-5: #d9a404; /* amber */
+  --cal-6: #d1495b; /* rose */
+  --cal-7: #0e9594; /* teal */
+  --cal-8: #b0713a; /* warm brown */
+
+  /* shape + type */
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 2px rgba(34, 37, 31, 0.05), 0 10px 30px rgba(34, 37, 31, 0.08);
+  --shadow-sm: 0 1px 2px rgba(34, 37, 31, 0.06);
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+[data-theme="dark"] {
+  --paper: #171a16;
+  --paper-deep: #22261f;
+  --card: #1f231c;
+  --line: #343a2f;
+
+  --ink: #eef1e7;
+  --ink-soft: #b9c0ad;
+  --ink-faint: #838b78;
+
+  --accent: #5fd3ad;
+  --accent-deep: #8ce6c8;
+  --accent-soft: #1d3a30;
+  --accent-ink: #c9f7e5;
+
+  --danger: #ff7a6b;
+  --danger-soft: #3a1f1b;
+  --danger-line: #5c2e26;
+  --info: #6db8d8;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+}

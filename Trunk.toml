@@ -1,0 +1,9 @@
+# Trunk builds the CSR wasm app: index.html -> dist/, public/ copied to dist/.
+[build]
+target = "index.html"
+dist = "dist"
+
+# Dev server:  trunk serve --address 127.0.0.1 --port 3100
+[serve]
+address = "127.0.0.1"
+port = 3100

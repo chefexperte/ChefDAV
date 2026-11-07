@@ -1,0 +1,12 @@
+{
+  "name": "chef-dav-e2e",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end smoke tests for ChefDAV (Playwright)",
+  "scripts": {
+    "test": "node smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.65.0"
+  }
+}

@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Unit tests + WASM build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Unit tests (CalDAV/ICS/recurrence/crypto core)
+        run: cargo test -p caldav
+
+      - name: Type-check the WASM app
+        run: cargo check --target wasm32-unknown-unknown
+
+      - name: Install trunk
+        uses: taiki-e/install-action@v2
+        with:
+          tool: trunk
+
+      - name: Production build
+        run: trunk build --release
+
+  e2e:
+    name: End-to-end (Radicale + Caddy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install trunk
+        uses: taiki-e/install-action@v2
+        with:
+          tool: trunk
+
+      - name: Start Radicale + CORS proxy
+        run: docker compose -f docker/docker-compose.yml up -d
+
+      - name: Wait for CalDAV and create a calendar
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -u alice:secret -X PROPFIND -H "Depth: 0" http://127.0.0.1:8080/ || true)
+            if [ "$code" = "207" ]; then break; fi
+            sleep 2
+          done
+          curl -sf -u alice:secret -X MKCALENDAR \
+            --data '<?xml version="1.0"?><D:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:set><D:prop><D:resourcetype><D:collection/><C:calendar/></D:resourcetype><D:displayname>Personal</D:displayname></D:prop></D:set></D:mkcalendar>' \
+            http://127.0.0.1:8080/alice/personal/
+
+      - name: Start the app
+        run: |
+          trunk serve --address 127.0.0.1 --port 3100 > /tmp/trunk.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://127.0.0.1:3100/; then break; fi
+            sleep 2
+          done
+          curl -sf -o /dev/null http://127.0.0.1:3100/
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run e2e smoke test
+        working-directory: e2e
+        run: npm test
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure
+          path: |
+            e2e/login-failure.png
+            /tmp/trunk.log
+          if-no-files-found: ignore

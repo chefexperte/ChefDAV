@@ -1,0 +1,70 @@
+[package]
+name = "chef-dav"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Client-side-only CalDAV calendar frontend (Rust -> WASM) for Radicale"
+
+[workspace]
+members = ["crates/caldav"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "chef-dav"
+path = "src/main.rs"
+
+[dependencies]
+caldav = { path = "crates/caldav" }
+base64 = "0.23"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+chrono-tz = "0.10"
+console_error_panic_hook = "0.1"
+http = "1"
+idb = "0.6"
+js-sys = "0.3"
+leptos = { version = "0.8", features = ["csr"] }
+leptos_router = "0.8"
+reqwest = { version = "0.13", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+serde_json = "1"
+url = "2"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "Crypto",
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "DataTransfer",
+    "DragEvent",
+    "MouseEvent",
+    "KeyboardEvent",
+    "EventTarget",
+    "Event",
+    "Notification",
+    "NotificationPermission",
+] }
+
+# getrandom (pulled in via aes-gcm/uuid) needs its wasm_js backend on wasm32.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.4", features = ["wasm_js"] }
+
+# Native-only: the bin target is a small static server for target/site,
+# used by `cargo leptos watch` and as the production binary.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
+tower-http = { version = "0.6", features = ["fs"] }
+
+# Dev/build workflow is trunk (see Trunk.toml): `trunk serve --port 3100`,
+# `trunk build --release`. The [[bin]] below is the optional native static
+# server for the built dist/ folder (production convenience).
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1

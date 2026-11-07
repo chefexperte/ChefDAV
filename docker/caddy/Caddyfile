@@ -1,0 +1,35 @@
+# Dev reverse proxy: Radicale itself sends no CORS headers, so Caddy answers
+# preflights itself and adds Access-Control-* on the way out. The app dev
+# server runs at http://127.0.0.1:3100 (cargo leptos watch).
+#
+# NOTE: this echoes back the request Origin, which is fine for local dev.
+# In production, pin a fixed origin instead, e.g.:
+#   Access-Control-Allow-Origin "https://calendar-app.example.com"
+
+{
+	auto_https off
+}
+
+http://:80 {
+	@preflight method OPTIONS
+	handle @preflight {
+		header {
+			Access-Control-Allow-Origin "{http.request.header.Origin}"
+			Vary "Origin"
+			Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, REPORT, MKCOL, MKCALENDAR, COPY, MOVE, OPTIONS"
+			Access-Control-Allow-Headers "Authorization, Content-Type, Depth, If-Match, If-None-Match, Overwrite, Destination, Prefer"
+			Access-Control-Expose-Headers "ETag, DAV, Content-Length, Location"
+			Access-Control-Max-Age "600"
+		}
+		respond 204
+	}
+
+	handle {
+		header {
+			Access-Control-Allow-Origin "{http.request.header.Origin}"
+			Vary "Origin"
+			Access-Control-Expose-Headers "ETag, DAV, Content-Length, Location"
+		}
+		reverse_proxy radicale:5232
+	}
+}
