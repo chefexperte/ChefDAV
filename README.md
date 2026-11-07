@@ -202,6 +202,11 @@ After a verified milestone the maintainer moves the `stable` tag forward; re-run
 `./scripts/stable.sh` to rebuild and restart the stable app. The containers keep
 running when you stop the web server with Ctrl+C.
 
+The stable build defaults the login form to `http://127.0.0.1:8081` (compiled in
+via `CHEFDAV_DAV_URL`), creates a starter `Personal` calendar on first run, and
+shows its `CHANGELOG.md` section on the login screen. Development and e2e tests
+use ports 3100/8080 and a different Radicale volume, so they never touch it.
+
 ## Architecture
 
 | Layer | Tech | Notes |
