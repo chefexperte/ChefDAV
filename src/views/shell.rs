@@ -272,16 +272,17 @@ pub fn Shell() -> impl IntoView {
                                         class="cal-menu-btn"
                                         title="Rename or delete calendar"
                                         on:click=move |_| {
-                                            let name = state
+                                            let found = state
                                                 .calendars
                                                 .get()
                                                 .iter()
                                                 .find(|c| c.info.href == href)
-                                                .map(|c| c.info.display_name.clone())
-                                                .unwrap_or_default();
+                                                .map(|c| (c.info.display_name.clone(), c.color.clone()));
+                                            let (name, color) = found.unwrap_or_default();
                                             state.calendar_action.set(Some(CalendarAction::Rename {
                                                 href: href.clone(),
                                                 name,
+                                                color,
                                             }));
                                         }
                                     >

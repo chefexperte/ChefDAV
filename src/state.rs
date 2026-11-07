@@ -76,8 +76,15 @@ pub enum ModalState {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CalendarAction {
-    Rename { href: String, name: String },
-    Delete { href: String, name: String },
+    Rename {
+        href: String,
+        name: String,
+        color: String,
+    },
+    Delete {
+        href: String,
+        name: String,
+    },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]

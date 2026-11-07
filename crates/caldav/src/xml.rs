@@ -230,6 +230,15 @@ pub fn calendar_query_todos_body() -> String {
     )
 }
 
+/// PROPPATCH setting the Apple calendar color of a collection.
+pub fn proppatch_calendar_color_body(color: &str) -> String {
+    format!(
+        r#"{XML_HEADER}
+<D:propertyupdate xmlns:D="DAV:" xmlns:A="http://apple.com/ns/ical/"><D:set><D:prop><A:calendar-color>{c}</A:calendar-color></D:prop></D:set></D:propertyupdate>"#,
+        c = xml_escape(color)
+    )
+}
+
 /// PROPPATCH renaming a collection (displayname).
 pub fn proppatch_displayname_body(display_name: &str) -> String {
     format!(

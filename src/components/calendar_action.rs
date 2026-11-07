@@ -13,11 +13,17 @@ pub fn CalendarActionModal() -> impl IntoView {
     let busy = RwSignal::new(false);
     let error = RwSignal::new(None::<String>);
 
-    let (href, name, is_delete) = match &action {
-        CalendarAction::Rename { href, name } => (href.clone(), name.clone(), false),
-        CalendarAction::Delete { href, name } => (href.clone(), name.clone(), true),
+    let (href, name, color, is_delete) = match &action {
+        CalendarAction::Rename { href, name, color } => {
+            (href.clone(), name.clone(), color.clone(), false)
+        }
+        CalendarAction::Delete { href, name } => {
+            (href.clone(), name.clone(), String::new(), true)
+        }
     };
     let name_input = RwSignal::new(name.clone());
+    let color_sig = RwSignal::new(color.clone());
+    let original_color = RwSignal::new(color.clone());
     let href_sig = RwSignal::new(href.clone());
     let confirm_delete = RwSignal::new(is_delete);
     let close = move |_| state.calendar_action.set(None);
@@ -34,8 +40,14 @@ pub fn CalendarActionModal() -> impl IntoView {
         busy.set(true);
         let st = state;
         let href = href_sig.get();
+        let color = color_sig.get();
+        let color_opt = if color != original_color.get() {
+            Some(color.clone())
+        } else {
+            None
+        };
         spawn_local(async move {
-            match api::rename_calendar(&st, &href, &n).await {
+            match api::update_calendar(&st, &href, &n, color_opt.as_deref()).await {
                 Ok(()) => st.calendar_action.set(None),
                 Err(e) => {
                     error.set(Some(format!("{e}")));
@@ -80,6 +92,35 @@ pub fn CalendarActionModal() -> impl IntoView {
                                     prop:value=move || name_input.get()
                                     on:input=move |ev| name_input.set(event_target_value(&ev)) />
                             </label>
+                            <div class="field">
+                                <span>"Color"</span>
+                                <div class="color-swatches">
+                                    <For
+                                        each=|| crate::state::PALETTE.to_vec()
+                                        key=|c| c.clone()
+                                        children=move |c| {
+                                            let value = c.clone();
+                                            let active = value.clone();
+                                            view! {
+                                                <button
+                                                    type="button"
+                                                    class="color-swatch"
+                                                    class:active=move || color_sig.get() == active
+                                                    style=format!("background:{value}")
+                                                    data-color=value.clone()
+                                                    on:click=move |_| color_sig.set(value.to_string())
+                                                />
+                                            }
+                                        }
+                                    />
+                                    <input
+                                        type="color"
+                                        title="Custom color"
+                                        prop:value=move || color_sig.get()
+                                        on:input=move |ev| color_sig.set(event_target_value(&ev))
+                                    />
+                                </div>
+                            </div>
                         }
                     }
                 >

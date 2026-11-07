@@ -310,6 +310,17 @@ impl<T: HttpTransport> DavClient<T> {
         self.send(req).await.map(|_| ())
     }
 
+    /// Set the Apple calendar color of a collection (PROPPATCH).
+    pub async fn set_calendar_color(&self, calendar: &Url, color: &str) -> Result<()> {
+        let req = self.request(
+            dav_method("PROPPATCH"),
+            calendar.clone(),
+            None,
+            Some(xml::proppatch_calendar_color_body(color)),
+        );
+        self.send(req).await.map(|_| ())
+    }
+
     /// Delete a whole calendar collection.
     pub async fn delete_calendar(&self, calendar: &Url) -> Result<()> {
         let req = self.request(Method::DELETE, calendar.clone(), None, None);
@@ -740,6 +751,18 @@ END:VCALENDAR</C:calendar-data></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:
                 .await
                 .unwrap();
             assert_eq!(etag, "\"todo-etag\"");
+        });
+    }
+
+    #[test]
+    fn sets_calendar_color() {
+        let c = client();
+        block_on(async {
+            let cal = Url::parse("http://cal.test/alice/personal/").unwrap();
+            c.set_calendar_color(&cal, "#d1495b").await.unwrap();
+            let body = c.transport.last().body.unwrap();
+            assert!(body.contains("calendar-color"));
+            assert!(body.contains("#d1495b"));
         });
     }
 

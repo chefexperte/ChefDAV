@@ -186,6 +186,25 @@ await page.waitForSelector(".modal-small", { state: "detached", timeout: 15000 }
 await page.waitForTimeout(1200);
 check("calendar created", (await page.locator(".cal-name", { hasText: calName }).count()) === 1);
 const calItem = page.locator(".cal-item", { hasText: calName });
+
+// change the calendar color
+await calItem.locator(".cal-menu-btn").click();
+await page.waitForSelector(".modal-small");
+await page.click('.color-swatch[data-color="#d1495b"]');
+await page.click('.modal-small button:has-text("Save")');
+await page.waitForSelector(".modal-small", { state: "detached", timeout: 15000 });
+await page.waitForTimeout(1200);
+const dotStyle = await page
+  .locator(".cal-item", { hasText: calName })
+  .locator(".cal-dot")
+  .getAttribute("style");
+check(
+  "calendar color changed",
+  dotStyle.includes("#d1495b") || dotStyle.includes("209, 73, 91"),
+  dotStyle
+);
+
+// rename it
 await calItem.locator(".cal-menu-btn").click();
 await page.waitForSelector(".modal-small");
 const renamed = `${calName} X`;

@@ -514,6 +514,27 @@ pub async fn create_calendar(state: &AppState, name: &str) -> Result<()> {
     Ok(())
 }
 
+/// Rename a calendar and/or change its color, then refresh the list.
+pub async fn update_calendar(
+    state: &AppState,
+    href: &str,
+    name: &str,
+    color: Option<&str>,
+) -> Result<()> {
+    let session = state
+        .session
+        .get()
+        .ok_or_else(|| DavError::Transport("not logged in".into()))?;
+    let url = Url::parse(href)?;
+    let c = client(&session);
+    if let Some(color) = color {
+        c.set_calendar_color(&url, color).await?;
+    }
+    c.rename_calendar(&url, name).await?;
+    refresh_calendars(state).await;
+    Ok(())
+}
+
 pub async fn rename_calendar(state: &AppState, href: &str, name: &str) -> Result<()> {
     let session = state
         .session

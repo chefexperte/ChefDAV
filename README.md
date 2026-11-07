@@ -54,8 +54,9 @@ modern look, Rust reliability.
   (interval, weekdays, count/until, raw RRULE fallback). Edits apply to the
   whole series.
 - **Search** across the cached calendar, **multi-select + bulk delete**.
-- **Calendars**: create, rename, delete, show/hide, read-only detection via
-  `current-user-privilege-set`, server colors with a stable fallback palette.
+- **Calendars**: create, rename, delete, show/hide, **change color** (palette
+  swatches or a custom picker, stored via PROPPATCH), read-only detection via
+  `current-user-privilege-set`.
 - **Tasks (VTODO)**: create, edit, complete/uncomplete, delete.
 - **Incremental sync** via `sync-token` + `calendar-multiget`, with a full
   fetch fallback; **offline outbox** retries queued writes when back online.
@@ -75,7 +76,6 @@ modern look, Rust reliability.
 
 | Feature | Milestone |
 | --- | --- |
-| Change a calendar's color from the UI | next |
 | Recurrence exceptions ("this event" / "this and future") | later |
 | Calendar sharing/delegation UI (Radicale rights are server-side) | later |
 | Background/push reminders (current reminders poll while the app is open) | later |
@@ -101,8 +101,8 @@ is usable day-to-day.
       responsive/mobile layout.
 - [x] **Later**: offline write queue, reminders, i18n (main UI), themes,
       stable instance, CI.
-- [ ] **Next**: calendar color editing; recurrence exceptions; sharing UI;
-      background reminders; full i18n coverage; encrypted credentials.
+- [ ] **Next**: recurrence exceptions; sharing UI; background reminders; full
+      i18n coverage; encrypted credentials.
 
 ## Quickstart (local dev)
 

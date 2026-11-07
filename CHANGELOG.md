@@ -15,8 +15,9 @@ latest section of this file (baked into each build).
 - Client-side recurrence expansion (RRULE/RDATE/EXDATE), DST-correct.
 - Search across the cached calendar, multi-select + bulk delete.
 - Drag & drop events between days (month view; non-recurring events).
-- Calendar create, rename and delete; read-only calendars are detected via
-  `current-user-privilege-set` and shown with a lock.
+- Calendar create, rename, delete and **color editing** (palette + custom
+  picker); read-only calendars are detected via `current-user-privilege-set`
+  and shown with a lock.
 - VTODO tasks: create, edit, complete/uncomplete, delete.
 - Incremental sync via `sync-token` + `calendar-multiget`.
 - Offline outbox: writes are queued and retried when the connection returns.
