@@ -3,8 +3,8 @@
 
 use std::collections::BTreeMap;
 
-use caldav::recurrence::expand_event;
-use caldav::time::{agenda_range, month_name, today, WEEKDAYS_MON_FIRST};
+use caldav::recurrence::expand_series;
+use caldav::time::{agenda_range, today};
 use chrono::{Datelike, NaiveDate};
 use leptos::prelude::*;
 
@@ -21,7 +21,18 @@ pub fn AgendaView() -> impl IntoView {
         let anchor = state.anchor.get();
         let (rs, re) = agenda_range(anchor, 31, &tz);
         let events = state.events.get();
-        let mut map: BTreeMap<NaiveDate, Vec<(usize, String, String, String, bool)>> = BTreeMap::new();
+        let mut map: BTreeMap<
+            NaiveDate,
+            Vec<(
+                usize,
+                String,
+                String,
+                String,
+                bool,
+                Option<chrono::DateTime<chrono_tz::Tz>>,
+                Option<chrono::DateTime<chrono_tz::Tz>>,
+            )>,
+        > = BTreeMap::new();
         for (i, ev) in events.iter().enumerate() {
             let is_all_day = ev
                 .event
@@ -29,19 +40,26 @@ pub fn AgendaView() -> impl IntoView {
                 .as_ref()
                 .map(|d| d.is_date())
                 .unwrap_or(false);
-            for occ in expand_event(&ev.event, rs, re, &tz) {
+            for occ in expand_series(&ev.event, &ev.overrides, rs, re, &tz) {
                 let d = occ.start.with_timezone(&tz).date_naive();
                 let time = if is_all_day {
-                    "All day".to_string()
+                    crate::i18n::t(state.lang.get(), "all_day").to_string()
                 } else {
                     occ.start.with_timezone(&tz).format("%H:%M").to_string()
                 };
+                let summary = occ
+                    .override_idx
+                    .and_then(|idx| ev.overrides.get(idx))
+                    .map(|o| o.summary.clone())
+                    .unwrap_or_else(|| ev.event.summary.clone());
                 map.entry(d).or_default().push((
                     i,
                     time,
-                    ev.event.summary.clone(),
+                    summary,
                     ev.color.clone(),
                     is_all_day,
+                    occ.recurrence_id,
+                    Some(occ.start),
                 ));
             }
         }
@@ -52,19 +70,19 @@ pub fn AgendaView() -> impl IntoView {
     });
 
     let day_label = move |d: NaiveDate| {
-        let wd = WEEKDAYS_MON_FIRST[d.weekday().num_days_from_monday() as usize];
-        format!("{wd} {} {}", d.day(), month_name(d.month()))
+        let wd = crate::i18n::weekday_short(state.lang.get(), d.weekday().num_days_from_monday() as usize);
+        format!("{wd} {} {}", d.day(), crate::i18n::month_name(state.lang.get(), d.month()))
     };
 
     view! {
         <div class="agenda">
             <Show
                 when=move || !groups.get().is_empty()
-                fallback=|| {
+                fallback=move || {
                     view! {
                         <div class="empty-state">
-                            <p class="empty-title">"Nothing on the horizon"</p>
-                            <p class="empty-hint">"No events in the next 30 days."</p>
+                            <p class="empty-title">{move || crate::i18n::t(state.lang.get(), "no_events")}</p>
+                            <p class="empty-hint">{move || crate::i18n::t(state.lang.get(), "no_events_next")}</p>
                         </div>
                     }
                 }
@@ -79,14 +97,14 @@ pub fn AgendaView() -> impl IntoView {
                                 <h3 class="agenda-date">
                                     {day_label(d)}
                                     <Show when=move || is_today fallback=|| ()>
-                                        <span class="today-pill">"today"</span>
+                                        <span class="today-pill">{move || crate::i18n::t(state.lang.get(), "today_pill")}</span>
                                     </Show>
                                 </h3>
                                 <ul class="agenda-list">
                                     <For
                                         each=move || items.clone()
-                                        key=|(i, t, s, _, _)| (*i, t.clone(), s.clone())
-                                        children=move |(idx, time, summary, color, all_day)| {
+                                        key=|(i, t, s, ..)| (*i, t.clone(), s.clone())
+                                        children=move |(idx, time, summary, color, all_day, occurrence, display_start)| {
                                             let ev = state.events.get().get(idx).cloned();
                                             let location = ev
                                                 .as_ref()
@@ -116,7 +134,11 @@ pub fn AgendaView() -> impl IntoView {
                                                                     }
                                                                 });
                                                             } else {
-                                                                state.modal.set(Some(ModalState::Details { index: idx }))
+                                                                state.modal.set(Some(ModalState::Details {
+                                                                    index: idx,
+                                                                    occurrence,
+                                                                    display_start,
+                                                                }))
                                                             }
                                                         }
                                                     >
@@ -129,7 +151,7 @@ pub fn AgendaView() -> impl IntoView {
                                                             <span class="agenda-loc">{location_text.clone()}</span>
                                                         </Show>
                                                         <Show when=move || read_only fallback=|| ()>
-                                                            <span class="lock">"🔒"</span>
+                                                            <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
                                                         </Show>
                                                     </button>
                                                 </li>

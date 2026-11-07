@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use caldav::ics::DtValue;
-use caldav::time::month_name;
+
 use chrono::{Datelike, NaiveDate};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -40,20 +40,20 @@ pub fn TasksView() -> impl IntoView {
         });
     };
 
-    let label = |d: Option<NaiveDate>| match d {
+    let label = move |d: Option<NaiveDate>| match d {
         Some(d) => format!(
             "{} {} {}",
-            caldav::time::WEEKDAYS_MON_FIRST[d.weekday().num_days_from_monday() as usize],
+            crate::i18n::weekday_short(state.lang.get(), d.weekday().num_days_from_monday() as usize),
             d.day(),
-            month_name(d.month())
+            crate::i18n::month_name(state.lang.get(), d.month())
         ),
-        None => "No due date".to_string(),
+        None => crate::i18n::t(state.lang.get(), "no_due_date").to_string(),
     };
 
     view! {
         <div class="tasks-view">
             <div class="tasks-head">
-                <h2 class="tasks-title">"Tasks"</h2>
+                <h2 class="tasks-title">{move || crate::i18n::t(state.lang.get(), "tasks")}</h2>
                 <button
                     class="btn btn-primary"
                     on:click=move |_| {
@@ -61,16 +61,16 @@ pub fn TasksView() -> impl IntoView {
                         state.modal.set(Some(ModalState::NewTodo { date }));
                     }
                 >
-                    "+ New task"
+                    {move || format!("+ {}", crate::i18n::t(state.lang.get(), "new_task"))}
                 </button>
             </div>
             <Show
                 when=move || !groups.get().is_empty()
-                fallback=|| {
+                fallback=move || {
                     view! {
                         <div class="empty-state">
-                            <p class="empty-title">"All clear"</p>
-                            <p class="empty-hint">"No tasks yet. Add one to get started."</p>
+                            <p class="empty-title">{move || crate::i18n::t(state.lang.get(), "all_clear")}</p>
+                            <p class="empty-hint">{move || crate::i18n::t(state.lang.get(), "no_tasks")}</p>
                         </div>
                     }
                 }
@@ -124,7 +124,7 @@ pub fn TasksView() -> impl IntoView {
                                                         <span class="task-prio">{format!("P{}", priority.unwrap_or(0))}</span>
                                                     </Show>
                                                     <Show when=move || t.read_only fallback=|| ()>
-                                                        <span class="lock" title="Read-only">"🔒"</span>
+                                                        <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
                                                     </Show>
                                                 </li>
                                             }

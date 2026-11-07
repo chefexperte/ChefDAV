@@ -12,6 +12,125 @@ use crate::ics::{DtValue, VEvent};
 pub struct Occurrence {
     pub start: DateTime<Tz>,
     pub end: DateTime<Tz>,
+    /// The original recurrence start (the `RECURRENCE-ID` value). This stays
+    /// fixed even when a `THISANDFUTURE` override shifts `start`.
+    pub recurrence_id: Option<DateTime<Tz>>,
+    /// Index into the series' overrides when this occurrence comes from a
+    /// `RECURRENCE-ID` exception (single or `THISANDFUTURE`).
+    pub override_idx: Option<usize>,
+}
+
+fn override_times(o: &VEvent, tz: &Tz) -> Option<(DateTime<Tz>, DateTime<Tz>)> {
+    let start = o.dtstart.as_ref()?.to_datetime(tz)?;
+    let end = o
+        .dtend
+        .as_ref()
+        .and_then(|d| d.to_datetime(tz))
+        .unwrap_or_else(|| start + event_duration(o).unwrap_or_default());
+    Some((start, end))
+}
+
+/// Expand a recurring master plus its `RECURRENCE-ID` exceptions.
+///
+/// - single overrides replace/cancel exactly one occurrence;
+/// - `RANGE=THISANDFUTURE` overrides shift all occurrences at or after their
+///   recurrence id (and can change their duration);
+/// - overrides moved into the requested range from outside are included.
+pub fn expand_series(
+    master: &VEvent,
+    overrides: &[VEvent],
+    range_start: DateTime<Tz>,
+    range_end: DateTime<Tz>,
+    default_tz: &Tz,
+) -> Vec<Occurrence> {
+    let rid_dt = |o: &VEvent| -> Option<DateTime<Tz>> {
+        o.recurrence_id
+            .as_ref()
+            .and_then(|d| d.to_datetime(default_tz))
+    };
+    let base = expand_event(master, range_start, range_end, default_tz);
+    let mut out: Vec<Occurrence> = Vec::new();
+    let mut used = vec![false; overrides.len()];
+    let mut future: Vec<usize> = overrides
+        .iter()
+        .enumerate()
+        .filter(|(_, o)| o.recurrence_range && rid_dt(o).is_some())
+        .map(|(i, _)| i)
+        .collect();
+    future.sort_by_key(|&i| rid_dt(&overrides[i]).unwrap());
+
+    for occ in base {
+        // exact single-occurrence override
+        let single = overrides.iter().enumerate().find(|(_, o)| {
+            !o.recurrence_range
+                && rid_dt(o)
+                    .map(|r| r == occ.start)
+                    .unwrap_or(false)
+        });
+        if let Some((i, o)) = single {
+            used[i] = true;
+            if o.is_cancelled() {
+                continue;
+            }
+            if let Some((s, e)) = override_times(o, default_tz) {
+                out.push(Occurrence {
+                    start: s,
+                    end: e,
+                    recurrence_id: rid_dt(o),
+                    override_idx: Some(i),
+                });
+            }
+            continue;
+        }
+        // latest THISANDFUTURE override at or before this occurrence
+        let fut = future
+            .iter()
+            .rev()
+            .find(|&&i| rid_dt(&overrides[i]).map(|r| r <= occ.start).unwrap_or(false))
+            .copied();
+        if let Some(i) = fut {
+            let o = &overrides[i];
+            if o.is_cancelled() {
+                continue;
+            }
+            if let (Some(rid), Some((s, _))) = (rid_dt(o), override_times(o, default_tz)) {
+                let shift = s - rid;
+                let dur = event_duration(o)
+                    .or_else(|| event_duration(master))
+                    .unwrap_or_default();
+                out.push(Occurrence {
+                    start: occ.start + shift,
+                    end: occ.start + shift + dur,
+                    recurrence_id: Some(occ.start),
+                    override_idx: Some(i),
+                });
+                continue;
+            }
+        }
+        out.push(occ);
+    }
+
+    // Overrides whose new time falls inside the range but whose recurrence id
+    // was outside the master's expanded range (e.g. moved into this month).
+    for (i, o) in overrides.iter().enumerate() {
+        if used[i] || o.is_cancelled() {
+            continue;
+        }
+        if let Some((s, e)) = override_times(o, default_tz) {
+            if e > range_start && s < range_end && !out.iter().any(|x| x.start == s) {
+                out.push(Occurrence {
+                    start: s,
+                    end: e,
+                    recurrence_id: rid_dt(o),
+                    override_idx: Some(i),
+                });
+            }
+        }
+    }
+
+    out.retain(|o| o.end > range_start && o.start < range_end);
+    out.sort_by_key(|o| o.start);
+    out
 }
 
 /// The subset of RRULE the UI's simple recurrence editor understands.
@@ -236,6 +355,8 @@ pub fn expand_event(
                 .map(|d| Occurrence {
                     start: d,
                     end: d + dur,
+                    recurrence_id: Some(d),
+                    override_idx: None,
                 })
                 .collect();
         }
@@ -244,6 +365,8 @@ pub fn expand_event(
     let occ = Occurrence {
         start,
         end: start + dur,
+        recurrence_id: Some(start),
+        override_idx: None,
     };
     if occ.end > range_start && occ.start < range_end {
         vec![occ]
@@ -324,6 +447,118 @@ mod tests {
         assert_eq!(occ.len(), 1);
         let days = (occ[0].end - occ[0].start).num_days();
         assert_eq!(days, 2);
+    }
+
+    fn series(ics: &str) -> (VEvent, Vec<VEvent>) {
+        let events = parse_calendar(ics, &Tz::UTC).unwrap();
+        let master = events.iter().find(|e| !e.is_override()).cloned().unwrap();
+        let overrides = events.into_iter().filter(|e| e.is_override()).collect();
+        (master, overrides)
+    }
+
+    #[test]
+    fn single_override_replaces_one_occurrence() {
+        let ics = "BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:s
+DTSTART;TZID=Europe/Berlin:20261103T100000
+DTEND;TZID=Europe/Berlin:20261103T110000
+RRULE:FREQ=WEEKLY;COUNT=3
+SUMMARY:Master
+END:VEVENT
+BEGIN:VEVENT
+UID:s
+RECURRENCE-ID;TZID=Europe/Berlin:20261110T100000
+DTSTART;TZID=Europe/Berlin:20261110T140000
+DTEND;TZID=Europe/Berlin:20261110T150000
+SUMMARY:Moved
+END:VEVENT
+END:VCALENDAR
+";
+        let (master, overrides) = series(ics);
+        let (s, e) = range(2026, 11, 1, 2026, 12, 1);
+        let occ = expand_series(&master, &overrides, s, e, &Berlin);
+        assert_eq!(occ.len(), 3);
+        assert_eq!(occ[0].start.with_timezone(&Berlin).format("%H:%M").to_string(), "10:00");
+        assert_eq!(occ[1].start.with_timezone(&Berlin).format("%H:%M").to_string(), "14:00");
+        assert!(occ[1].override_idx.is_some());
+        assert_eq!(occ[2].start.with_timezone(&Berlin).format("%H:%M").to_string(), "10:00");
+    }
+
+    #[test]
+    fn cancelled_override_removes_occurrence() {
+        let ics = "BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:s
+DTSTART;TZID=Europe/Berlin:20261103T100000
+DTEND;TZID=Europe/Berlin:20261103T110000
+RRULE:FREQ=WEEKLY;COUNT=3
+END:VEVENT
+BEGIN:VEVENT
+UID:s
+RECURRENCE-ID;TZID=Europe/Berlin:20261110T100000
+DTSTART;TZID=Europe/Berlin:20261110T100000
+DTEND;TZID=Europe/Berlin:20261110T110000
+STATUS:CANCELLED
+END:VEVENT
+END:VCALENDAR
+";
+        let (master, overrides) = series(ics);
+        let (s, e) = range(2026, 11, 1, 2026, 12, 1);
+        let occ = expand_series(&master, &overrides, s, e, &Berlin);
+        assert_eq!(occ.len(), 2);
+        assert!(occ.iter().all(|o| o.start.format("%d").to_string() != "10"));
+    }
+
+    #[test]
+    fn this_and_future_shifts_subsequent_occurrences() {
+        let ics = "BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:s
+DTSTART;TZID=Europe/Berlin:20261108T100000
+DTEND;TZID=Europe/Berlin:20261108T110000
+RRULE:FREQ=DAILY;COUNT=4
+END:VEVENT
+BEGIN:VEVENT
+UID:s
+RECURRENCE-ID;RANGE=THISANDFUTURE;TZID=Europe/Berlin:20261110T100000
+DTSTART;TZID=Europe/Berlin:20261110T120000
+DTEND;TZID=Europe/Berlin:20261110T130000
+END:VEVENT
+END:VCALENDAR
+";
+        let (master, overrides) = series(ics);
+        let (s, e) = range(2026, 11, 1, 2026, 12, 1);
+        let occ = expand_series(&master, &overrides, s, e, &Berlin);
+        let times: Vec<String> = occ
+            .iter()
+            .map(|o| o.start.with_timezone(&Berlin).format("%d %H:%M").to_string())
+            .collect();
+        assert_eq!(times, vec!["08 10:00", "09 10:00", "10 12:00", "11 12:00"]);
+    }
+
+    #[test]
+    fn override_moved_into_range_is_included() {
+        let ics = "BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:s
+DTSTART;TZID=Europe/Berlin:20261103T100000
+DTEND;TZID=Europe/Berlin:20261103T110000
+RRULE:FREQ=WEEKLY;COUNT=2
+END:VEVENT
+BEGIN:VEVENT
+UID:s
+RECURRENCE-ID;TZID=Europe/Berlin:20261110T100000
+DTSTART;TZID=Europe/Berlin:20261124T100000
+DTEND;TZID=Europe/Berlin:20261124T110000
+END:VEVENT
+END:VCALENDAR
+";
+        let (master, overrides) = series(ics);
+        let (s, e) = range(2026, 11, 20, 2026, 12, 1);
+        let occ = expand_series(&master, &overrides, s, e, &Berlin);
+        assert_eq!(occ.len(), 1);
+        assert_eq!(occ[0].start.with_timezone(&Berlin).format("%Y-%m-%d").to_string(), "2026-11-24");
     }
 
     #[test]

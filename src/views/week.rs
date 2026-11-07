@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use caldav::recurrence::{expand_event, Occurrence};
+use caldav::recurrence::{expand_series, Occurrence};
 use caldav::time::{agenda_range, today, week_days, week_range};
 use chrono::{Datelike, Duration, NaiveDate, Timelike};
 use leptos::prelude::*;
@@ -89,7 +89,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                 ev.event.location,
                 ev.event.description
             );
-            for occ in expand_event(&ev.event, rs, re, &tz) {
+            for occ in expand_series(&ev.event, &ev.overrides, rs, re, &tz) {
                 if is_all_day {
                     let start_d = occ.start.with_timezone(&tz).date_naive();
                     let end_d = (occ.end - Duration::seconds(1)).with_timezone(&tz).date_naive();
@@ -138,7 +138,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                         view! {
                             <div class="week-day-head" class:today=is_today>
                                 <span class="wd-name">
-                                    {caldav::time::WEEKDAYS_MON_FIRST[d.weekday().num_days_from_monday() as usize]}
+                                    {crate::i18n::weekday_short(state.lang.get(), d.weekday().num_days_from_monday() as usize)}
                                 </span>
                                 <span class="wd-num">{d.day()}</span>
                             </div>
@@ -148,7 +148,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
             </div>
 
             <div class="week-allday">
-                <div class="week-gutter">"all day"</div>
+                <div class="week-gutter">{move || crate::i18n::t(state.lang.get(), "all_day_lower")}</div>
                 <For
                     each=move || days.get()
                     key=|d| *d
@@ -168,11 +168,19 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                     key=|(i, o, fp)| (*i, o.start, fp.clone())
                                     children=move |(idx, occ, _)| {
                                         let ev = state.events.get().get(idx).cloned();
-                                        let (summary, color, href, read_only) = match &ev {
-                                            Some(e) => (e.event.summary.clone(), e.color.clone(), e.href.clone(), e.read_only),
-                                            None => (String::new(), crate::state::ACCENT.into(), String::new(), true),
+                                        let (summary, color, href, read_only, recurring) = match &ev {
+                                            Some(e) => {
+                                                let summary = occ
+                                                    .override_idx
+                                                    .and_then(|i| e.overrides.get(i))
+                                                    .map(|o| o.summary.clone())
+                                                    .unwrap_or_else(|| e.event.summary.clone());
+                                                (summary, e.color.clone(), e.href.clone(), e.read_only, e.event.rrule.is_some())
+                                            }
+                                            None => (String::new(), crate::state::ACCENT.into(), String::new(), true, false),
                                         };
-                                        let _ = occ;
+                                        let occurrence = if recurring { occ.recurrence_id } else { None };
+                                        let display_start = if recurring { Some(occ.start) } else { None };
                                         let selected = Memo::new({
                                             let href = href.clone();
                                             move |_| state.selected.get().iter().any(|h| h == &href)
@@ -187,13 +195,13 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                                     if e.ctrl_key() || e.meta_key() {
                                                         toggle_select(&href);
                                                     } else {
-                                                        state.modal.set(Some(ModalState::Details { index: idx }));
+                                                        state.modal.set(Some(ModalState::Details { index: idx, occurrence, display_start }));
                                                     }
                                                 }
                                             >
                                                 {summary}
                                                 <Show when=move || read_only fallback=|| ()>
-                                                    <span class="lock">"🔒"</span>
+                                                    <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
                                                 </Show>
                                             </div>
                                         }
@@ -258,9 +266,18 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                     children=move |(idx, occ, _, col, cols)| {
                                         let ev = state.events.get().get(idx).cloned();
                                         let (summary, color, href, read_only, recurring) = match &ev {
-                                            Some(e) => (e.event.summary.clone(), e.color.clone(), e.href.clone(), e.read_only, e.event.rrule.is_some()),
+                                            Some(e) => {
+                                                let summary = occ
+                                                    .override_idx
+                                                    .and_then(|i| e.overrides.get(i))
+                                                    .map(|o| o.summary.clone())
+                                                    .unwrap_or_else(|| e.event.summary.clone());
+                                                (summary, e.color.clone(), e.href.clone(), e.read_only, e.event.rrule.is_some())
+                                            }
                                             None => (String::new(), crate::state::ACCENT.into(), String::new(), true, false),
                                         };
+                                        let occurrence = if recurring { occ.recurrence_id } else { None };
+                                        let display_start = if recurring { Some(occ.start) } else { None };
                                         let start_min = minutes_of_day(occ.start, &tz);
                                         let end_min = minutes_of_day(occ.end, &tz);
                                         let dur = (end_min - start_min).max(20.0);
@@ -293,14 +310,14 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                                     if e.ctrl_key() || e.meta_key() {
                                                         toggle_select(&href);
                                                     } else {
-                                                        state.modal.set(Some(ModalState::Details { index: idx }));
+                                                        state.modal.set(Some(ModalState::Details { index: idx, occurrence, display_start }));
                                                     }
                                                 }
                                             >
                                                 <span class="te-time">{time}</span>
                                                 <span class="te-title">{summary}</span>
                                                 <Show when=move || read_only fallback=|| ()>
-                                                    <span class="lock">"🔒"</span>
+                                                    <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
                                                 </Show>
                                             </div>
                                         }
@@ -318,7 +335,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                                     state.week_more.set(Some(indices));
                                                 }
                                             >
-                                                {move || format!("+{} more", hidden.get().len())}
+                                                {move || format!("+{} {}", hidden.get().len(), crate::i18n::t(state.lang.get(), "more"))}
                                             </button>
                                         }
                                     }

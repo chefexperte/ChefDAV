@@ -45,13 +45,13 @@ pub fn NewCalendarModal() -> impl IntoView {
     view! {
         <div class="modal-overlay" on:click=close>
             <div class="modal modal-small" on:click=move |e| e.stop_propagation() role="dialog" aria-modal="true">
-                <h3>"New calendar"</h3>
+                <h3>{move || crate::i18n::t(state.lang.get(), "new_calendar")}</h3>
                 <label class="field">
-                    <span>"Name"</span>
+                    <span>{move || crate::i18n::t(state.lang.get(), "name")}</span>
                     <input
                         type="text"
                         autofocus
-                        placeholder="e.g. Work"
+                        placeholder=move || crate::i18n::t(state.lang.get(), "calendar_name_placeholder")
                         prop:value=move || name.get()
                         on:input=move |ev| name.set(event_target_value(&ev))
                         on:keydown=save_enter
@@ -62,9 +62,9 @@ pub fn NewCalendarModal() -> impl IntoView {
                 </Show>
                 <div class="modal-actions">
                     <span class="spacer"></span>
-                    <button class="btn btn-ghost" on:click=close>"Cancel"</button>
+                    <button class="btn btn-ghost" on:click=close>{move || crate::i18n::t(state.lang.get(), "cancel")}</button>
                     <button class="btn btn-primary" disabled=move || busy.get() on:click=save_click>
-                        {move || if busy.get() { "Creating…" } else { "Create" }}
+                        {move || if busy.get() { crate::i18n::t(state.lang.get(), "creating") } else { crate::i18n::t(state.lang.get(), "create") }}
                     </button>
                 </div>
             </div>

@@ -26,6 +26,20 @@ pub fn CalendarActionModal() -> impl IntoView {
     let original_color = RwSignal::new(color.clone());
     let href_sig = RwSignal::new(href.clone());
     let confirm_delete = RwSignal::new(is_delete);
+    let privileges = Memo::new(move |_| {
+        state
+            .calendars
+            .get()
+            .iter()
+            .find(|c| c.info.href == href_sig.get())
+            .map(|c| c.info.privileges.clone())
+            .unwrap_or_default()
+    });
+    let copy_url = move |_| {
+        if let Some(win) = web_sys::window() {
+            let _ = win.navigator().clipboard().write_text(&href_sig.get());
+        }
+    };
     let close = move |_| state.calendar_action.set(None);
 
     let rename = move |_| {
@@ -81,19 +95,19 @@ pub fn CalendarActionModal() -> impl IntoView {
     view! {
         <div class="modal-overlay" on:click=close>
             <div class="modal modal-small" on:click=move |e| e.stop_propagation() role="dialog" aria-modal="true">
-                <h3>{move || if confirm_delete.get() { "Delete calendar" } else { "Rename calendar" }}</h3>
+                <h3>{move || if confirm_delete.get() { crate::i18n::t(state.lang.get(), "delete_calendar") } else { crate::i18n::t(state.lang.get(), "rename_calendar") }}</h3>
                 <Show
                     when=move || confirm_delete.get()
                     fallback=move || {
                         view! {
                             <label class="field">
-                                <span>"Name"</span>
+                                <span>{move || crate::i18n::t(state.lang.get(), "name")}</span>
                                 <input type="text" autofocus
                                     prop:value=move || name_input.get()
                                     on:input=move |ev| name_input.set(event_target_value(&ev)) />
                             </label>
                             <div class="field">
-                                <span>"Color"</span>
+                                <span>{move || crate::i18n::t(state.lang.get(), "color")}</span>
                                 <div class="color-swatches">
                                     <For
                                         each=|| crate::state::PALETTE.to_vec()
@@ -115,17 +129,39 @@ pub fn CalendarActionModal() -> impl IntoView {
                                     />
                                     <input
                                         type="color"
-                                        title="Custom color"
+                                        title=move || crate::i18n::t(state.lang.get(), "custom_color")
                                         prop:value=move || color_sig.get()
                                         on:input=move |ev| color_sig.set(event_target_value(&ev))
                                     />
                                 </div>
                             </div>
+                            <div class="sharing-info">
+                                <h4 class="sharing-title">{move || crate::i18n::t(state.lang.get(), "sharing")}</h4>
+                                <p class="field-hint">
+                                    {move || crate::i18n::t(state.lang.get(), "sharing_hint")}
+                                </p>
+                                <label class="field">
+                                    <span>{move || crate::i18n::t(state.lang.get(), "calendar_url")}</span>
+                                    <div class="sharing-url">
+                                        <input type="text" readonly prop:value=move || href_sig.get() />
+                                        <button type="button" class="btn btn-ghost" on:click=copy_url>
+                                            {move || crate::i18n::t(state.lang.get(), "copy")}
+                                        </button>
+                                    </div>
+                                </label>
+                                <p class="field-hint">
+                                    {move || crate::i18n::t(state.lang.get(), "your_access")}
+                                    {move || {
+                                        let p = privileges.get();
+                                        if p.is_empty() { crate::i18n::t(state.lang.get(), "unknown").to_string() } else { p.join(", ") }
+                                    }}
+                                </p>
+                            </div>
                         }
                     }
                 >
                     <p class="confirm-text">
-                        "Delete " <strong>{name.clone()}</strong> " and all of its events and tasks? This cannot be undone."
+                        <strong>{name.clone()}</strong> " — " {move || crate::i18n::t(state.lang.get(), "confirm_delete_calendar")}
                     </p>
                 </Show>
                 <Show when=move || error.get().is_some() fallback=|| ()>
@@ -140,20 +176,20 @@ pub fn CalendarActionModal() -> impl IntoView {
                                     class="btn btn-danger"
                                     on:click=move |_| confirm_delete.set(true)
                                 >
-                                    "Delete calendar"
+                                    {move || crate::i18n::t(state.lang.get(), "delete_calendar")}
                                 </button>
                             }
                         }
                     >
                         <button class="btn btn-danger" disabled=move || busy.get() on:click=delete>
-                            {move || if busy.get() { "Deleting…" } else { "Delete calendar" }}
+                            {move || if busy.get() { crate::i18n::t(state.lang.get(), "deleting") } else { crate::i18n::t(state.lang.get(), "delete_calendar") }}
                         </button>
                     </Show>
                     <span class="spacer"></span>
-                    <button class="btn btn-ghost" on:click=close>"Cancel"</button>
+                    <button class="btn btn-ghost" on:click=close>{move || crate::i18n::t(state.lang.get(), "cancel")}</button>
                     <Show when=move || !confirm_delete.get() fallback=|| ()>
                         <button class="btn btn-primary" disabled=move || busy.get() on:click=rename>
-                            {move || if busy.get() { "Saving…" } else { "Save" }}
+                            {move || if busy.get() { crate::i18n::t(state.lang.get(), "saving") } else { crate::i18n::t(state.lang.get(), "save") }}
                         </button>
                     </Show>
                 </div>

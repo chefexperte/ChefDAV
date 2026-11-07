@@ -47,6 +47,11 @@ web-sys = { version = "0.3", features = [
     "Event",
     "Notification",
     "NotificationPermission",
+    "Navigator",
+    "Clipboard",
+    "ServiceWorkerContainer",
+    "ServiceWorkerRegistration",
+    "ServiceWorker",
 ] }
 
 # getrandom (pulled in via aes-gcm/uuid) needs its wasm_js backend on wasm32.

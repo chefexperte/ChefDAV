@@ -68,8 +68,25 @@ pub struct VEvent {
     pub status: Option<String>,
     pub created: Option<String>,
     pub last_modified: Option<String>,
+    /// `RECURRENCE-ID` for an exception/override of a recurring series.
+    pub recurrence_id: Option<DtValue>,
+    /// True when the override carries `RANGE=THISANDFUTURE`.
+    pub recurrence_range: bool,
     /// The original VEVENT block, for round-tripping into the local cache.
     pub raw: String,
+}
+
+impl VEvent {
+    pub fn is_cancelled(&self) -> bool {
+        self.status
+            .as_deref()
+            .map(|s| s.eq_ignore_ascii_case("CANCELLED"))
+            .unwrap_or(false)
+    }
+
+    pub fn is_override(&self) -> bool {
+        self.recurrence_id.is_some()
+    }
 }
 
 /// Split ICS text into unfolded logical lines (RFC 5545 §3.1).
@@ -267,6 +284,14 @@ fn build_vevent(props: Vec<IcsProperty>, raw: String, default_tz: &Tz) -> Result
             None => Ok(None),
         }
     };
+    let recurrence_id = match get("RECURRENCE-ID") {
+        Some(p) => Some(parse_dt(&p.value, &p.params, default_tz)?),
+        None => None,
+    };
+    let recurrence_range = get("RECURRENCE-ID")
+        .and_then(|p| p.param("RANGE"))
+        .map(|r| r.eq_ignore_ascii_case("THISANDFUTURE"))
+        .unwrap_or(false);
     Ok(VEvent {
         uid: get("UID").map(|p| p.value.clone()).unwrap_or_default(),
         summary: get("SUMMARY").map(|p| p.value.clone()).unwrap_or_default(),
@@ -289,6 +314,8 @@ fn build_vevent(props: Vec<IcsProperty>, raw: String, default_tz: &Tz) -> Result
         status: get("STATUS").map(|p| p.value.clone()),
         created: get("CREATED").map(|p| p.value.clone()),
         last_modified: get("LAST-MODIFIED").map(|p| p.value.clone()),
+        recurrence_id,
+        recurrence_range,
         raw,
     })
 }
@@ -488,6 +515,77 @@ pub fn build_ics(ev: &EventDraft, now: DateTime<Utc>) -> String {
     }
     for r in &ev.rdate {
         lines.push(format!("RDATE:{}", r));
+    }
+    lines.push("END:VEVENT".to_string());
+    lines.push("END:VCALENDAR".to_string());
+    let mut out = String::new();
+    for l in &lines {
+        out.push_str(&fold_line(l));
+        out.push_str("\r\n");
+    }
+    out
+}
+
+/// Extract the single `BEGIN:VEVENT … END:VEVENT` block from an ICS string.
+pub fn vevent_block(ics: &str) -> Option<String> {
+    let normalized = ics.replace("\r\n", "\n").replace('\r', "\n");
+    let start = normalized.find("BEGIN:VEVENT")?;
+    let end = normalized[start..].find("END:VEVENT")? + start + "END:VEVENT".len();
+    Some(normalized[start..end].to_string())
+}
+
+/// Wrap one or more VEVENT blocks into a complete VCALENDAR resource.
+pub fn wrap_vevents(blocks: &[String]) -> String {
+    let mut out = String::from(
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//ChefDAV//ChefDAV//EN\r\nCALSCALE:GREGORIAN\r\n",
+    );
+    for block in blocks {
+        let normalized = block.replace("\r\n", "\n").replace('\r', "\n");
+        for line in normalized.lines() {
+            out.push_str(line);
+            out.push_str("\r\n");
+        }
+    }
+    out.push_str("END:VCALENDAR\r\n");
+    out
+}
+
+/// Build an exception VEVENT for a recurring series.
+///
+/// `recurrence_id` is the original occurrence start; `range` adds
+/// `RANGE=THISANDFUTURE`; `cancelled` emits `STATUS:CANCELLED`.
+pub fn build_override_ics(
+    master_uid: &str,
+    recurrence_id: &DateTime<Tz>,
+    range: bool,
+    draft: &EventDraft,
+    now: DateTime<Utc>,
+    cancelled: bool,
+) -> String {
+    let mut rid = dt_line("RECURRENCE-ID", recurrence_id, draft.all_day);
+    if range {
+        rid = rid.replacen(
+            "RECURRENCE-ID",
+            "RECURRENCE-ID;RANGE=THISANDFUTURE",
+            1,
+        );
+    }
+    let mut lines = vec![
+        "BEGIN:VCALENDAR".to_string(),
+        "VERSION:2.0".to_string(),
+        "PRODID:-//ChefDAV//ChefDAV//EN".to_string(),
+        "BEGIN:VEVENT".to_string(),
+        format!("UID:{}", master_uid),
+        format!("DTSTAMP:{}", now.format("%Y%m%dT%H%M%SZ")),
+        rid,
+        dt_line("DTSTART", &draft.start, draft.all_day),
+        dt_line("DTEND", &draft.end, draft.all_day),
+        format!("SUMMARY:{}", escape_text(&draft.summary)),
+        format!("DESCRIPTION:{}", escape_text(&draft.description)),
+        format!("LOCATION:{}", escape_text(&draft.location)),
+    ];
+    if cancelled {
+        lines.push("STATUS:CANCELLED".to_string());
     }
     lines.push("END:VEVENT".to_string());
     lines.push("END:VCALENDAR".to_string());
@@ -715,6 +813,47 @@ END:VCALENDAR\r\n";
         let events = parse_calendar(ics, &berlin).unwrap();
         let start = events[0].dtstart.as_ref().unwrap().to_datetime(&berlin).unwrap();
         assert_eq!(start.with_timezone(&berlin).format("%H:%M").to_string(), "11:00");
+    }
+
+    #[test]
+    fn override_roundtrip_and_wrapping() {
+        let tz = Berlin;
+        let rid = tz.with_ymd_and_hms(2026, 11, 10, 10, 0, 0).unwrap();
+        let start = tz.with_ymd_and_hms(2026, 11, 10, 12, 0, 0).unwrap();
+        let end = tz.with_ymd_and_hms(2026, 11, 10, 13, 0, 0).unwrap();
+        let draft = EventDraft {
+            uid: "ignored@chef-dav".into(),
+            summary: "Moved".into(),
+            description: String::new(),
+            location: String::new(),
+            all_day: false,
+            start,
+            end,
+            rrule: None,
+            exdate: Vec::new(),
+            rdate: Vec::new(),
+        };
+        let now = DateTime::parse_from_rfc3339("2026-11-01T00:00:00Z").unwrap().with_timezone(&Utc);
+        let override_ics = build_override_ics("series@chef-dav", &rid, true, &draft, now, false);
+        let block = vevent_block(&override_ics).unwrap();
+        assert!(block.contains("RECURRENCE-ID;RANGE=THISANDFUTURE"));
+        let master = "BEGIN:VEVENT\nUID:series@chef-dav\nDTSTART;TZID=Europe/Berlin:20261103T100000\nDTEND;TZID=Europe/Berlin:20261103T110000\nRRULE:FREQ=WEEKLY\nEND:VEVENT";
+        let wrapped = wrap_vevents(&[master.to_string(), block]);
+        let events = parse_calendar(&wrapped, &Tz::UTC).unwrap();
+        assert_eq!(events.len(), 2);
+        let ov = events.iter().find(|e| e.is_override()).unwrap();
+        assert!(ov.recurrence_range);
+        assert_eq!(ov.summary, "Moved");
+        assert_eq!(ov.dtstart.as_ref().unwrap().to_datetime(&tz).unwrap(), start);
+    }
+
+    #[test]
+    fn cancelled_override_parses() {
+        let ics = "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:s@x\nRECURRENCE-ID;TZID=Europe/Berlin:20261110T100000\nDTSTART;TZID=Europe/Berlin:20261110T100000\nDTEND;TZID=Europe/Berlin:20261110T110000\nSTATUS:CANCELLED\nEND:VEVENT\nEND:VCALENDAR\n";
+        let events = parse_calendar(ics, &Tz::UTC).unwrap();
+        assert!(events[0].is_override());
+        assert!(events[0].is_cancelled());
+        assert!(!events[0].recurrence_range);
     }
 
     #[test]

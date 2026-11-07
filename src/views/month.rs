@@ -3,8 +3,8 @@
 
 use std::collections::HashMap;
 
-use caldav::recurrence::{expand_event, Occurrence};
-use caldav::time::{month_range, month_weeks, today, WEEKDAYS_MON_FIRST};
+use caldav::recurrence::{expand_series, Occurrence};
+use caldav::time::{month_range, month_weeks, today};
 use chrono::{Datelike, Duration, NaiveDate};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -23,17 +23,30 @@ fn chip(
 ) -> impl IntoView {
     let ev = state.events.get().get(idx).cloned();
     let (summary, color, href, read_only, recurring) = match &ev {
-        Some(e) => (
-            e.event.summary.clone(),
-            e.color.clone(),
-            e.href.clone(),
-            e.read_only,
-            e.event.rrule.is_some(),
+        Some(e) => {
+            let summary = occ
+                .override_idx
+                .and_then(|i| e.overrides.get(i))
+                .map(|o| o.summary.clone())
+                .unwrap_or_else(|| e.event.summary.clone());
+            (
+                summary,
+                e.color.clone(),
+                e.href.clone(),
+                e.read_only,
+                e.event.rrule.is_some(),
+            )
+        }
+        None => (
+            String::new(),
+            crate::state::ACCENT.to_string(),
+            String::new(),
+            true,
+            false,
         ),
-        None => (String::new(), crate::state::ACCENT.to_string(), String::new(), true, false),
     };
     let time = if all_day {
-        "all day".to_string()
+        crate::i18n::t(state.lang.get(), "all_day_lower").to_string()
     } else {
         occ.start.with_timezone(&tz).format("%H:%M").to_string()
     };
@@ -65,14 +78,18 @@ fn chip(
                         }
                     });
                 } else {
-                    state.modal.set(Some(ModalState::Details { index: idx }));
+                    state.modal.set(Some(ModalState::Details {
+                        index: idx,
+                        occurrence: if recurring { occ.recurrence_id } else { None },
+                        display_start: if recurring { Some(occ.start) } else { None },
+                    }));
                 }
             }
         >
             <span class="chip-time">{time}</span>
             <span class="chip-title">{summary}</span>
             <Show when=move || read_only fallback=|| ()>
-                <span class="lock" title="Read-only">"🔒"</span>
+                <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
             </Show>
         </div>
     }
@@ -87,6 +104,12 @@ pub fn MonthView() -> impl IntoView {
     let weeks = Memo::new(move |_| {
         let d = state.anchor.get();
         month_weeks(d.year(), d.month())
+    });
+
+    let weekday_labels = Memo::new(move |_| {
+        (0..7)
+            .map(|i| crate::i18n::weekday_short(state.lang.get(), i).to_string())
+            .collect::<Vec<String>>()
     });
 
     let by_day = Memo::new(move |_| {
@@ -109,7 +132,7 @@ pub fn MonthView() -> impl IntoView {
                 ev.event.location,
                 ev.event.description
             );
-            for occ in expand_event(&ev.event, rs, re, &tz) {
+            for occ in expand_series(&ev.event, &ev.overrides, rs, re, &tz) {
                 let start_d = occ.start.with_timezone(&tz).date_naive();
                 let end_d = (occ.end - Duration::seconds(1)).with_timezone(&tz).date_naive();
                 let mut d = start_d;
@@ -159,8 +182,8 @@ pub fn MonthView() -> impl IntoView {
         </Show>
         <div class="weekdays">
             <For
-                each=|| WEEKDAYS_MON_FIRST.to_vec()
-                key=|d| *d
+                each=move || weekday_labels.get()
+                key=|d| d.clone()
                 children=|d| view! { <span>{d}</span> }
             />
         </div>

@@ -106,23 +106,23 @@ pub fn LoginPage() -> impl IntoView {
                 <div class="login-brand">
                     <img src="/logo.svg" width="64" height="64" alt="ChefDAV logo" />
                     <h1>"ChefDAV"</h1>
-                    <p class="tagline">"Your CalDAV calendar, served fresh — 100% in your browser."</p>
+                    <p class="tagline">{move || crate::i18n::t(state.lang.get(), "tagline")}</p>
                 </div>
                 <form on:submit=submit>
                     <label class="field">
-                        <span>"Calendar server"</span>
+                        <span>{move || crate::i18n::t(state.lang.get(), "server")}</span>
                         <input type="url" required placeholder="http://127.0.0.1:8080"
                             prop:value=move || server.get()
                             on:input=move |ev| server.set(event_target_value(&ev)) />
                     </label>
                     <label class="field">
-                        <span>"Username"</span>
+                        <span>{move || crate::i18n::t(state.lang.get(), "username")}</span>
                         <input type="text" required autocomplete="username"
                             prop:value=move || username.get()
                             on:input=move |ev| username.set(event_target_value(&ev)) />
                     </label>
                     <label class="field">
-                        <span>"Password"</span>
+                        <span>{move || crate::i18n::t(state.lang.get(), "password")}</span>
                         <input type="password" required autocomplete="current-password"
                             prop:value=move || password.get()
                             on:input=move |ev| password.set(event_target_value(&ev)) />
@@ -131,17 +131,15 @@ pub fn LoginPage() -> impl IntoView {
                         <p class="form-error">{move || error.get().unwrap_or_default()}</p>
                     </Show>
                     <button class="btn btn-primary btn-block" type="submit" disabled=move || busy.get()>
-                        {move || if busy.get() { "Connecting…" } else { "Log in" }}
+                        {move || if busy.get() { crate::i18n::t(state.lang.get(), "connecting") } else { crate::i18n::t(state.lang.get(), "login") }}
                     </button>
                 </form>
                 <p class="login-hint">
-                    "Credentials are saved in this browser's IndexedDB (unencrypted for now).
-                    The server only sees Basic auth via your CORS-enabled proxy; who may log in
-                    is decided by Radicale (LDAP)."
+                    {move || crate::i18n::t(state.lang.get(), "login_hint")}
                 </p>
                 <details class="changelog">
                     <summary>
-                        "What's new "
+                        {move || crate::i18n::t(state.lang.get(), "whats_new")} 
                         <span class="changelog-version">{changelog_title}</span>
                     </summary>
                     <ul>

@@ -10,11 +10,70 @@ use std::rc::Rc;
 
 use chrono::Duration;
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
 
 use crate::browser;
 use crate::state::AppState;
+
+/// Register the reminder service worker (called once at startup).
+pub fn register_service_worker() {
+    if let Some(win) = web_sys::window() {
+        let _ = win.navigator().service_worker().register("/sw.js");
+    }
+}
+
+/// Send upcoming reminders (next 24 h) to the service worker so it can show
+/// them even when the page loop is throttled. True push while the browser is
+/// closed would require a push server; this is the client-only best effort.
+pub fn schedule_in_service_worker(state: AppState) {
+    spawn_local(async move {
+        let Some(win) = web_sys::window() else { return };
+        let container = win.navigator().service_worker();
+        let Ok(ready) = container.ready() else { return };
+        let Ok(reg_js) = wasm_bindgen_futures::JsFuture::from(ready).await else {
+            return;
+        };
+        let Ok(reg) = reg_js.dyn_into::<web_sys::ServiceWorkerRegistration>() else {
+            return;
+        };
+        let Some(active) = reg.active() else { return };
+        let now = browser::now_utc();
+        let mut reminders = Vec::new();
+        for ev in state.events.get() {
+            if ev.event.rrule.is_some() {
+                continue;
+            }
+            let Some(start) = ev
+                .event
+                .dtstart
+                .as_ref()
+                .and_then(|d| d.to_datetime(&state.tz))
+            else {
+                continue;
+            };
+            let start_utc = start.with_timezone(&chrono::Utc);
+            let diff = start_utc - now;
+            if diff < Duration::zero() || diff > Duration::hours(24) {
+                continue;
+            }
+            reminders.push(serde_json::json!({
+                "when": start_utc.to_rfc3339(),
+                "title": ev.event.summary,
+                "body": format!("Starts at {}", start.format("%H:%M")),
+                "tag": ev.href,
+            }));
+        }
+        let payload = serde_json::json!({
+            "type": "schedule-reminders",
+            "reminders": reminders,
+        });
+        if let Ok(js) = serde_wasm_bindgen::to_value(&payload) {
+            let _ = active.post_message(&js);
+        }
+    });
+}
 
 /// Ask for notification permission. Returns whether it was granted.
 pub async fn request_permission() -> bool {

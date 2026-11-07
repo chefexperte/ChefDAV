@@ -62,6 +62,14 @@ async function chips() {
 await login();
 check("login", true, await page.textContent(".month-title"));
 
+// service worker (background reminders)
+await page.waitForTimeout(1200);
+const swCount = await page.evaluate(async () => {
+  if (!("serviceWorker" in navigator)) return -1;
+  return (await navigator.serviceWorker.getRegistrations()).length;
+});
+check("reminder service worker registered", swCount > 0, `${swCount} registration(s)`);
+
 // ---------- day click popup ----------
 const dayCells = page.locator(".day");
 await dayCells.nth(10).click();
@@ -187,9 +195,15 @@ await page.waitForTimeout(1200);
 check("calendar created", (await page.locator(".cal-name", { hasText: calName }).count()) === 1);
 const calItem = page.locator(".cal-item", { hasText: calName });
 
-// change the calendar color
+// sharing info + change the calendar color
 await calItem.locator(".cal-menu-btn").click();
 await page.waitForSelector(".modal-small");
+const sharingUrl = await page.inputValue(".sharing-url input").catch(() => "");
+check(
+  "sharing panel shows calendar URL",
+  (await page.locator(".sharing-info").count()) === 1 && sharingUrl.includes("/alice/"),
+  sharingUrl
+);
 await page.click('.color-swatch[data-color="#d1495b"]');
 await page.click('.modal-small button:has-text("Save")');
 await page.waitForSelector(".modal-small", { state: "detached", timeout: 15000 });
@@ -232,6 +246,11 @@ check("light theme applied", (await page.getAttribute("html", "data-theme")) ===
 await page.click('.prefs-row button:has-text("EN")');
 await page.waitForTimeout(300);
 check("language toggle (DE)", (await page.textContent("button.new-event")).includes("Neuer"));
+await page.click('.segmented-btn:has-text("Tag")');
+await page.waitForTimeout(400);
+const deTitle = await page.textContent(".month-title");
+check("German date label", deTitle.includes(". November"), deTitle);
+await page.click('.segmented-btn:has-text("Monat")');
 await page.click('.prefs-row button:has-text("DE")');
 await page.waitForTimeout(300);
 check("language toggle (EN)", (await page.textContent("button.new-event")).includes("New event"));

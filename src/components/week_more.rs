@@ -19,14 +19,14 @@ pub fn WeekMoreModal() -> impl IntoView {
     view! {
         <div class="modal-overlay" on:click=close>
             <div class="modal modal-small" on:click=move |e| e.stop_propagation() role="dialog" aria-modal="true">
-                <h3>"More events"</h3>
+                <h3>{move || crate::i18n::t(state.lang.get(), "more_events")}</h3>
                 <ul class="more-list">
                     <For
                         each=move || items.clone()
                         key=|(i, e)| (*i, e.href.clone())
                         children=move |(idx, ev)| {
                             let time = match &ev.event.dtstart {
-                                Some(caldav::ics::DtValue::Date(_)) => "All day".to_string(),
+                                Some(caldav::ics::DtValue::Date(_)) => crate::i18n::t(state.lang.get(), "all_day").to_string(),
                                 Some(caldav::ics::DtValue::DateTime(t)) => {
                                     t.with_timezone(&tz).format("%H:%M").to_string()
                                 }
@@ -41,7 +41,11 @@ pub fn WeekMoreModal() -> impl IntoView {
                                         style=format!("--chip:{color}")
                                         on:click=move |_| {
                                             state.week_more.set(None);
-                                            state.modal.set(Some(ModalState::Details { index: idx }));
+                                            state.modal.set(Some(ModalState::Details {
+                                                index: idx,
+                                                occurrence: None,
+                                                display_start: None,
+                                            }));
                                         }
                                     >
                                         <span class="agenda-time">{time}</span>
@@ -55,7 +59,7 @@ pub fn WeekMoreModal() -> impl IntoView {
                 </ul>
                 <div class="modal-actions">
                     <span class="spacer"></span>
-                    <button class="btn btn-ghost" on:click=close>"Close"</button>
+                    <button class="btn btn-ghost" on:click=close>{move || crate::i18n::t(state.lang.get(), "close")}</button>
                 </div>
             </div>
         </div>

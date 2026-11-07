@@ -5,6 +5,7 @@
 #[cfg(target_arch = "wasm32")]
 fn main() {
     console_error_panic_hook::set_once();
+    chef_dav::reminders::register_service_worker();
     leptos::mount::mount_to_body(chef_dav::app::App);
 }
 

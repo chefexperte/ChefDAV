@@ -1,7 +1,7 @@
 //! Shared toolbar: navigation, adaptive title, search, view switcher and
 //! bulk-selection actions.
 
-use caldav::time::{day_label, month_name, week_days, week_label};
+use caldav::time::week_days;
 use chrono::{Datelike, Duration, NaiveDate};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -48,15 +48,15 @@ pub fn Toolbar() -> impl IntoView {
     let title = Memo::new(move |_| match state.view.get() {
         ViewMode::Month => {
             let d = state.anchor.get();
-            format!("{} {}", month_name(d.month()), d.year())
+            crate::i18n::month_title(state.lang.get(), d.month(), d.year())
         }
-        ViewMode::Week => week_label(&week_days(state.anchor.get())),
-        ViewMode::Day => day_label(state.anchor.get()),
+        ViewMode::Week => crate::i18n::week_label(state.lang.get(), &week_days(state.anchor.get())),
+        ViewMode::Day => crate::i18n::day_label(state.lang.get(), state.anchor.get()),
         ViewMode::Agenda => {
             let d = state.anchor.get();
-            format!("From {} {}", d.day(), month_name(d.month()))
+            crate::i18n::agenda_title(state.lang.get(), d)
         }
-        ViewMode::Tasks => "Tasks".to_string(),
+        ViewMode::Tasks => crate::i18n::t(state.lang.get(), "tasks").to_string(),
     });
 
     let on_search = move |ev| {
@@ -89,29 +89,29 @@ pub fn Toolbar() -> impl IntoView {
         <div class="toolbar-wrap">
             <div class="toolbar">
                 <div class="toolbar-left">
-                    <button class="btn btn-icon" on:click=prev title="Previous">"‹"</button>
-                    <button class="btn btn-ghost" on:click=go_today>"Today"</button>
-                    <button class="btn btn-icon" on:click=next title="Next">"›"</button>
+                    <button class="btn btn-icon" on:click=prev title=move || crate::i18n::t(state.lang.get(), "previous")>"‹"</button>
+                    <button class="btn btn-ghost" on:click=go_today>{move || crate::i18n::t(state.lang.get(), "today")}</button>
+                    <button class="btn btn-icon" on:click=next title=move || crate::i18n::t(state.lang.get(), "next")>"›"</button>
                 </div>
                 <h2 class="month-title">{title}</h2>
                 <div class="toolbar-right">
                     <Show when=move || (state.pending.get() > 0) fallback=|| ()>
                         <span class="pending-badge" title="Changes waiting to sync">
-                            {move || format!("{} pending", state.pending.get())}
+                            {move || format!("{} {}", state.pending.get(), crate::i18n::t(state.lang.get(), "pending"))}
                         </span>
                     </Show>
                     <Show when=move || state.loading.get() fallback=|| ()>
-                        <span class="loading">"syncing…"</span>
+                        <span class="loading">{move || crate::i18n::t(state.lang.get(), "syncing")}</span>
                     </Show>
                     <div class="search-box">
                         <input
                             type="search"
-                            placeholder="Search events…"
+                            placeholder=move || crate::i18n::t(state.lang.get(), "search_placeholder")
                             prop:value=move || state.search_query.get()
                             on:input=on_search
                         />
                         <Show when=move || !state.search_query.get().is_empty() fallback=|| ()>
-                            <button class="search-clear" on:click=clear_search title="Clear">"×"</button>
+                            <button class="search-clear" on:click=clear_search title=move || crate::i18n::t(state.lang.get(), "clear")>"×"</button>
                         </Show>
                     </div>
                     <div class="segmented" role="tablist">
@@ -125,7 +125,7 @@ pub fn Toolbar() -> impl IntoView {
                                         class:active=move || state.view.get() == v
                                         on:click=move |_| state.view.set(v)
                                     >
-                                        {v.label()}
+                                        {move || crate::i18n::t(state.lang.get(), v.label_key())}
                                     </button>
                                 }
                             }
@@ -139,7 +139,7 @@ pub fn Toolbar() -> impl IntoView {
                     <Show
                         when=move || !state.search_results.get().is_empty()
                         fallback=move || {
-                            view! { <p class="search-empty">"No matching events."</p> }
+                            view! { <p class="search-empty">{move || crate::i18n::t(state.lang.get(), "no_matching_events")}</p> }
                         }
                     >
                         <For
@@ -154,7 +154,7 @@ pub fn Toolbar() -> impl IntoView {
                                 let has_location = !location.is_empty();
                                 let location_text = location.clone();
                                 let color = hit.color.clone();
-                                let date_label = day_label(date);
+                                let date_label = crate::i18n::day_label(state.lang.get(), date);
                                 view! {
                                     <button
                                         class="search-hit"
@@ -165,7 +165,11 @@ pub fn Toolbar() -> impl IntoView {
                                             state.search_open.set(false);
                                             let idx = state.events.get().iter().position(|e| e.href == href);
                                             if let Some(idx) = idx {
-                                                state.modal.set(Some(ModalState::Details { index: idx }));
+                                                state.modal.set(Some(ModalState::Details {
+                                                    index: idx,
+                                                    occurrence: None,
+                                                    display_start: None,
+                                                }));
                                             }
                                         }
                                     >
@@ -186,10 +190,10 @@ pub fn Toolbar() -> impl IntoView {
             <Show when=move || !selected.get().is_empty() fallback=|| ()>
                 <div class="selection-bar">
                     <span class="selection-count">
-                        {move || format!("{} selected", state.selected.get().len())}
+                        {move || format!("{} {}", state.selected.get().len(), crate::i18n::t(state.lang.get(), "selected"))}
                     </span>
-                    <button class="btn btn-danger" on:click=delete_selected>"Delete selected"</button>
-                    <button class="btn btn-ghost" on:click=clear_selection>"Clear"</button>
+                    <button class="btn btn-danger" on:click=delete_selected>{move || crate::i18n::t(state.lang.get(), "delete_selected")}</button>
+                    <button class="btn btn-ghost" on:click=clear_selection>{move || crate::i18n::t(state.lang.get(), "clear")}</button>
                 </div>
             </Show>
         </div>

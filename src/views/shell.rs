@@ -231,13 +231,13 @@ pub fn Shell() -> impl IntoView {
                         state.modal.set(Some(ModalState::New { date }));
                     }
                 >
-                    {move || crate::i18n::t(state.lang.get(), "new_event")}
+                    {move || format!("+ {}", crate::i18n::t(state.lang.get(), "new_event"))}
                 </button>
                 <div class="sidebar-heading-row">
                     <h3 class="sidebar-heading">{move || crate::i18n::t(state.lang.get(), "calendars")}</h3>
                     <button
                         class="btn-icon-plain"
-                        title="New calendar"
+                        title=move || crate::i18n::t(state.lang.get(), "new_calendar")
                         on:click=move |_| state.new_calendar.set(true)
                     >
                         "+"
@@ -265,12 +265,12 @@ pub fn Shell() -> impl IntoView {
                                         <span class="cal-dot" style=format!("background: {color}")></span>
                                         <span class="cal-name">{name}</span>
                                         <Show when=move || read_only fallback=|| ()>
-                                            <span class="lock" title="Read-only">"🔒"</span>
+                                            <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
                                         </Show>
                                     </label>
                                     <button
                                         class="cal-menu-btn"
-                                        title="Rename or delete calendar"
+                                        title=move || crate::i18n::t(state.lang.get(), "rename_or_delete")
                                         on:click=move |_| {
                                             let found = state
                                                 .calendars
@@ -307,14 +307,14 @@ pub fn Shell() -> impl IntoView {
                     </Show>
                     <Show when=move || (state.pending.get() > 0) fallback=|| ()>
                         <span class="pending-badge">
-                            {move || format!("{} change(s) pending sync", state.pending.get())}
+                            {move || format!("{} {}", state.pending.get(), crate::i18n::t(state.lang.get(), "changes_pending"))}
                         </span>
                     </Show>
                     <div class="prefs-row">
                         <button class="btn btn-ghost" on:click=toggle_theme>
                             {move || match state.theme.get() {
-                                Theme::Light => "Dark",
-                                Theme::Dark => "Light",
+                                Theme::Light => crate::i18n::t(state.lang.get(), "dark"),
+                                Theme::Dark => crate::i18n::t(state.lang.get(), "light"),
                             }}
                         </button>
                         <button class="btn btn-ghost" on:click=toggle_lang>
@@ -323,7 +323,7 @@ pub fn Shell() -> impl IntoView {
                         <button
                             class="btn btn-ghost"
                             class:active-pref=move || state.reminders.get()
-                            title="Toggle browser reminders"
+                            title=move || crate::i18n::t(state.lang.get(), "reminders")
                             on:click=toggle_reminders
                         >
                             {move || if state.reminders.get() { "🔔" } else { "🔕" }}

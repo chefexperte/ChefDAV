@@ -25,8 +25,9 @@ modern look, Rust reliability.
 ## Current status
 
 > **Honest snapshot (2026-11-07).** Everything listed under "Works today" is
-> implemented and exercised against a real Radicale. The short "Not yet" list
-> is planned work, not broken functionality.
+> implemented and exercised against a real Radicale. The short "Intentionally
+> deferred" list covers items that need a server-side feature or an explicit
+> user decision.
 
 ### ✅ Works today
 
@@ -50,42 +51,45 @@ modern look, Rust reliability.
   editor. Read-only calendars show a lock and no edit button.
 - **Event CRUD**: create, edit (optimistic concurrency via `If-Match`), delete.
 - **Recurrence**: RRULE/RDATE/EXDATE expanded client-side in the event's own
-  timezone (DST-correct) and an editor for daily/weekly/monthly/yearly rules
-  (interval, weekdays, count/until, raw RRULE fallback). Edits apply to the
-  whole series.
+  timezone (DST-correct), an editor for daily/weekly/monthly/yearly rules
+  (interval, weekdays, count/until, raw RRULE fallback), and **RECURRENCE-ID
+  exceptions**: edit/cancel *this event*, *this and following*, or *all events*.
 - **Search** across the cached calendar, **multi-select + bulk delete**.
 - **Calendars**: create, rename, delete, show/hide, **change color** (palette
   swatches or a custom picker, stored via PROPPATCH), read-only detection via
-  `current-user-privilege-set`.
+  `current-user-privilege-set`, and a **sharing info panel** (calendar URL,
+  your privileges, and guidance for Radicale's server-side `[rights]`).
 - **Tasks (VTODO)**: create, edit, complete/uncomplete, delete.
 - **Incremental sync** via `sync-token` + `calendar-multiget`, with a full
   fetch fallback; **offline outbox** retries queued writes when back online.
 - **Local cache** in IndexedDB for instant paint (calendars, events, tasks).
-- **Polish**: mint design tokens + dark theme, English/German UI, keyboard
-  shortcuts (`n t m w d a k / arrows Esc`), responsive/mobile layout, browser
-  reminders while the app is open, and a changelog on the login screen.
+- **Polish**: mint design tokens + dark theme, **full English/German UI**
+  (labels, dates, month/weekday names, recurrence descriptions), keyboard
+  shortcuts (`n t m w d a k / arrows Esc`), responsive/mobile layout, and a
+  changelog on the login screen.
+- **Reminders**: page notifications plus a **service worker** that schedules
+  upcoming reminders; true delivery while the browser is fully closed would
+  require Web Push and a push server.
 - **Stable instance** (`./scripts/stable.sh`, ports 3200/8081, separate
   Radicale volume) built from the `stable` git tag.
 - **Dev stack**: Radicale + Caddy (CORS) via Docker **or rootless Podman**;
   optional glauth LDAP fixture (verified: LDAP login + e2e).
-- **Tests/CI**: 51 native unit tests for the CalDAV/ICS/recurrence/crypto core,
-  two committed Playwright suites (`smoke.mjs`, `features.mjs`), and a GitHub
-  Actions workflow (unit tests + WASM build + e2e).
+- **Tests/CI**: 58 native unit tests for the CalDAV/ICS/recurrence/crypto core,
+  three committed Playwright suites (`smoke.mjs`, `features.mjs`,
+  `recurrence.mjs`), and a GitHub Actions workflow (unit tests + WASM build +
+  e2e).
 
-### 🚧 Not yet implemented
+### 🚧 Intentionally deferred
 
-| Feature | Milestone |
+| Item | Why |
 | --- | --- |
-| Recurrence exceptions ("this event" / "this and future") | later |
-| Calendar sharing/delegation UI (Radicale rights are server-side) | later |
-| Background/push reminders (current reminders poll while the app is open) | later |
-| Full i18n coverage (main UI is translated; some labels are English) | later |
-| Encrypted credentials at rest (crypto code is ready, not wired up) | later |
+| Encrypted credentials at rest | **Explicit user request** to drop the passphrase/AES-GCM flow for now. The code remains in `caldav::crypto` and can be wired back in later. |
+| True push reminders while the browser is fully closed | A client-only app has no push server; the service worker schedules reminders while the browser keeps it alive. |
 
-**Known limitation right now:** recurring-series edits apply to the whole
-series, calendar colors are read from the server (not editable yet), and
-reminders only fire while the app is open. Everything else in the list above
-is usable day-to-day.
+**Known limitation:** calendar sharing is managed by Radicale's server-side
+`[rights]` file (the app shows the calendar URL, your privileges and guidance);
+recurrence edits are applied per occurrence/series as chosen in the scope
+dialog. Everything else in the list above is usable day-to-day.
 
 ## Roadmap
 
@@ -101,8 +105,8 @@ is usable day-to-day.
       responsive/mobile layout.
 - [x] **Later**: offline write queue, reminders, i18n (main UI), themes,
       stable instance, CI.
-- [ ] **Next**: recurrence exceptions; sharing UI; background reminders; full
-      i18n coverage; encrypted credentials.
+- [x] **Sharing info UI**, **service-worker reminders**, **full EN/DE i18n**.
+- [ ] **Intentionally deferred (user request)**: encrypted credentials at rest.
 
 ## Quickstart (local dev)
 

@@ -46,7 +46,7 @@ pub fn App() -> impl IntoView {
                 when=move || state.session.get().is_some()
                 fallback=|| view! { <LoginPage /> }
             >
-                <Routes fallback=|| view! { <p class="p-8">"Nothing here."</p> }>
+                <Routes fallback=move || view! { <p class="p-8">{move || crate::i18n::t(state.lang.get(), "nothing_here")}</p> }>
                     <Route path=path!("/login") view=LoginPage />
                     <ParentRoute path=path!("/") view=Shell>
                         <Route path=path!("") view=CalendarView />

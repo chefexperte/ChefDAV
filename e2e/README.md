@@ -2,9 +2,10 @@
 
 Playwright smoke test that drives the real app against the real dev stack:
 login → calendar list → create → edit → delete → stored-credential login →
-wrong-password rejection. `features.mjs` covers the newer UI features
-(popups, search, multi-select, tasks, recurrence, calendar management,
-theme/language, keyboard, offline outbox).
+wrong-password rejection. `features.mjs` covers the newer UI features (popups, search,
+multi-select, tasks, recurrence, calendar management, theme/language,
+keyboard, offline outbox), and `recurrence.mjs` covers RECURRENCE-ID
+exceptions (this event / this and following / cancellation).
 
 ## Run
 

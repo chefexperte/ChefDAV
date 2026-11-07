@@ -27,11 +27,27 @@ pub fn EventModal() -> impl IntoView {
     let tz = state.tz;
 
     let modal = state.modal.get().expect("modal is open");
-    let existing: Option<DisplayEvent> = match modal {
-        ModalState::Edit { index } => state.events.get().get(index).cloned(),
-        _ => None,
+    let (occurrence, display_start, existing): (
+        Option<chrono::DateTime<chrono_tz::Tz>>,
+        Option<chrono::DateTime<chrono_tz::Tz>>,
+        Option<DisplayEvent>,
+    ) = match modal {
+        ModalState::Edit {
+            index,
+            occurrence,
+            display_start,
+        } => (
+            occurrence,
+            display_start,
+            state.events.get().get(index).cloned(),
+        ),
+        _ => (None, None, None),
     };
     let is_edit = existing.is_some();
+    let is_recurring = existing
+        .as_ref()
+        .map(|e| e.event.rrule.is_some())
+        .unwrap_or(false);
     let default_date = match modal {
         ModalState::New { date } | ModalState::NewTodo { date } => date,
         ModalState::Edit { .. } | ModalState::EditTodo { .. } | ModalState::Details { .. } => {
@@ -51,7 +67,78 @@ pub fn EventModal() -> impl IntoView {
 
     let (summary0, location0, desc0, date0, start0, end0, allday0, cal0, uid0) = match &existing {
         Some(ev) => {
-            let (d, s, e, ad) = match &ev.event.dtstart {
+            let override_event = occurrence.and_then(|occ| {
+                ev.overrides
+                    .iter()
+                    .find(|o| {
+                        o.recurrence_id
+                            .as_ref()
+                            .and_then(|d| d.to_datetime(&tz))
+                            == Some(occ)
+                    })
+                    .cloned()
+            });
+            let shown = override_event.as_ref().unwrap_or(&ev.event);
+            let (dtstart, dtend) = if let Some(display) = display_start {
+                if let Some(o) = &override_event {
+                    if !o.recurrence_range {
+                        (o.dtstart.clone(), o.dtend.clone())
+                    } else {
+                        let dur = caldav::recurrence::event_duration(o)
+                            .or_else(|| caldav::recurrence::event_duration(&ev.event))
+                            .unwrap_or_else(|| Duration::hours(1));
+                        let all_day = o
+                            .dtstart
+                            .as_ref()
+                            .map(|d| d.is_date())
+                            .unwrap_or(false)
+                            || ev
+                                .event
+                                .dtstart
+                                .as_ref()
+                                .map(|d| d.is_date())
+                                .unwrap_or(false);
+                        if all_day {
+                            (
+                                Some(DtValue::Date(display.with_timezone(&tz).date_naive())),
+                                Some(DtValue::Date(
+                                    (display + dur).with_timezone(&tz).date_naive(),
+                                )),
+                            )
+                        } else {
+                            (
+                                Some(DtValue::DateTime(display)),
+                                Some(DtValue::DateTime(display + dur)),
+                            )
+                        }
+                    }
+                } else {
+                    let dur = caldav::recurrence::event_duration(&ev.event)
+                        .unwrap_or_else(|| Duration::hours(1));
+                    let all_day = ev
+                        .event
+                        .dtstart
+                        .as_ref()
+                        .map(|d| d.is_date())
+                        .unwrap_or(false);
+                    if all_day {
+                        (
+                            Some(DtValue::Date(display.with_timezone(&tz).date_naive())),
+                            Some(DtValue::Date(
+                                (display + dur).with_timezone(&tz).date_naive(),
+                            )),
+                        )
+                    } else {
+                        (
+                            Some(DtValue::DateTime(display)),
+                            Some(DtValue::DateTime(display + dur)),
+                        )
+                    }
+                }
+            } else {
+                (shown.dtstart.clone(), shown.dtend.clone())
+            };
+            let (d, s, e, ad) = match &dtstart {
                 Some(DtValue::Date(dd)) => (
                     dd.format("%Y-%m-%d").to_string(),
                     "00:00".to_string(),
@@ -60,9 +147,7 @@ pub fn EventModal() -> impl IntoView {
                 ),
                 Some(DtValue::DateTime(t)) => {
                     let lt = t.with_timezone(&tz);
-                    let le = ev
-                        .event
-                        .dtend
+                    let le = dtend
                         .as_ref()
                         .and_then(|x| x.to_datetime(&tz))
                         .unwrap_or(lt + Duration::hours(1))
@@ -82,9 +167,9 @@ pub fn EventModal() -> impl IntoView {
                 ),
             };
             (
-                ev.event.summary.clone(),
-                ev.event.location.clone(),
-                ev.event.description.clone(),
+                shown.summary.clone(),
+                shown.location.clone(),
+                shown.description.clone(),
                 d,
                 s,
                 e,
@@ -164,6 +249,12 @@ pub fn EventModal() -> impl IntoView {
     let count = RwSignal::new(count0);
     let until = RwSignal::new(until0);
     let raw_rule = RwSignal::new(raw0);
+    // "this" / "future" / "all" — only relevant for recurring occurrences.
+    let scope = RwSignal::new(if is_recurring && occurrence.is_some() {
+        "this".to_string()
+    } else {
+        "all".to_string()
+    });
 
     let saving = RwSignal::new(false);
     let error = RwSignal::new(None::<String>);
@@ -197,32 +288,32 @@ pub fn EventModal() -> impl IntoView {
         let date = NaiveDate::parse_from_str(&date_s.get(), "%Y-%m-%d");
         let mk = |t: &str| NaiveTime::parse_from_str(t, "%H:%M");
         let draft = (|| -> Result<EventDraft, String> {
-            let date = date.map_err(|e| format!("Bad date: {e}"))?;
+            let date = date.map_err(|e| format!("{}{e}", crate::i18n::t(state.lang.get(), "bad_date")))?;
             let (start, end) = if all_day.get() {
                 let s = tz
                     .from_local_datetime(&date.and_hms_opt(0, 0, 0).unwrap())
                     .single()
-                    .ok_or("Invalid date")?;
+                    .ok_or(crate::i18n::t(state.lang.get(), "invalid_date"))?;
                 let e = tz
                     .from_local_datetime(&(date + Duration::days(1)).and_hms_opt(0, 0, 0).unwrap())
                     .single()
-                    .ok_or("Invalid date")?;
+                    .ok_or(crate::i18n::t(state.lang.get(), "invalid_date"))?;
                 (s, e)
             } else {
-                let st = mk(&start_s.get()).map_err(|e| format!("Bad start time: {e}"))?;
-                let et = mk(&end_s.get()).map_err(|e| format!("Bad end time: {e}"))?;
+                let st = mk(&start_s.get()).map_err(|e| format!("{}{e}", crate::i18n::t(state.lang.get(), "bad_start")))?;
+                let et = mk(&end_s.get()).map_err(|e| format!("{}{e}", crate::i18n::t(state.lang.get(), "bad_end")))?;
                 let s = tz
                     .from_local_datetime(&date.and_time(st))
                     .single()
-                    .ok_or("Invalid start time")?;
+                    .ok_or(crate::i18n::t(state.lang.get(), "invalid_start"))?;
                 let e = tz
                     .from_local_datetime(&date.and_time(et))
                     .single()
-                    .ok_or("Invalid end time")?;
+                    .ok_or(crate::i18n::t(state.lang.get(), "invalid_end"))?;
                 (s, e)
             };
             if end <= start {
-                return Err("End must be after the start.".to_string());
+                return Err(crate::i18n::t(state.lang.get(), "end_after_start").to_string());
             }
             let rule = match freq.get().as_str() {
                 "NONE" => None,
@@ -281,13 +372,36 @@ pub fn EventModal() -> impl IntoView {
                 saving.set(true);
                 let st = state;
                 let cal = cal_href.get();
-                let href = existing.get().map(|e| e.href);
-                let etag = existing.get().and_then(|e| e.etag);
+                let scope_val = scope.get();
+                let existing_ev = existing.get();
+                let is_override_save = existing_ev
+                    .as_ref()
+                    .map(|e| e.event.rrule.is_some() && occurrence.is_some() && scope_val != "all")
+                    .unwrap_or(false);
                 spawn_local(async move {
-                    match api::save_event(&st, &cal, href.as_deref(), &draft, etag.as_deref()).await
-                    {
+                    let result = if let (Some(ev), Some(occ)) = (existing_ev.as_ref(), occurrence) {
+                        if is_override_save {
+                            api::save_override(&st, ev, occ, scope_val == "future", &draft, false)
+                                .await
+                                .map(|_| false)
+                        } else {
+                            let overrides = ev.overrides.clone();
+                            api::save_event(
+                                &st,
+                                &cal,
+                                Some(&ev.href),
+                                &draft,
+                                ev.etag.as_deref(),
+                                &overrides,
+                            )
+                            .await
+                        }
+                    } else {
+                        api::save_event(&st, &cal, None, &draft, None, &[]).await
+                    };
+                    match result {
                         Ok(queued) => {
-                            if !queued {
+                            if !queued && !is_override_save {
                                 api::refresh_events(&st).await;
                             }
                             st.new_event_time.set(None);
@@ -307,10 +421,46 @@ pub fn EventModal() -> impl IntoView {
     let delete = move |_| {
         let Some(ev) = existing.get() else { return };
         let st = state;
+        let scope_val = scope.get();
+        let is_override_delete =
+            ev.event.rrule.is_some() && scope_val != "all" && occurrence.is_some();
         spawn_local(async move {
-            match api::delete_event(&st, &ev.href, ev.etag.as_deref()).await {
-                Ok(queued) => {
-                    if !queued {
+            let result = if ev.event.rrule.is_some() && scope_val != "all" {
+                if let Some(occ) = occurrence {
+                    let dur = caldav::recurrence::event_duration(&ev.event)
+                        .unwrap_or_else(|| Duration::hours(1));
+                    let all_day = ev
+                        .event
+                        .dtstart
+                        .as_ref()
+                        .map(|d| d.is_date())
+                        .unwrap_or(false);
+                    let draft = EventDraft {
+                        uid: ev.event.uid.clone(),
+                        summary: ev.event.summary.clone(),
+                        description: ev.event.description.clone(),
+                        location: ev.event.location.clone(),
+                        all_day,
+                        start: occ,
+                        end: occ + dur,
+                        rrule: None,
+                        exdate: Vec::new(),
+                        rdate: Vec::new(),
+                    };
+                    api::save_override(&st, &ev, occ, scope_val == "future", &draft, true).await
+                } else {
+                    api::delete_event(&st, &ev.href, ev.etag.as_deref())
+                        .await
+                        .map(|_| ())
+                }
+            } else {
+                api::delete_event(&st, &ev.href, ev.etag.as_deref())
+                    .await
+                    .map(|_| ())
+            };
+            match result {
+                Ok(()) => {
+                    if !is_override_delete {
                         api::refresh_events(&st).await;
                     }
                     st.modal.set(None);
@@ -333,32 +483,32 @@ pub fn EventModal() -> impl IntoView {
     view! {
         <div class="modal-overlay" on:click=close>
             <div class="modal" on:click=move |e| e.stop_propagation() role="dialog" aria-modal="true">
-                <h3>{if is_edit { "Edit event" } else { "New event" }}</h3>
+                <h3>{move || if is_edit { crate::i18n::t(state.lang.get(), "edit_event") } else { crate::i18n::t(state.lang.get(), "new_event") }}</h3>
                 <Show when=move || read_only.get() fallback=|| ()>
-                    <p class="banner-info">"This calendar is read-only."</p>
+                    <p class="banner-info">{move || crate::i18n::t(state.lang.get(), "read_only_calendar")}</p>
                 </Show>
                 <fieldset class="modal-fields" disabled=move || read_only.get()>
                     <label class="field">
-                        <span>"Title"</span>
-                        <input type="text" autofocus placeholder="What is it?"
+                        <span>{move || crate::i18n::t(state.lang.get(), "title")}</span>
+                        <input type="text" autofocus placeholder=move || crate::i18n::t(state.lang.get(), "what_is_it")
                             prop:value=move || summary.get()
                             on:input=move |ev| summary.set(event_target_value(&ev)) />
                     </label>
                     <div class="field-row">
                         <label class="field">
-                            <span>"Date"</span>
+                            <span>{move || crate::i18n::t(state.lang.get(), "date")}</span>
                             <input type="date" required
                                 prop:value=move || date_s.get()
                                 on:input=move |ev| date_s.set(event_target_value(&ev)) />
                         </label>
                         <label class="field field-time" class:hidden=move || all_day.get()>
-                            <span>"Start"</span>
+                            <span>{move || crate::i18n::t(state.lang.get(), "start")}</span>
                             <input type="time" required
                                 prop:value=move || start_s.get()
                                 on:input=move |ev| start_s.set(event_target_value(&ev)) />
                         </label>
                         <label class="field field-time" class:hidden=move || all_day.get()>
-                            <span>"End"</span>
+                            <span>{move || crate::i18n::t(state.lang.get(), "end")}</span>
                             <input type="time" required
                                 prop:value=move || end_s.get()
                                 on:input=move |ev| end_s.set(event_target_value(&ev)) />
@@ -367,11 +517,11 @@ pub fn EventModal() -> impl IntoView {
                             <input type="checkbox"
                                 prop:checked=move || all_day.get()
                                 on:change=move |ev| all_day.set(event_target_checked(&ev)) />
-                            <span>"All day"</span>
+                            <span>{move || crate::i18n::t(state.lang.get(), "all_day")}</span>
                         </label>
                     </div>
                     <label class="field">
-                        <span>"Calendar"</span>
+                        <span>{move || crate::i18n::t(state.lang.get(), "calendar")}</span>
                         <select
                             prop:value=move || cal_href.get()
                             on:change=move |ev| cal_href.set(event_target_value(&ev))
@@ -392,37 +542,37 @@ pub fn EventModal() -> impl IntoView {
                         </select>
                     </label>
                     <label class="field">
-                        <span>"Location"</span>
-                        <input type="text" placeholder="Optional"
+                        <span>{move || crate::i18n::t(state.lang.get(), "location")}</span>
+                        <input type="text" placeholder=move || crate::i18n::t(state.lang.get(), "optional")
                             prop:value=move || location.get()
                             on:input=move |ev| location.set(event_target_value(&ev)) />
                     </label>
                     <label class="field">
-                        <span>"Notes"</span>
-                        <textarea rows="3" placeholder="Optional"
+                        <span>{move || crate::i18n::t(state.lang.get(), "notes")}</span>
+                        <textarea rows="3" placeholder=move || crate::i18n::t(state.lang.get(), "optional")
                             prop:value=move || description.get()
                             on:input=move |ev| description.set(event_target_value(&ev)) />
                     </label>
 
                     <div class="recurrence">
                         <label class="field">
-                            <span>"Repeat"</span>
+                            <span>{move || crate::i18n::t(state.lang.get(), "repeat")}</span>
                             <select
                                 prop:value=move || freq.get()
                                 on:change=move |ev| freq.set(event_target_value(&ev))
                             >
-                                <option value="NONE">"Does not repeat"</option>
-                                <option value="DAILY">"Daily"</option>
-                                <option value="WEEKLY">"Weekly"</option>
-                                <option value="MONTHLY">"Monthly"</option>
-                                <option value="YEARLY">"Yearly"</option>
-                                <option value="ADVANCED">"Advanced (raw RRULE)"</option>
+                                <option value="NONE">{move || crate::i18n::t(state.lang.get(), "does_not_repeat")}</option>
+                                <option value="DAILY">{move || crate::i18n::t(state.lang.get(), "daily")}</option>
+                                <option value="WEEKLY">{move || crate::i18n::t(state.lang.get(), "weekly")}</option>
+                                <option value="MONTHLY">{move || crate::i18n::t(state.lang.get(), "monthly")}</option>
+                                <option value="YEARLY">{move || crate::i18n::t(state.lang.get(), "yearly")}</option>
+                                <option value="ADVANCED">{move || crate::i18n::t(state.lang.get(), "advanced")}</option>
                             </select>
                         </label>
                         <Show when=move || !matches!(freq.get().as_str(), "NONE" | "ADVANCED") fallback=|| ()>
                             <div class="field-row">
                                 <label class="field field-time">
-                                    <span>"Every"</span>
+                                    <span>{move || crate::i18n::t(state.lang.get(), "every")}</span>
                                     <input type="number" min="1" max="99"
                                         prop:value=move || interval.get().to_string()
                                         on:input=move |ev| {
@@ -432,19 +582,19 @@ pub fn EventModal() -> impl IntoView {
                                         } />
                                 </label>
                                 <label class="field">
-                                    <span>"Ends"</span>
+                                    <span>{move || crate::i18n::t(state.lang.get(), "ends")}</span>
                                     <select
                                         prop:value=move || end_mode.get()
                                         on:change=move |ev| end_mode.set(event_target_value(&ev))
                                     >
-                                        <option value="never">"Never"</option>
-                                        <option value="count">"After N occurrences"</option>
-                                        <option value="until">"On date"</option>
+                                        <option value="never">{move || crate::i18n::t(state.lang.get(), "never")}</option>
+                                        <option value="count">{move || crate::i18n::t(state.lang.get(), "after_n")}</option>
+                                        <option value="until">{move || crate::i18n::t(state.lang.get(), "on_date")}</option>
                                     </select>
                                 </label>
                                 <Show when=move || end_mode.get() == "count" fallback=|| ()>
                                     <label class="field field-time">
-                                        <span>"Times"</span>
+                                        <span>{move || crate::i18n::t(state.lang.get(), "times")}</span>
                                         <input type="number" min="1" max="999"
                                             prop:value=move || count.get().to_string()
                                             on:input=move |ev| {
@@ -456,7 +606,7 @@ pub fn EventModal() -> impl IntoView {
                                 </Show>
                                 <Show when=move || end_mode.get() == "until" fallback=|| ()>
                                     <label class="field">
-                                        <span>"Until"</span>
+                                        <span>{move || crate::i18n::t(state.lang.get(), "until")}</span>
                                         <input type="date"
                                             prop:value=move || until.get()
                                             on:input=move |ev| until.set(event_target_value(&ev)) />
@@ -469,6 +619,12 @@ pub fn EventModal() -> impl IntoView {
                                         each=|| WEEKDAY_CODES.to_vec()
                                         key=|d| *d
                                         children=move |day| {
+                                            let idx = WEEKDAY_CODES.iter().position(|c| *c == day).unwrap_or(0);
+                                            let letter = crate::i18n::weekday_short(state.lang.get(), idx)
+                                                .chars()
+                                                .next()
+                                                .unwrap_or('?')
+                                                .to_string();
                                             view! {
                                                 <button
                                                     type="button"
@@ -476,7 +632,7 @@ pub fn EventModal() -> impl IntoView {
                                                     class:active=move || byday.get().iter().any(|d| d == day)
                                                     on:click=move |_| toggle_day(day)
                                                 >
-                                                    {&day[0..1]}
+                                                    {letter}
                                                 </button>
                                             }
                                         }
@@ -486,14 +642,33 @@ pub fn EventModal() -> impl IntoView {
                         </Show>
                         <Show when=move || freq.get() == "ADVANCED" fallback=|| ()>
                             <label class="field">
-                                <span>"RRULE"</span>
+                                <span>{move || crate::i18n::t(state.lang.get(), "rrule")}</span>
                                 <input type="text" placeholder="FREQ=MONTHLY;BYDAY=1MO"
                                     prop:value=move || raw_rule.get()
                                     on:input=move |ev| raw_rule.set(event_target_value(&ev)) />
                             </label>
                         </Show>
                         <Show when=move || existing.get().map(|e| e.event.rrule.is_some()).unwrap_or(false) fallback=|| ()>
-                            <p class="field-hint">"Changes apply to the whole series."</p>
+                            <Show
+                                when=move || occurrence.is_some()
+                                fallback=move || {
+                                    view! {
+                                        <p class="field-hint">{move || crate::i18n::t(state.lang.get(), "series_hint")}</p>
+                                    }
+                                }
+                            >
+                                <label class="field">
+                                    <span>{move || crate::i18n::t(state.lang.get(), "apply_to")}</span>
+                                    <select
+                                        prop:value=move || scope.get()
+                                        on:change=move |ev| scope.set(event_target_value(&ev))
+                                    >
+                                        <option value="this">{move || crate::i18n::t(state.lang.get(), "this_event")}</option>
+                                        <option value="future">{move || crate::i18n::t(state.lang.get(), "this_and_following")}</option>
+                                        <option value="all">{move || crate::i18n::t(state.lang.get(), "all_events")}</option>
+                                    </select>
+                                </label>
+                            </Show>
                         </Show>
                     </div>
                 </fieldset>
@@ -502,13 +677,13 @@ pub fn EventModal() -> impl IntoView {
                 </Show>
                 <div class="modal-actions">
                     <Show when=move || is_edit && !read_only.get() fallback=|| ()>
-                        <button class="btn btn-danger" on:click=delete>"Delete"</button>
+                        <button class="btn btn-danger" on:click=delete>{move || crate::i18n::t(state.lang.get(), "delete")}</button>
                     </Show>
                     <span class="spacer"></span>
-                    <button class="btn btn-ghost" on:click=close>"Cancel"</button>
+                    <button class="btn btn-ghost" on:click=close>{move || crate::i18n::t(state.lang.get(), "cancel")}</button>
                     <Show when=move || !read_only.get() fallback=|| ()>
                         <button class="btn btn-primary" disabled=move || saving.get() on:click=save>
-                            {move || if saving.get() { "Saving…" } else { "Save" }}
+                            {move || if saving.get() { crate::i18n::t(state.lang.get(), "saving") } else { crate::i18n::t(state.lang.get(), "save") }}
                         </button>
                     </Show>
                 </div>

@@ -25,6 +25,10 @@ pub struct CalendarInfo {
     /// Component types the collection accepts (VEVENT, VTODO, …).
     #[serde(default)]
     pub components: Vec<String>,
+    /// Privileges granted to the current user (from
+    /// `current-user-privilege-set`), e.g. `["read", "write"]`.
+    #[serde(default)]
+    pub privileges: Vec<String>,
 }
 
 impl CalendarInfo {
@@ -222,6 +226,7 @@ impl<T: HttpTransport> DavClient<T> {
                     .map(str::to_string),
                 read_only: !r.can_write(),
                 components: r.components.clone(),
+                privileges: r.privileges.clone(),
             });
         }
         Ok(out)

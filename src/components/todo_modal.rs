@@ -149,26 +149,26 @@ pub fn TodoModal() -> impl IntoView {
     view! {
         <div class="modal-overlay" on:click=close>
             <div class="modal modal-small" on:click=move |e| e.stop_propagation() role="dialog" aria-modal="true">
-                <h3>{if is_edit { "Edit task" } else { "New task" }}</h3>
+                <h3>{move || if is_edit { crate::i18n::t(state.lang.get(), "edit_task") } else { crate::i18n::t(state.lang.get(), "new_task") }}</h3>
                 <Show when=move || read_only.get() fallback=|| ()>
-                    <p class="banner-info">"This calendar is read-only."</p>
+                    <p class="banner-info">{move || crate::i18n::t(state.lang.get(), "read_only_calendar")}</p>
                 </Show>
                 <fieldset class="modal-fields" disabled=move || read_only.get()>
                     <label class="field">
-                        <span>"Task"</span>
-                        <input type="text" autofocus placeholder="What needs doing?"
+                        <span>{move || crate::i18n::t(state.lang.get(), "task")}</span>
+                        <input type="text" autofocus placeholder=move || crate::i18n::t(state.lang.get(), "what_needs_doing")
                             prop:value=move || summary.get()
                             on:input=move |ev| summary.set(event_target_value(&ev)) />
                     </label>
                     <label class="field">
-                        <span>"Due date"</span>
+                        <span>{move || crate::i18n::t(state.lang.get(), "due_date")}</span>
                         <input type="date"
                             prop:value=move || due.get()
                             on:input=move |ev| due.set(event_target_value(&ev)) />
                     </label>
                     <div class="field-row">
                         <label class="field field-time">
-                            <span>"Priority"</span>
+                            <span>{move || crate::i18n::t(state.lang.get(), "priority")}</span>
                             <input type="number" min="0" max="9"
                                 prop:value=move || priority.get().to_string()
                                 on:input=move |ev| {
@@ -181,11 +181,11 @@ pub fn TodoModal() -> impl IntoView {
                             <input type="checkbox"
                                 prop:checked=move || completed.get()
                                 on:change=move |ev| completed.set(event_target_checked(&ev)) />
-                            <span>"Done"</span>
+                            <span>{move || crate::i18n::t(state.lang.get(), "done")}</span>
                         </label>
                     </div>
                     <label class="field">
-                        <span>"Calendar"</span>
+                        <span>{move || crate::i18n::t(state.lang.get(), "calendar")}</span>
                         <select
                             prop:value=move || cal_href.get()
                             on:change=move |ev| cal_href.set(event_target_value(&ev))
@@ -206,8 +206,8 @@ pub fn TodoModal() -> impl IntoView {
                         </select>
                     </label>
                     <label class="field">
-                        <span>"Notes"</span>
-                        <textarea rows="2" placeholder="Optional"
+                        <span>{move || crate::i18n::t(state.lang.get(), "notes")}</span>
+                        <textarea rows="2" placeholder=move || crate::i18n::t(state.lang.get(), "optional")
                             prop:value=move || description.get()
                             on:input=move |ev| description.set(event_target_value(&ev)) />
                     </label>
@@ -217,13 +217,13 @@ pub fn TodoModal() -> impl IntoView {
                 </Show>
                 <div class="modal-actions">
                     <Show when=move || is_edit && !read_only.get() fallback=|| ()>
-                        <button class="btn btn-danger" on:click=delete>"Delete"</button>
+                        <button class="btn btn-danger" on:click=delete>{move || crate::i18n::t(state.lang.get(), "delete")}</button>
                     </Show>
                     <span class="spacer"></span>
-                    <button class="btn btn-ghost" on:click=close>"Cancel"</button>
+                    <button class="btn btn-ghost" on:click=close>{move || crate::i18n::t(state.lang.get(), "cancel")}</button>
                     <Show when=move || !read_only.get() fallback=|| ()>
                         <button class="btn btn-primary" disabled=move || saving.get() on:click=save>
-                            {move || if saving.get() { "Saving…" } else { "Save" }}
+                            {move || if saving.get() { crate::i18n::t(state.lang.get(), "saving") } else { crate::i18n::t(state.lang.get(), "save") }}
                         </button>
                     </Show>
                 </div>

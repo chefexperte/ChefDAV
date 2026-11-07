@@ -33,15 +33,15 @@ pub fn DayPopup() -> impl IntoView {
                 <div class="popup-actions">
                     <button class="popup-action" on:click=new_event>
                         <span class="popup-icon">"＋"</span>
-                        <span>"New event"</span>
+                        <span>{move || crate::i18n::t(state.lang.get(), "new_event")}</span>
                     </button>
                     <button class="popup-action" on:click=new_task>
                         <span class="popup-icon">"☑"</span>
-                        <span>"New task"</span>
+                        <span>{move || crate::i18n::t(state.lang.get(), "new_task")}</span>
                     </button>
                     <button class="popup-action" on:click=go_day>
                         <span class="popup-icon">"→"</span>
-                        <span>"Go to day"</span>
+                        <span>{move || crate::i18n::t(state.lang.get(), "go_to_day")}</span>
                     </button>
                 </div>
             </div>

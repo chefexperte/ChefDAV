@@ -1436,6 +1436,31 @@ button {
   margin-top: 4px;
 }
 
+.sharing-info {
+  border-top: 1px dashed var(--line);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.sharing-title {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-faint);
+}
+
+.sharing-url {
+  display: flex;
+  gap: 6px;
+}
+
+.sharing-url input {
+  flex: 1;
+  font-size: 12px;
+}
+
 .color-swatches {
   display: flex;
   flex-wrap: wrap;

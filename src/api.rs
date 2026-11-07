@@ -8,8 +8,8 @@ use std::future::Future;
 use caldav::client::{resource_url, CalendarInfo, DavClient};
 use caldav::error::{DavError, Result};
 use caldav::ics::{
-    build_ics, build_todo_ics, parse_calendar, parse_todos, shift_ics_dates, DtValue, EventDraft,
-    TodoDraft,
+    build_ics, build_override_ics, build_todo_ics, parse_cached_event, shift_ics_dates, vevent_block,
+    wrap_vevents, DtValue, EventDraft, TodoDraft, VEvent,
 };
 use caldav::transport::{DavRequest, DavResponse, HttpTransport};
 use leptos::prelude::*;
@@ -122,11 +122,23 @@ fn display_events(
 ) -> Vec<DisplayEvent> {
     let mut out = Vec::new();
     for ce in &cache.events {
-        for ev in caldav::ics::parse_cached_event(&ce.ics, tz) {
+        let events = parse_cached_event(&ce.ics, tz);
+        let mut by_uid: HashMap<String, (Option<VEvent>, Vec<VEvent>)> = HashMap::new();
+        for ev in events {
+            let entry = by_uid.entry(ev.uid.clone()).or_default();
+            if ev.is_override() {
+                entry.1.push(ev);
+            } else {
+                entry.0 = Some(ev);
+            }
+        }
+        for (_, (master, overrides)) in by_uid {
+            let Some(master) = master else { continue };
             out.push(DisplayEvent {
                 href: ce.href.clone(),
                 etag: ce.etag.clone(),
-                event: ev,
+                event: master,
+                overrides,
                 calendar_href: cal.href.clone(),
                 color: color.to_string(),
                 read_only: cal.read_only,
@@ -178,13 +190,26 @@ pub async fn refresh_events(state: &AppState) {
                     if !sync.changed.is_empty() {
                         match c.multiget_events(&url, &sync.changed, &state.tz).await {
                             Ok(fetched) => {
+                                let mut by_href: HashMap<String, (Option<String>, Vec<VEvent>)> =
+                                    HashMap::new();
                                 for de in fetched {
-                                    cache.events.retain(|e| e.href != de.href);
+                                    let entry = by_href
+                                        .entry(de.href)
+                                        .or_insert((de.etag.clone(), Vec::new()));
+                                    if entry.0.is_none() {
+                                        entry.0 = de.etag;
+                                    }
+                                    entry.1.push(de.event);
+                                }
+                                for (href, (etag, events)) in by_href {
+                                    cache.events.retain(|e| e.href != href);
+                                    let blocks =
+                                        events.iter().map(|e| e.raw.clone()).collect::<Vec<_>>();
                                     cache.events.push(CachedEvent {
                                         calendar_href: cal.href.clone(),
-                                        href: de.href,
-                                        etag: de.etag,
-                                        ics: de.event.raw,
+                                        href,
+                                        etag,
+                                        ics: wrap_vevents(&blocks),
                                     });
                                 }
                             }
@@ -207,13 +232,26 @@ pub async fn refresh_events(state: &AppState) {
         if !refreshed {
             match c.query_all_events(&url, &state.tz).await {
                 Ok(evs) => {
-                    cache.events = evs
+                    let mut by_href: HashMap<String, (Option<String>, Vec<VEvent>)> = HashMap::new();
+                    for e in evs {
+                        let entry = by_href
+                            .entry(e.href)
+                            .or_insert((e.etag.clone(), Vec::new()));
+                        if entry.0.is_none() {
+                            entry.0 = e.etag;
+                        }
+                        entry.1.push(e.event);
+                    }
+                    cache.events = by_href
                         .into_iter()
-                        .map(|e| CachedEvent {
-                            calendar_href: cal.href.clone(),
-                            href: e.href,
-                            etag: e.etag,
-                            ics: e.event.raw,
+                        .map(|(href, (etag, events))| {
+                            let blocks = events.iter().map(|e| e.raw.clone()).collect::<Vec<_>>();
+                            CachedEvent {
+                                calendar_href: cal.href.clone(),
+                                href,
+                                etag,
+                                ics: wrap_vevents(&blocks),
+                            }
                         })
                         .collect();
                     cache.sync_token = cal.ctag.clone();
@@ -231,6 +269,7 @@ pub async fn refresh_events(state: &AppState) {
     state.loading.set(false);
     state.events.set(all);
     store::cache_save(&caches.into_values().collect::<Vec<_>>()).await;
+    crate::reminders::schedule_in_service_worker(*state);
 }
 
 /// Fetch all tasks for visible calendars that support VTODO.
@@ -333,21 +372,32 @@ async fn queue(state: &AppState, op: OutboxOp) {
 
 fn upsert_local_event(state: &AppState, cal_href: &str, href: &str, ics: &str, etag: Option<String>) {
     let Some(cal) = state.calendar_for(cal_href) else { return };
-    let Some(ev) = parse_calendar(ics, &state.tz).ok().and_then(|v| v.into_iter().next()) else {
-        return;
-    };
-    let display = DisplayEvent {
-        href: href.to_string(),
-        etag,
-        event: ev,
-        calendar_href: cal_href.to_string(),
-        color: cal.color.clone(),
-        read_only: cal.read_only(),
-    };
-    state.events.update(|v| {
-        v.retain(|e| e.href != href);
-        v.push(display);
-    });
+    let events = parse_cached_event(ics, &state.tz);
+    let mut by_uid: HashMap<String, (Option<VEvent>, Vec<VEvent>)> = HashMap::new();
+    for ev in events {
+        let entry = by_uid.entry(ev.uid.clone()).or_default();
+        if ev.is_override() {
+            entry.1.push(ev);
+        } else {
+            entry.0 = Some(ev);
+        }
+    }
+    for (_, (master, overrides)) in by_uid {
+        let Some(master) = master else { continue };
+        let display = DisplayEvent {
+            href: href.to_string(),
+            etag: etag.clone(),
+            event: master,
+            overrides,
+            calendar_href: cal_href.to_string(),
+            color: cal.color.clone(),
+            read_only: cal.read_only(),
+        };
+        state.events.update(|v| {
+            v.retain(|e| e.href != href);
+            v.push(display.clone());
+        });
+    }
 }
 
 /// Create or update an event. Returns `true` when the write was queued for
@@ -358,18 +408,24 @@ pub async fn save_event(
     href: Option<&str>,
     draft: &EventDraft,
     etag: Option<&str>,
+    overrides: &[VEvent],
 ) -> Result<bool> {
     let session = state
         .session
         .get()
         .ok_or_else(|| DavError::Transport("not logged in".into()))?;
-    let ics = build_ics(draft, browser::now_utc());
+    let master_ics = build_ics(draft, browser::now_utc());
+    let block = vevent_block(&master_ics)
+        .ok_or_else(|| DavError::Transport("could not build event".into()))?;
+    let mut blocks = vec![block];
+    blocks.extend(overrides.iter().map(|o| o.raw.clone()));
+    let resource = wrap_vevents(&blocks);
     let cal = Url::parse(calendar_href)?;
     let target = match href {
         Some(h) => Url::parse(h)?,
         None => resource_url(&cal, &draft.uid)?,
     };
-    match client(&session).put_resource(&target, &ics, etag).await {
+    match client(&session).put_resource(&target, &resource, etag).await {
         Ok(_) => Ok(false),
         Err(DavError::Transport(_)) => {
             queue(
@@ -377,16 +433,71 @@ pub async fn save_event(
                 OutboxOp::PutEvent {
                     calendar_href: calendar_href.to_string(),
                     uid: draft.uid.clone(),
-                    ics: ics.clone(),
+                    ics: resource.clone(),
                     etag: etag.map(str::to_string),
                 },
             )
             .await;
-            upsert_local_event(state, calendar_href, target.as_str(), &ics, etag.map(str::to_string));
+            upsert_local_event(
+                state,
+                calendar_href,
+                target.as_str(),
+                &resource,
+                etag.map(str::to_string),
+            );
             Ok(true)
         }
         Err(e) => Err(e),
     }
+}
+
+/// Create/replace a `RECURRENCE-ID` exception (single or THISANDFUTURE) in the
+/// master's resource. `cancelled` writes `STATUS:CANCELLED` instead.
+pub async fn save_override(
+    state: &AppState,
+    master: &DisplayEvent,
+    recurrence_id: chrono::DateTime<chrono_tz::Tz>,
+    range: bool,
+    draft: &EventDraft,
+    cancelled: bool,
+) -> Result<()> {
+    let session = state
+        .session
+        .get()
+        .ok_or_else(|| DavError::Transport("not logged in".into()))?;
+    let override_ics = build_override_ics(
+        &master.event.uid,
+        &recurrence_id,
+        range,
+        draft,
+        browser::now_utc(),
+        cancelled,
+    );
+    let block = vevent_block(&override_ics)
+        .ok_or_else(|| DavError::Transport("could not build exception".into()))?;
+    let mut blocks = vec![master.event.raw.clone()];
+    for o in &master.overrides {
+        let same_id = o
+            .recurrence_id
+            .as_ref()
+            .and_then(|d| d.to_datetime(&state.tz))
+            == Some(recurrence_id);
+        // A future override supersedes everything at that id; a single
+        // override only replaces another single override (so a cancellation
+        // can coexist with a THISANDFUTURE rule starting at the same time).
+        let replace = same_id && (range || !o.recurrence_range);
+        if !replace {
+            blocks.push(o.raw.clone());
+        }
+    }
+    blocks.push(block);
+    let resource = wrap_vevents(&blocks);
+    let url = Url::parse(&master.href)?;
+    client(&session)
+        .put_resource(&url, &resource, master.etag.as_deref())
+        .await?;
+    refresh_events(state).await;
+    Ok(())
 }
 
 pub async fn delete_event(state: &AppState, href: &str, etag: Option<&str>) -> Result<bool> {
@@ -593,8 +704,9 @@ pub async fn move_event(state: &AppState, href: &str, delta_days: i64) -> Result
             "recurring events cannot be dragged yet".into(),
         ));
     }
-    let ics = shift_ics_dates(&ev.event.raw, delta_days)
+    let shifted = shift_ics_dates(&ev.event.raw, delta_days)
         .ok_or_else(|| DavError::Transport("event has no DTSTART".into()))?;
+    let ics = wrap_vevents(&[shifted]);
     let session = state
         .session
         .get()

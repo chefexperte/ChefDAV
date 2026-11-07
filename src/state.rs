@@ -38,6 +38,8 @@ pub struct DisplayEvent {
     pub href: String,
     pub etag: Option<String>,
     pub event: VEvent,
+    /// `RECURRENCE-ID` exceptions for this series (same UID, same resource).
+    pub overrides: Vec<VEvent>,
     pub calendar_href: String,
     pub color: String,
     pub read_only: bool,
@@ -68,8 +70,18 @@ pub struct SearchHit {
 pub enum ModalState {
     New { date: NaiveDate },
     /// Read-only event details; the editor opens from here.
-    Details { index: usize },
-    Edit { index: usize },
+    Details {
+        index: usize,
+        /// Original recurrence start (`RECURRENCE-ID`) for exceptions.
+        occurrence: Option<chrono::DateTime<chrono_tz::Tz>>,
+        /// The actual displayed start (may be shifted by THISANDFUTURE).
+        display_start: Option<chrono::DateTime<chrono_tz::Tz>>,
+    },
+    Edit {
+        index: usize,
+        occurrence: Option<chrono::DateTime<chrono_tz::Tz>>,
+        display_start: Option<chrono::DateTime<chrono_tz::Tz>>,
+    },
     NewTodo { date: NaiveDate },
     EditTodo { index: usize },
 }
@@ -97,13 +109,13 @@ pub enum ViewMode {
 }
 
 impl ViewMode {
-    pub fn label(self) -> &'static str {
+    pub fn label_key(self) -> &'static str {
         match self {
-            ViewMode::Month => "Month",
-            ViewMode::Week => "Week",
-            ViewMode::Day => "Day",
-            ViewMode::Agenda => "Agenda",
-            ViewMode::Tasks => "Tasks",
+            ViewMode::Month => "month",
+            ViewMode::Week => "week",
+            ViewMode::Day => "day",
+            ViewMode::Agenda => "agenda",
+            ViewMode::Tasks => "tasks",
         }
     }
 }

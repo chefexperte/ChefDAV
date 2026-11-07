@@ -85,9 +85,12 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
-      - name: Run e2e smoke test
+      - name: Run e2e suites
         working-directory: e2e
-        run: npm test
+        run: |
+          npm test
+          node features.mjs
+          node recurrence.mjs
 
       - name: Upload failure artifacts
         if: failure()
