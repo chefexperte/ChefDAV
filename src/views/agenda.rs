@@ -116,7 +116,7 @@ pub fn AgendaView() -> impl IntoView {
                                                                     }
                                                                 });
                                                             } else {
-                                                                state.modal.set(Some(ModalState::Edit { index: idx }))
+                                                                state.modal.set(Some(ModalState::Details { index: idx }))
                                                             }
                                                         }
                                                     >

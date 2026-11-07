@@ -41,7 +41,7 @@ pub fn WeekMoreModal() -> impl IntoView {
                                         style=format!("--chip:{color}")
                                         on:click=move |_| {
                                             state.week_more.set(None);
-                                            state.modal.set(Some(ModalState::Edit { index: idx }));
+                                            state.modal.set(Some(ModalState::Details { index: idx }));
                                         }
                                     >
                                         <span class="agenda-time">{time}</span>

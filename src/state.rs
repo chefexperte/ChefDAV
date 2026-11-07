@@ -67,6 +67,8 @@ pub struct SearchHit {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ModalState {
     New { date: NaiveDate },
+    /// Read-only event details; the editor opens from here.
+    Details { index: usize },
     Edit { index: usize },
     NewTodo { date: NaiveDate },
     EditTodo { index: usize },

@@ -187,7 +187,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                                     if e.ctrl_key() || e.meta_key() {
                                                         toggle_select(&href);
                                                     } else {
-                                                        state.modal.set(Some(ModalState::Edit { index: idx }));
+                                                        state.modal.set(Some(ModalState::Details { index: idx }));
                                                     }
                                                 }
                                             >
@@ -293,7 +293,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                                     if e.ctrl_key() || e.meta_key() {
                                                         toggle_select(&href);
                                                     } else {
-                                                        state.modal.set(Some(ModalState::Edit { index: idx }));
+                                                        state.modal.set(Some(ModalState::Details { index: idx }));
                                                     }
                                                 }
                                             >

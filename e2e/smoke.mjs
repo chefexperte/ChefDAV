@@ -109,9 +109,12 @@ await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
 await page.waitForTimeout(1200);
 check("create event", (await chips()).includes(EVENT));
 
-// ---------- edit ----------
+// ---------- details first, then edit ----------
 await page.locator(".chip", { hasText: EVENT }).first().click();
-await page.waitForSelector(".modal");
+await page.waitForSelector(".details-modal", { timeout: 10000 });
+check("event click opens details", (await page.locator(".details-modal").count()) === 1);
+await page.click('.details-modal button:has-text("Edit")');
+await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
 await page.fill('.modal input[type="text"]', EVENT_EDITED);
 await page.click('.modal button:has-text("Save")');
 await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
@@ -121,7 +124,9 @@ check("edit event", afterEdit.includes(EVENT_EDITED) && !afterEdit.includes(EVEN
 
 // ---------- delete ----------
 await page.locator(".chip", { hasText: EVENT_EDITED }).first().click();
-await page.waitForSelector(".modal");
+await page.waitForSelector(".details-modal", { timeout: 10000 });
+await page.click('.details-modal button:has-text("Edit")');
+await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
 await page.click('.modal button:has-text("Delete")');
 await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
 await page.waitForTimeout(1200);

@@ -19,6 +19,7 @@ pub fn CalendarActionModal() -> impl IntoView {
     };
     let name_input = RwSignal::new(name.clone());
     let href_sig = RwSignal::new(href.clone());
+    let confirm_delete = RwSignal::new(is_delete);
     let close = move |_| state.calendar_action.set(None);
 
     let rename = move |_| {
@@ -68,9 +69,9 @@ pub fn CalendarActionModal() -> impl IntoView {
     view! {
         <div class="modal-overlay" on:click=close>
             <div class="modal modal-small" on:click=move |e| e.stop_propagation() role="dialog" aria-modal="true">
-                <h3>{if is_delete { "Delete calendar" } else { "Rename calendar" }}</h3>
+                <h3>{move || if confirm_delete.get() { "Delete calendar" } else { "Rename calendar" }}</h3>
                 <Show
-                    when=move || is_delete
+                    when=move || confirm_delete.get()
                     fallback=move || {
                         view! {
                             <label class="field">
@@ -90,14 +91,26 @@ pub fn CalendarActionModal() -> impl IntoView {
                     <p class="form-error">{move || error.get().unwrap_or_default()}</p>
                 </Show>
                 <div class="modal-actions">
-                    <Show when=move || is_delete fallback=|| ()>
+                    <Show
+                        when=move || confirm_delete.get()
+                        fallback=move || {
+                            view! {
+                                <button
+                                    class="btn btn-danger"
+                                    on:click=move |_| confirm_delete.set(true)
+                                >
+                                    "Delete calendar"
+                                </button>
+                            }
+                        }
+                    >
                         <button class="btn btn-danger" disabled=move || busy.get() on:click=delete>
                             {move || if busy.get() { "Deleting…" } else { "Delete calendar" }}
                         </button>
                     </Show>
                     <span class="spacer"></span>
                     <button class="btn btn-ghost" on:click=close>"Cancel"</button>
-                    <Show when=move || !is_delete fallback=|| ()>
+                    <Show when=move || !confirm_delete.get() fallback=|| ()>
                         <button class="btn btn-primary" disabled=move || busy.get() on:click=rename>
                             {move || if busy.get() { "Saving…" } else { "Save" }}
                         </button>

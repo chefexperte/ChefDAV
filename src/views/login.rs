@@ -12,16 +12,43 @@ use crate::api;
 use crate::state::AppState;
 use crate::store::{self, StoredCreds};
 
+const CHANGELOG: &str = include_str!("../../CHANGELOG.md");
+
+/// Latest changelog section: (title, bullet items).
+fn latest_changelog() -> (String, Vec<String>) {
+    let mut title = String::new();
+    let mut items = Vec::new();
+    let mut in_section = false;
+    for line in CHANGELOG.lines() {
+        let line = line.trim_end();
+        if line.starts_with("## ") {
+            if in_section {
+                break;
+            }
+            in_section = true;
+            title = line.trim_start_matches("## ").to_string();
+            continue;
+        }
+        if in_section {
+            if let Some(item) = line.strip_prefix("- ").or_else(|| line.strip_prefix("* ")) {
+                items.push(item.to_string());
+            }
+        }
+    }
+    (title, items)
+}
+
 #[component]
 pub fn LoginPage() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let navigate = use_navigate();
 
-    let server = RwSignal::new("http://127.0.0.1:8080".to_string());
+    let server = RwSignal::new(crate::config::DEFAULT_SERVER.to_string());
     let username = RwSignal::new(String::new());
     let password = RwSignal::new(String::new());
     let busy = RwSignal::new(false);
     let error = RwSignal::new(None::<String>);
+    let (changelog_title, changelog_items) = latest_changelog();
 
     // Prefill the last used server/username/password (plain IndexedDB).
     spawn_local(async move {
@@ -112,6 +139,19 @@ pub fn LoginPage() -> impl IntoView {
                     The server only sees Basic auth via your CORS-enabled proxy; who may log in
                     is decided by Radicale (LDAP)."
                 </p>
+                <details class="changelog">
+                    <summary>
+                        "What's new "
+                        <span class="changelog-version">{changelog_title}</span>
+                    </summary>
+                    <ul>
+                        <For
+                            each=move || changelog_items.clone()
+                            key=|item| item.clone()
+                            children=|item| view! { <li>{item}</li> }
+                        />
+                    </ul>
+                </details>
             </div>
         </div>
     }

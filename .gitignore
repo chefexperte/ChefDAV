@@ -6,3 +6,7 @@
 # e2e
 /e2e/node_modules
 /e2e/login-failure.png
+
+# stable instance
+/.stable-worktree
+/target-stable

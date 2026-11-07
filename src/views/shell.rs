@@ -9,6 +9,7 @@ use leptos_router::hooks::use_navigate;
 use crate::api;
 use crate::components::calendar_action::CalendarActionModal;
 use crate::components::day_popup::DayPopup;
+use crate::components::event_details::EventDetails;
 use crate::components::event_modal::EventModal;
 use crate::components::new_calendar::NewCalendarModal;
 use crate::components::todo_modal::TodoModal;
@@ -245,7 +246,9 @@ pub fn Shell() -> impl IntoView {
                 <ul class="cal-list">
                     <For
                         each=move || state.calendars.get()
-                        key=|c| c.info.href.clone()
+                        // include name/color so a rename or color change recreates
+                        // the row (the href stays the same)
+                        key=|c| (c.info.href.clone(), c.info.display_name.clone(), c.color.clone())
                         children=move |c| {
                             let name = c.info.display_name.clone();
                             let color = c.color.clone();
@@ -338,6 +341,7 @@ pub fn Shell() -> impl IntoView {
         <Show when=move || state.modal.get().is_some() fallback=|| ()>
             {move || match state.modal.get() {
                 Some(ModalState::NewTodo { .. } | ModalState::EditTodo { .. }) => view! { <TodoModal /> }.into_any(),
+                Some(ModalState::Details { .. }) => view! { <EventDetails /> }.into_any(),
                 _ => view! { <EventModal /> }.into_any(),
             }}
         </Show>

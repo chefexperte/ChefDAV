@@ -8,6 +8,7 @@ pub mod api;
 pub mod app;
 pub mod browser;
 pub mod components;
+pub mod config;
 pub mod i18n;
 pub mod reminders;
 pub mod state;

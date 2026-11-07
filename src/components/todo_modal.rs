@@ -198,7 +198,7 @@ pub fn TodoModal() -> impl IntoView {
                                         .map(|c| (c.info.href.clone(), c.info.display_name.clone()))
                                         .collect::<Vec<_>>()
                                 }
-                                key=|c| c.0.clone()
+                                key=|c| c.clone()
                                 children=move |(href, name)| {
                                     view! { <option value=href>{name}</option> }
                                 }

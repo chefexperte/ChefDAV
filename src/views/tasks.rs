@@ -78,13 +78,25 @@ pub fn TasksView() -> impl IntoView {
                 <For
                     each=move || groups.get()
                     key=|(d, _)| *d
-                    children=move |(d, items)| {
+                    children=move |(d, _items)| {
+                        // Read the group from the memo instead of capturing the
+                        // initial `items` snapshot: the outer key (due date)
+                        // stays the same when a task is added, so a captured
+                        // Vec would never see the new task.
+                        let items = Memo::new(move |_| {
+                            groups
+                                .get()
+                                .into_iter()
+                                .find(|(gd, _)| *gd == d)
+                                .map(|(_, v)| v)
+                                .unwrap_or_default()
+                        });
                         view! {
                             <section class="task-group">
                                 <h3 class="agenda-date">{label(d)}</h3>
                                 <ul class="task-list">
                                     <For
-                                        each=move || items.clone()
+                                        each=move || items.get()
                                         key=|(i, t)| (*i, t.etag.clone())
                                         children=move |(idx, t)| {
                                             let done = t.todo.is_done();

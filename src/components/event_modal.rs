@@ -34,7 +34,7 @@ pub fn EventModal() -> impl IntoView {
     let is_edit = existing.is_some();
     let default_date = match modal {
         ModalState::New { date } | ModalState::NewTodo { date } => date,
-        ModalState::Edit { .. } | ModalState::EditTodo { .. } => {
+        ModalState::Edit { .. } | ModalState::EditTodo { .. } | ModalState::Details { .. } => {
             caldav::time::today(&tz, browser::now_utc())
         }
     };
@@ -384,7 +384,7 @@ pub fn EventModal() -> impl IntoView {
                                         .map(|c| (c.info.href.clone(), c.info.display_name.clone()))
                                         .collect::<Vec<_>>()
                                 }
-                                key=|c| c.0.clone()
+                                key=|c| c.clone()
                                 children=move |(href, name)| {
                                     view! { <option value=href>{name}</option> }
                                 }

@@ -1,0 +1,32 @@
+name: chef-dav-stable
+
+# Stable, day-to-day instance — completely separate from the development stack:
+#   - its own Radicale data volume (so tests never touch your calendars)
+#   - its own Caddy port (8081)
+#   - the app is built from the `stable` git tag and served on port 3200
+#
+# Start it with ./scripts/stable.sh (see README).
+
+services:
+  radicale:
+    image: tomsquest/docker-radicale:3.9.0.0
+    restart: unless-stopped
+    expose:
+      - "5232"
+    volumes:
+      - ./radicale/config:/config/config:ro
+      - ./radicale/users:/config/users:ro
+      - radicale-stable-data:/data
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - radicale
+
+volumes:
+  radicale-stable-data:

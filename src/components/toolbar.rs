@@ -165,7 +165,7 @@ pub fn Toolbar() -> impl IntoView {
                                             state.search_open.set(false);
                                             let idx = state.events.get().iter().position(|e| e.href == href);
                                             if let Some(idx) = idx {
-                                                state.modal.set(Some(ModalState::Edit { index: idx }));
+                                                state.modal.set(Some(ModalState::Details { index: idx }));
                                             }
                                         }
                                     >

@@ -24,71 +24,85 @@ modern look, Rust reliability.
 
 ## Current status
 
-> **Honest snapshot (2026-11-07).** The core vertical slice works against a
-> real Radicale. Everything listed under "Not yet" is planned, not broken.
+> **Honest snapshot (2026-11-07).** Everything listed under "Works today" is
+> implemented and exercised against a real Radicale. The short "Not yet" list
+> is planned work, not broken functionality.
 
 ### ✅ Works today
 
 - **Login** with Basic auth through the CORS proxy (LDAP is enforced by
-  Radicale; the SPA doesn't care which auth backend is used).
-- **Credential storage**: server/username/password are saved in IndexedDB
-  (plain for now; the AES-GCM passphrase flow is kept in `caldav::crypto` for later).
-- **Discovery**: `current-user-principal` → `calendar-home-set` → calendar list,
-  including display names and Apple calendar colors.
-- **Four views** switchable from the toolbar: **Month** (grid), **Week**
-  (7-day timeline), **Day** (1-day timeline), **Agenda** (30-day list).
-- **Month view**: Monday-first grid, today highlight, per-day event chips,
-  multi-day events on every day they span.
-- **Week/day timeline**: all-day row, 24-hour grid, overlapping events split
-  into columns.
-- **Create calendars** from the sidebar (`MKCALENDAR`).
-- **Recurring events**: RRULE/RDATE/EXDATE expanded **client-side** in the
-  event's own timezone (DST-correct).
+  Radicale; the SPA doesn't care which auth backend is used). Credentials are
+  saved in IndexedDB (plain for now; the AES-GCM flow is kept in
+  `caldav::crypto` for later).
+- **Discovery**: `current-user-principal` → `calendar-home-set` → calendars,
+  display names, Apple colors and per-calendar privileges.
+- **Five views**: Month (grid), Week (7-day timeline), Day (1-day timeline),
+  Agenda (30-day list), Tasks.
+- **Month view**: Monday-first grid, today highlight, multi-day events on every
+  day they span, drag & drop between days (non-recurring events).
+- **Week/day timeline**: all-day row (click to create an all-day event),
+  click any time slot to create an event at that time, overlapping events are
+  capped at two columns with a readable "+N more" popup.
+- **Day click popup**: choose "New event", "New task" or "Go to day" instead
+  of jumping straight into the editor.
+- **Event details first**: clicking an event opens a read-only details card
+  (time, calendar, location, notes, recurrence); the pencil button opens the
+  editor. Read-only calendars show a lock and no edit button.
 - **Event CRUD**: create, edit (optimistic concurrency via `If-Match`), delete.
-- **Local cache**: calendars + events cached in IndexedDB, painted before the
-  network refresh; calendar visibility toggles.
+- **Recurrence**: RRULE/RDATE/EXDATE expanded client-side in the event's own
+  timezone (DST-correct) and an editor for daily/weekly/monthly/yearly rules
+  (interval, weekdays, count/until, raw RRULE fallback). Edits apply to the
+  whole series.
+- **Search** across the cached calendar, **multi-select + bulk delete**.
+- **Calendars**: create, rename, delete, show/hide, read-only detection via
+  `current-user-privilege-set`, server colors with a stable fallback palette.
+- **Tasks (VTODO)**: create, edit, complete/uncomplete, delete.
+- **Incremental sync** via `sync-token` + `calendar-multiget`, with a full
+  fetch fallback; **offline outbox** retries queued writes when back online.
+- **Local cache** in IndexedDB for instant paint (calendars, events, tasks).
+- **Polish**: mint design tokens + dark theme, English/German UI, keyboard
+  shortcuts (`n t m w d a k / arrows Esc`), responsive/mobile layout, browser
+  reminders while the app is open, and a changelog on the login screen.
+- **Stable instance** (`./scripts/stable.sh`, ports 3200/8081, separate
+  Radicale volume) built from the `stable` git tag.
 - **Dev stack**: Radicale + Caddy (CORS) via Docker **or rootless Podman**;
-  optional glauth LDAP fixture (verified: LDAP login + full e2e suite).
-- **Tests**: 29 native unit tests for the CalDAV/ICS/recurrence/crypto core +
-  a committed Playwright smoke test (`e2e/`) covering the full CRUD flow.
+  optional glauth LDAP fixture (verified: LDAP login + e2e).
+- **Tests/CI**: 51 native unit tests for the CalDAV/ICS/recurrence/crypto core,
+  two committed Playwright suites (`smoke.mjs`, `features.mjs`), and a GitHub
+  Actions workflow (unit tests + WASM build + e2e).
 
 ### 🚧 Not yet implemented
 
 | Feature | Milestone |
 | --- | --- |
-| Credentials stored unencrypted for now (passphrase flow removed) | M2 follow-up |
-| Week/day view: click a time slot to create an event at that time | M2 follow-up |
-| Week/day view: click the all-day row to create an all-day event | M2 follow-up |
-| Day click opens a small "New event / New task" popup instead of the editor | M2 follow-up |
-| Week view: readable layout for 3+ concurrent events (cap columns / "+N more") | M2 follow-up |
-| Rename / delete calendars from the UI (creation works) | M2 follow-up |
-| Search, drag & drop, multi-select | M4 |
-| VTODO (tasks) | M4 |
-| Recurrence **editor** (expansion already works) | M3 |
-| Read-only calendar detection via `current-user-privilege-set` (forbidden writes currently just return 403) | M4 |
-| Incremental sync via `sync-token` (currently re-fetches the visible range) | M4 |
-| Offline write queue (cache is read-through only) | later |
-| CI (the e2e test is committed and runnable, just not automated) | M1 follow-up |
+| Change a calendar's color from the UI | next |
+| Recurrence exceptions ("this event" / "this and future") | later |
+| Calendar sharing/delegation UI (Radicale rights are server-side) | later |
+| Background/push reminders (current reminders poll while the app is open) | later |
+| Full i18n coverage (main UI is translated; some labels are English) | later |
+| Encrypted credentials at rest (crypto code is ready, not wired up) | later |
 
-**Known limitation right now:** no search, no drag & drop, no task support, and
-recurring events can be displayed but not edited as a series. Daily planning
-works; AgenDAV parity is not complete yet.
+**Known limitation right now:** recurring-series edits apply to the whole
+series, calendar colors are read from the server (not editable yet), and
+reminders only fire while the app is open. Everything else in the list above
+is usable day-to-day.
 
 ## Roadmap
 
 - [x] **M1 — vertical slice**: login (stored creds), calendar discovery,
       month view, event create/edit/delete over CalDAV, local cache.
 - [x] **M2 — usable daily driver**: week/day/agenda views, calendar colors +
-      show/hide, create calendars, empty states.
-- [ ] **M2 follow-ups**: rename/delete calendars; click a week/day time slot to
-      create an event there; day click opens a small "New event / New task"
-      popup; readable layout for concurrent events in the week view.
-- [ ] **M3 — recurrence**: full client-side recurrence display (mostly done)
-      plus a recurrence editor (RRULE builder, this/this-and-future/all).
-- [ ] **M4 — parity & polish**: search, drag & drop, multi-select, VTODO,
+      show/hide, create/rename/delete calendars, day popup, time-slot and
+      all-day creation, concurrent-event "+N more", details-first event view.
+- [x] **M3 — recurrence**: client-side recurrence display plus a simple RRULE
+      editor (series-wide).
+- [x] **M4 — parity & polish**: search, drag & drop, multi-select, VTODO,
       `sync-token` incremental sync, read-only detection, keyboard shortcuts,
       responsive/mobile layout.
-- [ ] **Later**: offline write queue, reminders/notifications, i18n, themes.
+- [x] **Later**: offline write queue, reminders, i18n (main UI), themes,
+      stable instance, CI.
+- [ ] **Next**: calendar color editing; recurrence exceptions; sharing UI;
+      background reminders; full i18n coverage; encrypted credentials.
 
 ## Quickstart (local dev)
 
@@ -159,6 +173,34 @@ podman compose -f docker-compose.yml -f docker-compose.ldap.yml up -d
 > Note: Radicale 3.9 uses `ldap_uri` / `ldap_reader_dn` / `ldap_secret` and a
 > `{0}` placeholder in `ldap_filter` — older `ldap_url`/`ldap_bind_dn` names
 > are rejected.
+
+## Stable instance (for day-to-day use)
+
+Development builds and tests change constantly. For a stable copy that is
+unaffected by that work:
+
+```sh
+./scripts/stable.sh
+```
+
+| What | Where |
+| --- | --- |
+| App | <http://127.0.0.1:3200> |
+| CalDAV server | <http://127.0.0.1:8081> |
+| Login | `alice` / `secret` |
+
+How it stays stable:
+
+- It builds from the **`stable` git tag** in an isolated worktree
+  (`.stable-worktree/`), not from the working tree.
+- It runs its **own Radicale + Caddy stack** (`docker/docker-compose.stable.yml`)
+  with a separate data volume, on ports 8081/3200. Your calendars there are
+  never touched by development or the e2e tests.
+- The login screen shows the changelog baked into that build (`CHANGELOG.md`).
+
+After a verified milestone the maintainer moves the `stable` tag forward; re-run
+`./scripts/stable.sh` to rebuild and restart the stable app. The containers keep
+running when you stop the web server with Ctrl+C.
 
 ## Architecture
 

@@ -109,9 +109,12 @@ await saveModal();
 const recCount = (await chips()).filter((c) => c === recTitle).length;
 check("recurrence editor creates 3 occurrences", recCount === 3, `${recCount} occurrences`);
 
-// edit the recurring event: controls should be prefilled
+// click → details first, then edit: recurrence controls should be prefilled
 await page.locator(".chip", { hasText: recTitle }).first().click();
-await page.waitForSelector(".modal");
+await page.waitForSelector(".details-modal", { timeout: 10000 });
+check("event click opens details first", (await page.locator(".details-modal").count()) === 1);
+await page.click('.details-modal button:has-text("Edit")');
+await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
 const freqVal = await page.locator('.modal select >> nth=1').inputValue();
 check("recurrence editor prefills RRULE", freqVal === "WEEKLY", freqVal);
 await page.click('.modal button:has-text("Cancel")');
@@ -149,12 +152,16 @@ await page.waitForSelector(".search-panel", { timeout: 10000 });
 const hits = await page.locator(".search-hit").count();
 check("search finds recurring event", hits >= 1, `${hits} hits`);
 await page.locator(".search-hit").first().click();
-await page.waitForSelector(".modal", { timeout: 10000 });
-check("search result opens event", true);
-await page.click('.modal button:has-text("Cancel")');
-await page.waitForSelector(".modal", { state: "detached" });
+await page.waitForSelector(".details-modal", { timeout: 10000 });
+check("search result opens event details", true);
+await page.click('.details-modal button:has-text("Close")');
+await page.waitForSelector(".details-modal", { state: "detached" });
 await page.fill('.search-box input', "");
 await page.waitForTimeout(300);
+// the search result jumped to Day view; go back to Month for chip assertions
+await page.click('.segmented-btn:has-text("Month")');
+await page.waitForSelector(".month-grid", { timeout: 10000 });
+await page.waitForTimeout(800);
 
 // ---------- multi-select + bulk delete ----------
 const selTitle = `Select ${run}`;
@@ -189,7 +196,9 @@ await page.waitForTimeout(1200);
 check("calendar renamed", (await page.locator(".cal-name", { hasText: renamed }).count()) === 1);
 await page.locator(".cal-item", { hasText: renamed }).locator(".cal-menu-btn").click();
 await page.waitForSelector(".modal-small");
-await page.click('.modal-small button:has-text("Delete calendar")');
+await page.click('.modal-small button:has-text("Delete calendar")'); // switch to confirmation
+await page.waitForTimeout(200);
+await page.click('.modal-small button:has-text("Delete calendar")'); // confirm
 await page.waitForSelector(".modal-small", { state: "detached", timeout: 15000 });
 await page.waitForTimeout(1500);
 check("calendar deleted", (await page.locator(".cal-name", { hasText: renamed }).count()) === 0);
@@ -236,25 +245,22 @@ await page.waitForTimeout(3000);
 check("outbox flushed after reconnect", (await page.locator(".pending-badge").count()) === 0);
 
 // cleanup: delete the offline event and the recurring series
-for (const title of [offlineTitle]) {
+for (const title of [offlineTitle, recTitle]) {
   const chip = page.locator(".chip", { hasText: title }).first();
   if (await chip.count()) {
     await chip.click();
-    await page.waitForSelector(".modal");
+    await page.waitForSelector(".details-modal", { timeout: 10000 });
+    await page.click('.details-modal button:has-text("Edit")');
+    await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
     await page.click('.modal button:has-text("Delete")');
     await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
     await page.waitForTimeout(1000);
   }
 }
-const recChip = page.locator(".chip", { hasText: recTitle }).first();
-if (await recChip.count()) {
-  await recChip.click();
-  await page.waitForSelector(".modal");
-  await page.click('.modal button:has-text("Delete")');
-  await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-}
 
-check("no console errors", consoleErrors.length === 0, consoleErrors.join(" | "));
+// the offline test intentionally aborts a PUT, which the browser logs
+const unexpectedErrors = consoleErrors.filter((e) => !e.includes("net::ERR_FAILED"));
+check("no console errors", unexpectedErrors.length === 0, unexpectedErrors.join(" | "));
 await browser.close();
 console.log(failures === 0 ? "\nALL FEATURE CHECKS PASSED" : `\n${failures} FEATURE CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
