@@ -91,15 +91,20 @@ pub async fn refresh_calendars(state: &AppState) {
                 .into_iter()
                 .enumerate()
                 .map(|(i, info)| {
+                    // Reuse the existing visibility signal for calendars that
+                    // are already in the list. Replacing it would leave the
+                    // sidebar checkbox bound to the old signal while the
+                    // refresh effect tracks the new one, so toggling would
+                    // silently do nothing.
                     let visible = old
                         .iter()
                         .find(|c| c.info.href == info.href)
-                        .map(|c| c.visible.get())
-                        .unwrap_or(true);
+                        .map(|c| c.visible)
+                        .unwrap_or_else(|| RwSignal::new(true));
                     let color = color_for(&info.href, &info.color, i);
                     CalState {
                         info,
-                        visible: RwSignal::new(visible),
+                        visible,
                         color,
                     }
                 })

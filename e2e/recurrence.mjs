@@ -35,7 +35,7 @@ await page.fill('input[autocomplete="username"]', USER);
 await page.fill('input[autocomplete="current-password"]', PASS);
 await page.click('button[type="submit"]');
 await page.waitForSelector(".month-grid", { timeout: 20000 });
-await page.waitForTimeout(1500);
+await page.waitForTimeout(3500);
 
 const chips = () => page.$$eval(".chip .chip-title", (els) => els.map((e) => e.textContent.trim()));
 const chipTime = (title) =>
@@ -45,13 +45,14 @@ const chipTime = (title) =>
 await page.click("button.new-event");
 await page.waitForSelector(".modal");
 await page.fill('.modal input[type="text"]', TITLE);
+await page.fill('.modal input[type="date"]', "2026-11-15");
 await page.selectOption('.modal select >> nth=1', "WEEKLY");
 await page.waitForTimeout(150);
 await page.selectOption('.modal select >> nth=2', "count");
 await page.fill('.modal input[type="number"] >> nth=1', "3");
 await page.click('.modal button:has-text("Save")');
 await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-await page.waitForTimeout(1500);
+await page.waitForTimeout(3500);
 check("series created with 3 occurrences", (await chips()).filter((c) => c === TITLE).length === 3);
 
 // ---------- edit the second occurrence only ----------
@@ -67,7 +68,7 @@ await page.fill('.modal input[type="time"] >> nth=0', "14:00");
 await page.fill('.modal input[type="time"] >> nth=1', "15:00");
 await page.click('.modal button:has-text("Save")');
 await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-await page.waitForTimeout(1800);
+await page.waitForTimeout(3500);
 const afterSingle = await chips();
 check(
   "single override replaces one occurrence",
@@ -88,7 +89,7 @@ await page.fill('.modal input[type="time"] >> nth=0', "12:00");
 await page.fill('.modal input[type="time"] >> nth=1', "13:00");
 await page.click('.modal button:has-text("Save")');
 await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-await page.waitForTimeout(1800);
+await page.waitForTimeout(3500);
 const afterFuture = await chips();
 check(
   "this-and-following shifts later occurrences",
@@ -106,7 +107,7 @@ await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
 await page.locator('.modal label:has-text("Apply to") select').selectOption("this");
 await page.click('.modal button:has-text("Delete")');
 await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-await page.waitForTimeout(1800);
+await page.waitForTimeout(3500);
 const afterCancel = await chips();
 check(
   "cancelled occurrence disappears",
@@ -122,7 +123,7 @@ await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
 await page.locator('.modal label:has-text("Apply to") select').selectOption("all");
 await page.click('.modal button:has-text("Delete")');
 await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-await page.waitForTimeout(1800);
+await page.waitForTimeout(3500);
 const finalChips = await chips();
 check(
   "whole series deleted",

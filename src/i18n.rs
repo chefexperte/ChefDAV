@@ -343,6 +343,9 @@ pub fn t(lang: Lang, key: &str) -> &'static str {
         (Lang::De, "bad_end") => "Ungültige Endzeit: ",
         (Lang::De, "calendar_name_placeholder") => "z. B. Arbeit",
         (Lang::De, "calendar_fallback") => "Kalender",
+        (Lang::De, "no_events_day") => "Keine Termine",
+        (Lang::De, "no_events_slot") => "Keine Termine zu dieser Zeit",
+        (Lang::De, "new_all_day_event") => "Neuer ganztägiger Termin",
 
         (_, "new_event") => "New event",
         (_, "new_task") => "New task",
@@ -472,6 +475,9 @@ pub fn t(lang: Lang, key: &str) -> &'static str {
         (_, "bad_end") => "Bad end time: ",
         (_, "calendar_name_placeholder") => "e.g. Work",
         (_, "calendar_fallback") => "Calendar",
+        (_, "no_events_day") => "No events",
+        (_, "no_events_slot") => "No events at this time",
+        (_, "new_all_day_event") => "New all-day event",
         _ => "?",
     }
 }

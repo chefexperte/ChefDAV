@@ -91,6 +91,7 @@ jobs:
           npm test
           node features.mjs
           node recurrence.mjs
+          node visibility.mjs
 
       - name: Upload failure artifacts
         if: failure()

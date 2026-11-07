@@ -12,6 +12,7 @@ use crate::components::day_popup::DayPopup;
 use crate::components::event_details::EventDetails;
 use crate::components::event_modal::EventModal;
 use crate::components::new_calendar::NewCalendarModal;
+use crate::components::slot_popup::SlotPopup;
 use crate::components::todo_modal::TodoModal;
 use crate::components::toolbar::Toolbar;
 use crate::components::week_more::WeekMoreModal;
@@ -143,6 +144,7 @@ pub fn Shell() -> impl IntoView {
                         "Escape" => {
                             st.modal.set(None);
                             st.day_popup.set(None);
+                            st.slot_popup.set(None);
                             st.calendar_action.set(None);
                             st.new_calendar.set(false);
                             st.week_more.set(None);
@@ -246,9 +248,18 @@ pub fn Shell() -> impl IntoView {
                 <ul class="cal-list">
                     <For
                         each=move || state.calendars.get()
-                        // include name/color so a rename or color change recreates
-                        // the row (the href stays the same)
-                        key=|c| (c.info.href.clone(), c.info.display_name.clone(), c.color.clone())
+                        // include the display fingerprint so a rename, color or
+                        // privilege change recreates the row; the `visible`
+                        // signal itself is preserved by refresh_calendars
+                        key=|c| {
+                            (
+                                c.info.href.clone(),
+                                c.info.display_name.clone(),
+                                c.color.clone(),
+                                c.read_only(),
+                                c.info.privileges.join(","),
+                            )
+                        }
                         children=move |c| {
                             let name = c.info.display_name.clone();
                             let color = c.color.clone();
@@ -348,6 +359,9 @@ pub fn Shell() -> impl IntoView {
         </Show>
         <Show when=move || state.day_popup.get().is_some() fallback=|| ()>
             <DayPopup />
+        </Show>
+        <Show when=move || state.slot_popup.get().is_some() fallback=|| ()>
+            <SlotPopup />
         </Show>
         <Show when=move || state.new_calendar.get() fallback=|| ()>
             <NewCalendarModal />

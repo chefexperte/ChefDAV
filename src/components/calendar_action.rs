@@ -150,7 +150,12 @@ pub fn CalendarActionModal() -> impl IntoView {
                                     </div>
                                 </label>
                                 <p class="field-hint">
-                                    {move || crate::i18n::t(state.lang.get(), "your_access")}
+                                    {move || {
+                                        format!(
+                                            "{}: ",
+                                            crate::i18n::t(state.lang.get(), "your_access")
+                                        )
+                                    }}
                                     {move || {
                                         let p = privileges.get();
                                         if p.is_empty() { crate::i18n::t(state.lang.get(), "unknown").to_string() } else { p.join(", ") }

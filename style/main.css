@@ -229,6 +229,7 @@ button {
 .field input[type="url"],
 .field input[type="date"],
 .field input[type="time"],
+.field input[type="number"],
 .field select,
 .field textarea {
   font: inherit;
@@ -239,6 +240,18 @@ button {
   padding: 9px 11px;
   outline: none;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* text-like controls share one height with the switch */
+.field input[type="text"],
+.field input[type="password"],
+.field input[type="url"],
+.field input[type="date"],
+.field input[type="time"],
+.field input[type="number"],
+.field select {
+  height: 42px;
+  box-sizing: border-box;
 }
 
 .field input:focus,
@@ -259,25 +272,65 @@ button {
 }
 
 .field-check {
-  flex-direction: row;
-  align-items: center;
-  gap: 7px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
   margin-bottom: 13px;
   cursor: pointer;
+  min-width: 86px;
 }
 
-.field-check span {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--ink);
-  text-transform: none;
-  letter-spacing: 0;
+.field-check > span:first-child {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.field-check input {
-  accent-color: var(--accent);
-  width: 16px;
-  height: 16px;
+.switch {
+  display: flex;
+  align-items: center;
+  height: 42px;
+}
+
+.switch input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--line);
+  position: relative;
+  cursor: pointer;
+  margin: 0;
+  transition: background 0.15s ease;
+  outline: none;
+}
+
+.switch input::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fffdf8;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.switch input:checked {
+  background: var(--accent);
+}
+
+.switch input:checked::after {
+  transform: translateX(20px);
+}
+
+.switch input:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .hidden {
@@ -319,6 +372,7 @@ button {
   position: sticky;
   top: 0;
   height: 100vh;
+  min-width: 0;
 }
 
 .brand {
@@ -441,6 +495,7 @@ button {
   padding: 22px 26px 40px;
   max-width: 1200px;
   width: 100%;
+  min-width: 0;
   margin: 0 auto;
 }
 
@@ -520,6 +575,11 @@ button {
 
 /* ---------- month grid ---------- */
 
+.month-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -545,13 +605,16 @@ button {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
+  grid-auto-rows: 124px;
 }
 
 .day {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  min-height: 108px;
+  height: 124px;
+  min-height: 0;
+  overflow: hidden;
   padding: 7px 8px;
   cursor: pointer;
   display: flex;
@@ -597,13 +660,23 @@ button {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-height: 0;
   overflow: hidden;
+}
+
+.more-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  padding-left: 4px;
 }
 
 .chip {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
   background: color-mix(in srgb, var(--chip, var(--accent)) 14%, var(--card));
   border-left: 3px solid var(--chip, var(--accent));
   border-radius: 6px;
@@ -626,6 +699,8 @@ button {
 }
 
 .chip-title {
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1047,6 +1122,101 @@ button {
 
 .details-notes {
   white-space: pre-wrap;
+}
+
+/* ---------- popovers (day / time slot) ---------- */
+
+.popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+
+.popover {
+  position: fixed;
+  z-index: 61;
+  width: min(340px, calc(100vw - 16px));
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+
+.popover-title {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.popover-events {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.popover-event {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.popover-event:hover {
+  background: var(--paper);
+}
+
+.popover-time {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-faint);
+  min-width: 48px;
+  font-variant-numeric: tabular-nums;
+}
+
+.popover-event-title {
+  min-width: 0;
+  flex: 1;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popover-empty {
+  margin: 0 0 10px;
+  color: var(--ink-faint);
+  font-size: 12.5px;
+}
+
+.popover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-top: 1px dashed var(--line);
+  padding-top: 10px;
+}
+
+.popover-actions .popup-action {
+  flex: 1 1 auto;
+  justify-content: center;
+  padding: 7px 8px;
 }
 
 /* ---------- search ---------- */
@@ -1644,13 +1814,9 @@ button {
     padding: 14px 12px 30px;
   }
 
-  .month-grid,
-  .weekdays {
+  .month-scroll .month-grid,
+  .month-scroll .weekdays {
     min-width: 620px;
-  }
-
-  .month-grid {
-    overflow-x: auto;
   }
 
   .week-view {
@@ -1661,10 +1827,6 @@ button {
   .week-allday,
   .week-timeline {
     min-width: 620px;
-  }
-
-  .day {
-    min-height: 74px;
   }
 
   .chip-title {

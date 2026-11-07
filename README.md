@@ -39,11 +39,14 @@ modern look, Rust reliability.
   display names, Apple colors and per-calendar privileges.
 - **Five views**: Month (grid), Week (7-day timeline), Day (1-day timeline),
   Agenda (30-day list), Tasks.
-- **Month view**: Monday-first grid, today highlight, multi-day events on every
-  day they span, drag & drop between days (non-recurring events).
-- **Week/day timeline**: all-day row (click to create an all-day event),
-  click any time slot to create an event at that time, overlapping events are
-  capped at two columns with a readable "+N more" popup.
+- **Month view**: Monday-first grid, today highlight, **equal-height cells**
+  (max 3 chips + "+N more"), multi-day events on every day they span, drag &
+  drop between days (non-recurring events). Clicking a day opens a **popover
+  with all of that day's events** (click → details) plus create actions.
+- **Week/day timeline**: all-day row and time-slot **popovers** listing the
+  events there (click → details) with a prefilled "New event" action;
+  overlapping events are capped at two columns with a readable "+N more"
+  popup.
 - **Day click popup**: choose "New event", "New task" or "Go to day" instead
   of jumping straight into the editor.
 - **Event details first**: clicking an event opens a read-only details card
@@ -64,9 +67,10 @@ modern look, Rust reliability.
   fetch fallback; **offline outbox** retries queued writes when back online.
 - **Local cache** in IndexedDB for instant paint (calendars, events, tasks).
 - **Polish**: mint design tokens + dark theme, **full English/German UI**
-  (labels, dates, month/weekday names, recurrence descriptions), keyboard
-  shortcuts (`n t m w d a k / arrows Esc`), responsive/mobile layout, and a
-  changelog on the login screen.
+  (labels, dates, month/weekday names, recurrence descriptions), switch-style
+  toggles matching the input height, keyboard shortcuts
+  (`n t m w d a k / arrows Esc`), responsive/mobile layout, and a changelog on
+  the login screen.
 - **Reminders**: page notifications plus a **service worker** that schedules
   upcoming reminders; true delivery while the browser is fully closed would
   require Web Push and a push server.
@@ -75,9 +79,9 @@ modern look, Rust reliability.
 - **Dev stack**: Radicale + Caddy (CORS) via Docker **or rootless Podman**;
   optional glauth LDAP fixture (verified: LDAP login + e2e).
 - **Tests/CI**: 58 native unit tests for the CalDAV/ICS/recurrence/crypto core,
-  three committed Playwright suites (`smoke.mjs`, `features.mjs`,
-  `recurrence.mjs`), and a GitHub Actions workflow (unit tests + WASM build +
-  e2e).
+  four committed Playwright suites (`smoke.mjs`, `features.mjs`,
+  `recurrence.mjs`, `visibility.mjs`), a screenshot/layout/translation audit
+  (`audit.mjs`), and a GitHub Actions workflow (unit tests + WASM build + e2e).
 
 ### 🚧 Intentionally deferred
 
@@ -106,6 +110,9 @@ dialog. Everything else in the list above is usable day-to-day.
 - [x] **Later**: offline write queue, reminders, i18n (main UI), themes,
       stable instance, CI.
 - [x] **Sharing info UI**, **service-worker reminders**, **full EN/DE i18n**.
+- [x] **Polish round**: equal-sized month cells + "+N more", day and
+      time-slot popovers, switch-style toggles, mobile overflow fix,
+      localized dates/modals, screenshots + layout/translation audit.
 - [ ] **Intentionally deferred (user request)**: encrypted credentials at rest.
 
 ## Quickstart (local dev)

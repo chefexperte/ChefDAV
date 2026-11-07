@@ -11,7 +11,7 @@ use leptos::task::spawn_local;
 
 use crate::api;
 use crate::browser;
-use crate::state::{AppState, ModalState};
+use crate::state::{AppState, DayPopupState, ModalState};
 
 /// One event chip inside a day cell.
 fn chip(
@@ -180,6 +180,7 @@ pub fn MonthView() -> impl IntoView {
         <Show when=move || state.error.get().is_some() fallback=|| ()>
             <p class="banner-error">{move || state.error.get().unwrap_or_default()}</p>
         </Show>
+        <div class="month-scroll">
         <div class="weekdays">
             <For
                 each=move || weekday_labels.get()
@@ -201,27 +202,48 @@ pub fn MonthView() -> impl IntoView {
                                     let anchor = state.anchor.get();
                                     let in_month = day.year() == anchor.year() && day.month() == anchor.month();
                                     let is_today = day == today_d;
-                                    let day_events = move || {
+                                    let day_items = Memo::new(move |_| {
                                         by_day.get().get(&day).cloned().unwrap_or_default()
-                                    };
+                                    });
+                                    let shown_items = Memo::new(move |_| {
+                                        day_items.get().into_iter().take(3).collect::<Vec<_>>()
+                                    });
+                                    let more_count = Memo::new(move |_| {
+                                        day_items.get().len().saturating_sub(3)
+                                    });
                                     view! {
                                         <div
                                             class="day"
                                             class:out=!in_month
                                             class:today=is_today
-                                            on:click=move |_| state.day_popup.set(Some(day))
+                                            on:click=move |ev| {
+                                                state.day_popup.set(Some(DayPopupState {
+                                                    date: day,
+                                                    x: ev.client_x() as f64,
+                                                    y: ev.client_y() as f64,
+                                                }))
+                                            }
                                             on:dragover=move |ev| ev.prevent_default()
                                             on:drop=move |ev| on_drop(ev, day)
                                         >
                                             <span class="day-num">{day.day()}</span>
                                             <div class="day-events">
                                                 <For
-                                                    each=day_events
+                                                    each=move || shown_items.get()
                                                     key=|(i, o, _, fp)| (*i, o.start, fp.clone())
                                                     children=move |(idx, occ, all_day, _)| {
                                                         chip(state, tz, idx, occ, all_day)
                                                     }
                                                 />
+                                                <Show when=move || (more_count.get() > 0) fallback=|| ()>
+                                                    <span class="more-count">
+                                                        {move || format!(
+                                                            "+{} {}",
+                                                            more_count.get(),
+                                                            crate::i18n::t(state.lang.get(), "more"),
+                                                        )}
+                                                    </span>
+                                                </Show>
                                             </div>
                                         </div>
                                     }
@@ -231,6 +253,7 @@ pub fn MonthView() -> impl IntoView {
                     }
                 }
             />
+        </div>
         </div>
     }
 }

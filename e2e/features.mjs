@@ -43,8 +43,9 @@ async function openNewEventFromSidebar() {
   await page.waitForSelector(".modal");
 }
 
-async function fillEvent(title, start = "12:00", end = "13:00") {
+async function fillEvent(title, start = "12:00", end = "13:00", date = "2026-11-20") {
   await page.fill('.modal input[type="text"]', title);
+  await page.fill('.modal input[type="date"]', date);
   await page.fill('.modal input[type="time"] >> nth=0', start);
   await page.fill('.modal input[type="time"] >> nth=1', end);
 }
@@ -72,10 +73,10 @@ check("reminder service worker registered", swCount > 0, `${swCount} registratio
 
 // ---------- day click popup ----------
 const dayCells = page.locator(".day");
-await dayCells.nth(10).click();
-await page.waitForSelector(".modal-tiny", { timeout: 10000 });
-check("day click opens popup", (await page.locator(".popup-action").count()) >= 2);
-await page.click('.popup-action:has-text("New event")');
+await dayCells.nth(10).locator(".day-num").click();
+await page.waitForSelector(".popover", { timeout: 10000 });
+check("day click opens popover", (await page.locator(".popover .popup-action").count()) >= 2);
+await page.click('.popover .popup-action:has-text("New event")');
 await page.waitForSelector(".modal");
 check("popup opens event editor", await page.locator(".modal h3").textContent() === "New event");
 await page.click('.modal button:has-text("Cancel")');
@@ -87,6 +88,8 @@ await page.waitForSelector(".week-view", { timeout: 10000 });
 await page.waitForTimeout(800);
 const col = page.locator(".day-column").nth(2);
 await col.click({ position: { x: 20, y: 14 * 42 + 5 } });
+await page.waitForSelector(".popover", { timeout: 10000 });
+await page.click('.popover .popup-action:has-text("New event")');
 await page.waitForSelector(".modal", { timeout: 10000 });
 const startVal = await page.locator('.modal input[type="time"]').first().inputValue();
 check("week slot click prefills time", startVal.startsWith("14:"), startVal);
@@ -95,6 +98,8 @@ await page.waitForSelector(".modal", { state: "detached" });
 
 // ---------- all-day row click ----------
 await page.locator(".allday-cell").nth(2).click();
+await page.waitForSelector(".popover", { timeout: 10000 });
+await page.click('.popover .popup-action:has-text("New all-day event")');
 await page.waitForSelector(".modal", { timeout: 10000 });
 const allDayChecked = await page.locator('.modal input[type="checkbox"]').first().isChecked();
 check("all-day row click creates all-day event", allDayChecked);
@@ -107,7 +112,7 @@ await page.waitForSelector(".month-grid");
 await page.waitForTimeout(800);
 const recTitle = `Recurring ${run}`;
 await openNewEventFromSidebar();
-await fillEvent(recTitle);
+await fillEvent(recTitle, "12:00", "13:00", "2026-11-15");
 await page.selectOption('.modal select >> nth=1', "WEEKLY");
 await page.waitForTimeout(200);
 await page.fill('.modal input[type="number"] >> nth=0', "1");
@@ -174,7 +179,7 @@ await page.waitForTimeout(800);
 // ---------- multi-select + bulk delete ----------
 const selTitle = `Select ${run}`;
 await openNewEventFromSidebar();
-await fillEvent(selTitle);
+await fillEvent(selTitle, "12:00", "13:00", "2026-11-23");
 await saveModal();
 const selChip = page.locator(".chip", { hasText: selTitle }).first();
 await selChip.click({ modifiers: ["Control"] });
@@ -270,7 +275,7 @@ await page.route("**/*.ics", (route) => {
   else route.continue();
 });
 await openNewEventFromSidebar();
-await fillEvent(offlineTitle);
+await fillEvent(offlineTitle, "12:00", "13:00", "2026-11-25");
 await page.click('.modal button:has-text("Save")');
 await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
 await page.waitForTimeout(1500);

@@ -66,6 +66,22 @@ pub struct SearchHit {
     pub href: String,
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct DayPopupState {
+    pub date: NaiveDate,
+    pub x: f64,
+    pub y: f64,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct SlotPopupState {
+    pub date: NaiveDate,
+    pub minutes: u32,
+    pub all_day: bool,
+    pub x: f64,
+    pub y: f64,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ModalState {
     New { date: NaiveDate },
@@ -182,9 +198,10 @@ pub struct AppState {
     pub loading: RwSignal<bool>,
     pub error: RwSignal<Option<String>>,
     pub modal: RwSignal<Option<ModalState>>,
-    /// Day cell popup: choose "New event" / "New task" instead of opening the
-    /// editor immediately.
-    pub day_popup: RwSignal<Option<NaiveDate>>,
+    /// Day cell popover: the day's events + create actions.
+    pub day_popup: RwSignal<Option<DayPopupState>>,
+    /// Week/day time-slot popover: events at that time + create action.
+    pub slot_popup: RwSignal<Option<SlotPopupState>>,
     /// Prefilled start time for a new event (hour, minute) from a week/day
     /// timeline click.
     pub new_event_time: RwSignal<Option<(u32, u32)>>,
@@ -223,6 +240,7 @@ impl AppState {
             error: RwSignal::new(None),
             modal: RwSignal::new(None),
             day_popup: RwSignal::new(None),
+            slot_popup: RwSignal::new(None),
             new_event_time: RwSignal::new(None),
             new_event_all_day: RwSignal::new(false),
             week_more: RwSignal::new(None),

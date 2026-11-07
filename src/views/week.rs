@@ -10,7 +10,7 @@ use chrono::{Datelike, Duration, NaiveDate, Timelike};
 use leptos::prelude::*;
 
 use crate::browser;
-use crate::state::{AppState, ModalState};
+use crate::state::{AppState, ModalState, SlotPopupState};
 
 const HOUR_HEIGHT: f64 = 42.0; // px per hour in the timeline
 const MAX_COLUMNS: usize = 2;
@@ -157,10 +157,14 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                         view! {
                             <div
                                 class="allday-cell"
-                                on:click=move |_| {
-                                    state.new_event_all_day.set(true);
-                                    state.new_event_time.set(None);
-                                    state.modal.set(Some(ModalState::New { date: d }));
+                                on:click=move |ev| {
+                                    state.slot_popup.set(Some(SlotPopupState {
+                                        date: d,
+                                        minutes: 0,
+                                        all_day: true,
+                                        x: ev.client_x() as f64,
+                                        y: ev.client_y() as f64,
+                                    }));
                                 }
                             >
                                 <For
@@ -249,10 +253,14 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                         let create_at = move |ev: leptos::ev::MouseEvent| {
                             let y = ev.offset_y() as f64;
                             let minutes = ((y / HOUR_HEIGHT) * 60.0 / 30.0).round() as i64 * 30;
-                            let minutes = minutes.clamp(0, 23 * 60 + 30);
-                            state.new_event_all_day.set(false);
-                            state.new_event_time.set(Some(((minutes / 60) as u32, (minutes % 60) as u32)));
-                            state.modal.set(Some(ModalState::New { date: d }));
+                            let minutes = minutes.clamp(0, 23 * 60 + 30) as u32;
+                            state.slot_popup.set(Some(SlotPopupState {
+                                date: d,
+                                minutes,
+                                all_day: false,
+                                x: ev.client_x() as f64,
+                                y: ev.client_y() as f64,
+                            }));
                         };
                         view! {
                             <div

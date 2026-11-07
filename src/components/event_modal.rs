@@ -225,6 +225,11 @@ pub fn EventModal() -> impl IntoView {
         ),
     };
     let date_parsed = NaiveDate::parse_from_str(&date0, "%Y-%m-%d").ok();
+    let rule_has_byday = rrule0
+        .as_deref()
+        .and_then(parse_simple_rule)
+        .map(|r| !r.byday.is_empty())
+        .unwrap_or(false);
     let byday0 = if byday0.is_empty() {
         date_parsed.map(|d| vec![weekday_code(d)]).unwrap_or_default()
     } else {
@@ -245,6 +250,9 @@ pub fn EventModal() -> impl IntoView {
     let freq = RwSignal::new(freq0);
     let interval = RwSignal::new(interval0);
     let byday = RwSignal::new(byday0);
+    // Once the user (or an existing rule) chose weekdays, changing the date
+    // must not silently rewrite BYDAY.
+    let byday_touched = RwSignal::new(rule_has_byday);
     let end_mode = RwSignal::new(end_mode0.to_string());
     let count = RwSignal::new(count0);
     let until = RwSignal::new(until0);
@@ -499,7 +507,15 @@ pub fn EventModal() -> impl IntoView {
                             <span>{move || crate::i18n::t(state.lang.get(), "date")}</span>
                             <input type="date" required
                                 prop:value=move || date_s.get()
-                                on:input=move |ev| date_s.set(event_target_value(&ev)) />
+                                on:input=move |ev| {
+                                    let value = event_target_value(&ev);
+                                    date_s.set(value.clone());
+                                    if !byday_touched.get() {
+                                        if let Ok(d) = NaiveDate::parse_from_str(&value, "%Y-%m-%d") {
+                                            byday.set(vec![weekday_code(d)]);
+                                        }
+                                    }
+                                } />
                         </label>
                         <label class="field field-time" class:hidden=move || all_day.get()>
                             <span>{move || crate::i18n::t(state.lang.get(), "start")}</span>
@@ -514,10 +530,12 @@ pub fn EventModal() -> impl IntoView {
                                 on:input=move |ev| end_s.set(event_target_value(&ev)) />
                         </label>
                         <label class="field field-check">
-                            <input type="checkbox"
-                                prop:checked=move || all_day.get()
-                                on:change=move |ev| all_day.set(event_target_checked(&ev)) />
                             <span>{move || crate::i18n::t(state.lang.get(), "all_day")}</span>
+                            <span class="switch">
+                                <input type="checkbox"
+                                    prop:checked=move || all_day.get()
+                                    on:change=move |ev| all_day.set(event_target_checked(&ev)) />
+                            </span>
                         </label>
                     </div>
                     <label class="field">
@@ -630,7 +648,10 @@ pub fn EventModal() -> impl IntoView {
                                                     type="button"
                                                     class="weekday-btn"
                                                     class:active=move || byday.get().iter().any(|d| d == day)
-                                                    on:click=move |_| toggle_day(day)
+                                                    on:click=move |_| {
+                                                        byday_touched.set(true);
+                                                        toggle_day(day);
+                                                    }
                                                 >
                                                     {letter}
                                                 </button>

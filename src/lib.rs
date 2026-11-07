@@ -9,6 +9,7 @@ pub mod app;
 pub mod browser;
 pub mod components;
 pub mod config;
+pub mod day_events;
 pub mod i18n;
 pub mod reminders;
 pub mod state;

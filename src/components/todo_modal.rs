@@ -178,10 +178,12 @@ pub fn TodoModal() -> impl IntoView {
                                 } />
                         </label>
                         <label class="field field-check">
-                            <input type="checkbox"
-                                prop:checked=move || completed.get()
-                                on:change=move |ev| completed.set(event_target_checked(&ev)) />
                             <span>{move || crate::i18n::t(state.lang.get(), "done")}</span>
+                            <span class="switch">
+                                <input type="checkbox"
+                                    prop:checked=move || completed.get()
+                                    on:change=move |ev| completed.set(event_target_checked(&ev)) />
+                            </span>
                         </label>
                     </div>
                     <label class="field">

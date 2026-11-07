@@ -102,6 +102,7 @@ await page.waitForSelector(".month-grid", { timeout: 10000 });
 await page.click("button.new-event");
 await page.waitForSelector(".modal");
 await page.fill('.modal input[type="text"]', EVENT);
+  await page.fill('.modal input[type="date"]', "2026-11-22");
 await page.fill('.modal input[type="time"] >> nth=0', "12:30");
 await page.fill('.modal input[type="time"] >> nth=1', "13:30");
 await page.click('.modal button:has-text("Save")');
