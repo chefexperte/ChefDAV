@@ -8,7 +8,7 @@ use leptos::task::spawn_local;
 
 use crate::api;
 use crate::browser;
-use crate::state::{AppState, ModalState, ViewMode};
+use crate::state::{AppState, ViewMode};
 
 fn shift_month(date: NaiveDate, delta: i32) -> NaiveDate {
     let total = date.year() * 12 + (date.month() as i32 - 1) + delta;
@@ -199,11 +199,7 @@ pub fn Toolbar() -> impl IntoView {
                                             state.search_open.set(false);
                                             let idx = state.events.get().iter().position(|e| e.href == href);
                                             if let Some(idx) = idx {
-                                                state.modal.set(Some(ModalState::Details {
-                                                    index: idx,
-                                                    occurrence: None,
-                                                    display_start: None,
-                                                }));
+                                                state.open_details(idx, None, None);
                                             }
                                         }
                                     >

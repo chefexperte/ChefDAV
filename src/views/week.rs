@@ -10,7 +10,7 @@ use chrono::{Datelike, Duration, NaiveDate, Timelike};
 use leptos::prelude::*;
 
 use crate::browser;
-use crate::state::{AppState, ModalState, SlotPopupState};
+use crate::state::{AppState, SlotPopupState};
 
 const HOUR_HEIGHT: f64 = 42.0; // px per hour in the timeline
 const MAX_COLUMNS: usize = 2;
@@ -199,7 +199,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                                     if e.ctrl_key() || e.meta_key() {
                                                         toggle_select(&href);
                                                     } else {
-                                                        state.modal.set(Some(ModalState::Details { index: idx, occurrence, display_start }));
+                                                        state.open_details(idx, occurrence, display_start);
                                                     }
                                                 }
                                             >
@@ -325,7 +325,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                                     if e.ctrl_key() || e.meta_key() {
                                                         toggle_select(&href);
                                                     } else {
-                                                        state.modal.set(Some(ModalState::Details { index: idx, occurrence, display_start }));
+                                                        state.open_details(idx, occurrence, display_start);
                                                     }
                                                 }
                                             >

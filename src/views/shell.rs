@@ -1,10 +1,12 @@
 //! App shell: sidebar with calendar list + logout, shared toolbar, routed
 //! view, global modals, keyboard shortcuts and online/offline handling.
 
+use std::rc::Rc;
+
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::components::Outlet;
-use leptos_router::hooks::use_navigate;
+use leptos_router::hooks::{use_location, use_navigate};
 
 use crate::api;
 use crate::components::calendar_action::CalendarActionModal;
@@ -17,6 +19,7 @@ use crate::components::slot_popup::SlotPopup;
 use crate::components::todo_modal::TodoModal;
 use crate::components::toolbar::Toolbar;
 use crate::components::week_more::WeekMoreModal;
+use crate::links;
 use crate::state::{AppState, CalendarAction, ModalState};
 use crate::store;
 
@@ -24,6 +27,146 @@ use crate::store;
 pub fn Shell() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let navigate = use_navigate();
+
+    // Give AppState access to the router so any view can push a resource URL
+    // into the address bar (see `AppState::open_details` / `open_todo`).
+    {
+        let nav = navigate.clone();
+        state
+            .navigator
+            .set(Some(Rc::new(move |path, opts| nav(path, opts))));
+    }
+
+    // Deep links: keep the address bar and the resource modal in sync.
+    // - a resource URL that is not open yet (pasted link, fresh load,
+    //   back/forward) is resolved and opened;
+    // - leaving the resource URL (back button) closes the modal again.
+    {
+        let location = use_location();
+        Effect::new(move |_| {
+            let path = location.pathname.get();
+            let search = location.search.get();
+            let link_active = state.link_active.get();
+            // Track data loads so resolution re-runs once events/todos arrive.
+            let loading = state.loading.get();
+            let _ = state.events.get();
+            let _ = state.todos.get();
+            let _ = state.calendars.get();
+
+            if let Some((kind, cal_p, id)) = links::parse_path(&path) {
+                if link_active {
+                    // Already synced; closing the modal moves the URL (below).
+                    return;
+                }
+                match kind {
+                    links::ResourceKind::Event => {
+                        let occ = links::occ_from_search(&search, &state.tz);
+                        if let Some((index, occurrence, display_start)) =
+                            links::resolve_event(&state, &cal_p, &id, occ)
+                        {
+                            state.modal.set(Some(ModalState::Details {
+                                index,
+                                occurrence,
+                                display_start,
+                            }));
+                            state.link_active.set(true);
+                        } else if state.session.get().is_some()
+                            && !state.calendars.get().is_empty()
+                            && !loading
+                            && state.link_fetching.get() != path
+                        {
+                            // Not in the loaded set (hidden calendar or not yet
+                            // synced): fetch the resource directly, re-resolve.
+                            state.link_fetching.set(path.clone());
+                            let st = state;
+                            let cal_p = cal_p.clone();
+                            let id = id.clone();
+                            spawn_local(async move {
+                                if let Some(cal) = links::find_calendar(&st, &cal_p) {
+                                    if let Some(ev) =
+                                        api::fetch_event_by_uid(&st, &cal.info, &id).await
+                                    {
+                                        st.events.update(|v| {
+                                            if !v.iter().any(|e| e.href == ev.href) {
+                                                v.push(ev);
+                                            }
+                                        });
+                                    }
+                                }
+                                let occ = links::occ_from_search(&search, &st.tz);
+                                if let Some((index, occurrence, display_start)) =
+                                    links::resolve_event(&st, &cal_p, &id, occ)
+                                {
+                                    st.modal.set(Some(ModalState::Details {
+                                        index,
+                                        occurrence,
+                                        display_start,
+                                    }));
+                                    st.link_active.set(true);
+                                } else {
+                                    st.error.set(Some(
+                                        crate::i18n::t(st.lang.get(), "event_not_found")
+                                            .to_string(),
+                                    ));
+                                    st.navigate_to("/", true);
+                                }
+                            });
+                        }
+                    }
+                    links::ResourceKind::Task => {
+                        if let Some(index) = links::resolve_todo(&state, &cal_p, &id) {
+                            state.modal.set(Some(ModalState::EditTodo { index }));
+                            state.link_active.set(true);
+                        } else if state.session.get().is_some()
+                            && !state.calendars.get().is_empty()
+                            && !loading
+                            && state.link_fetching.get() != path
+                        {
+                            state.link_fetching.set(path.clone());
+                            let st = state;
+                            let cal_p = cal_p.clone();
+                            let id = id.clone();
+                            spawn_local(async move {
+                                if let Some(cal) = links::find_calendar(&st, &cal_p) {
+                                    if let Some(todo) =
+                                        api::fetch_todo_by_uid(&st, &cal.info, &id).await
+                                    {
+                                        st.todos.update(|v| {
+                                            if !v.iter().any(|t| t.href == todo.href) {
+                                                v.push(todo);
+                                            }
+                                        });
+                                    }
+                                }
+                                if let Some(index) = links::resolve_todo(&st, &cal_p, &id) {
+                                    st.modal.set(Some(ModalState::EditTodo { index }));
+                                    st.link_active.set(true);
+                                } else {
+                                    st.error.set(Some(
+                                        crate::i18n::t(st.lang.get(), "task_not_found")
+                                            .to_string(),
+                                    ));
+                                    st.navigate_to("/", true);
+                                }
+                            });
+                        }
+                    }
+                }
+            } else {
+                state.leave_resource_url();
+            }
+        });
+
+        // A linked modal was closed from the UI while its URL is still in the
+        // address bar: return the address bar to the plain view.
+        Effect::new(move |_| {
+            let _ = state.modal.get();
+            let path = location.pathname.get();
+            if links::parse_path(&path).is_some() {
+                state.close_linked_modal_url();
+            }
+        });
+    }
 
     // When a session appears: paint the cache instantly, flush offline writes,
     // then sync with the server.

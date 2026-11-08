@@ -11,7 +11,7 @@ use leptos::task::spawn_local;
 
 use crate::api;
 use crate::browser;
-use crate::state::{AppState, DayPopupState, ModalState};
+use crate::state::{AppState, DayPopupState};
 
 /// One event chip inside a day cell.
 fn chip(
@@ -78,11 +78,9 @@ fn chip(
                         }
                     });
                 } else {
-                    state.modal.set(Some(ModalState::Details {
-                        index: idx,
-                        occurrence: if recurring { occ.recurrence_id } else { None },
-                        display_start: if recurring { Some(occ.start) } else { None },
-                    }));
+                    let occurrence = if recurring { occ.recurrence_id } else { None };
+                    let display_start = if recurring { Some(occ.start) } else { None };
+                    state.open_details(idx, occurrence, display_start);
                 }
             }
         >

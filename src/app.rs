@@ -100,6 +100,11 @@ pub fn App() -> impl IntoView {
                         <Route path=path!("/login") view=LoginPage />
                         <ParentRoute path=path!("/") view=Shell>
                             <Route path=path!("") view=CalendarView />
+                            // Resource deep links render the calendar view
+                            // underneath; the Shell opens the resource modal
+                            // from the URL.
+                            <Route path=path!("event/:cal/:uid") view=CalendarView />
+                            <Route path=path!("task/:cal/:uid") view=CalendarView />
                         </ParentRoute>
                     </Routes>
                 </Show>

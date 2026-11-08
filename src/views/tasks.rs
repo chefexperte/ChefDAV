@@ -115,7 +115,7 @@ pub fn TasksView() -> impl IntoView {
                                                     <button
                                                         class="task-title"
                                                         on:click=move |_| {
-                                                            state.modal.set(Some(ModalState::EditTodo { index: idx }))
+                                                            state.open_todo(idx)
                                                         }
                                                     >
                                                         {summary}

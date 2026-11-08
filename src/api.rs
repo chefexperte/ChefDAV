@@ -325,6 +325,80 @@ pub async fn refresh_todos(state: &AppState) {
     store::todos_cache_save(&cached).await;
 }
 
+/// Fetch a single event by UID from a calendar. Used for resource deep links
+/// when the event is not in the loaded set (e.g. its calendar is hidden).
+pub async fn fetch_event_by_uid(
+    state: &AppState,
+    cal: &CalendarInfo,
+    uid: &str,
+) -> Option<DisplayEvent> {
+    let session = state.session.get()?;
+    let url = Url::parse(&cal.href).ok()?;
+    let c = client(&session);
+    let evs = c.query_all_events(&url, &state.tz).await.ok()?;
+    let mut by_href: HashMap<String, (Option<String>, Vec<VEvent>)> = HashMap::new();
+    for e in evs {
+        if e.event.uid != uid {
+            continue;
+        }
+        let entry = by_href
+            .entry(e.href.clone())
+            .or_insert((e.etag.clone(), Vec::new()));
+        if entry.0.is_none() {
+            entry.0 = e.etag;
+        }
+        entry.1.push(e.event);
+    }
+    let (href, (etag, events)) = by_href.into_iter().next()?;
+    let mut master = None;
+    let mut overrides = Vec::new();
+    for ev in events {
+        if ev.is_override() {
+            overrides.push(ev);
+        } else {
+            master = Some(ev);
+        }
+    }
+    let color = state
+        .calendar_for(&cal.href)
+        .map(|c| c.color)
+        .unwrap_or_else(|| color_for(&cal.href, &cal.color, 0));
+    Some(DisplayEvent {
+        href,
+        etag,
+        event: master?,
+        overrides,
+        calendar_href: cal.href.clone(),
+        color,
+        read_only: cal.read_only,
+    })
+}
+
+/// Fetch a single task by UID from a calendar (deep-link fallback).
+pub async fn fetch_todo_by_uid(
+    state: &AppState,
+    cal: &CalendarInfo,
+    uid: &str,
+) -> Option<TodoItem> {
+    let session = state.session.get()?;
+    let url = Url::parse(&cal.href).ok()?;
+    let c = client(&session);
+    let todos = c.query_todos(&url, &state.tz).await.ok()?;
+    let t = todos.into_iter().find(|t| t.todo.uid == uid)?;
+    let color = state
+        .calendar_for(&cal.href)
+        .map(|c| c.color)
+        .unwrap_or_else(|| color_for(&cal.href, &cal.color, 0));
+    Some(TodoItem {
+        href: t.href,
+        etag: t.etag,
+        todo: t.todo,
+        calendar_href: cal.href.clone(),
+        color,
+        read_only: cal.read_only,
+    })
+}
+
 /// Client-side search over the cached (full) event set.
 pub fn search(state: &AppState, query: &str) {
     let q = query.trim().to_lowercase();

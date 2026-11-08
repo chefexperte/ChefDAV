@@ -2,7 +2,7 @@
 
 use leptos::prelude::*;
 
-use crate::state::{AppState, ModalState};
+use crate::state::AppState;
 
 #[component]
 pub fn WeekMoreModal() -> impl IntoView {
@@ -41,11 +41,7 @@ pub fn WeekMoreModal() -> impl IntoView {
                                         style=format!("--chip:{color}")
                                         on:click=move |_| {
                                             state.week_more.set(None);
-                                            state.modal.set(Some(ModalState::Details {
-                                                index: idx,
-                                                occurrence: None,
-                                                display_start: None,
-                                            }));
+                                            state.open_details(idx, None, None);
                                         }
                                     >
                                         <span class="agenda-time">{time}</span>

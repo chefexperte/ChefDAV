@@ -11,6 +11,7 @@ pub mod components;
 pub mod config;
 pub mod day_events;
 pub mod i18n;
+pub mod links;
 pub mod location;
 pub mod state;
 pub mod store;

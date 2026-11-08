@@ -3,6 +3,16 @@
 All notable, user-visible changes to ChefDAV. The login screen shows the
 latest section of this file (baked into each build).
 
+## Unreleased
+
+- **Deep links for every resource**: opening an event or task pushes its own
+  URL (`/event/<calendar>/<uid>`, `/task/<calendar>/<uid>`, plus `?occ=…` for
+  one occurrence of a recurring event) into the address bar, and the details
+  card has a **copy-link** button. Opening such a link — including on a fresh
+  load — opens that resource directly (the calendar is found by name, hidden
+  calendars are fetched on demand).
+- The **Agenda view is now called "List"** (EN) / **"Liste"** (DE).
+
 ## 0.1.1 — 2026-11-08
 
 - README now warns prominently that the project is **written entirely by AI**.

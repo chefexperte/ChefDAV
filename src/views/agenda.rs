@@ -9,7 +9,7 @@ use chrono::{Datelike, NaiveDate};
 use leptos::prelude::*;
 
 use crate::browser;
-use crate::state::{AppState, ModalState};
+use crate::state::AppState;
 
 #[component]
 pub fn AgendaView() -> impl IntoView {
@@ -136,11 +136,7 @@ pub fn AgendaView() -> impl IntoView {
                                                                     }
                                                                 });
                                                             } else {
-                                                                state.modal.set(Some(ModalState::Details {
-                                                                    index: idx,
-                                                                    occurrence,
-                                                                    display_start,
-                                                                }))
+                                                                state.open_details(idx, occurrence, display_start)
                                                             }
                                                         }
                                                     >

@@ -91,11 +91,7 @@ pub fn SlotPopup() -> impl IntoView {
                                             style=format!("--chip:{color}")
                                             on:click=move |_| {
                                                 state.slot_popup.set(None);
-                                                state.modal.set(Some(ModalState::Details {
-                                                    index: idx,
-                                                    occurrence: occ.recurrence_id,
-                                                    display_start: Some(occ.start),
-                                                }));
+                                                state.open_details(idx, occ.recurrence_id, Some(occ.start));
                                             }
                                         >
                                             <span class="popover-time">{time}</span>

@@ -53,6 +53,25 @@ page.on("console", (m) => {
 
 const shot = (name, opts = {}) => page.screenshot({ path: `${OUT}/${name}.png`, ...opts });
 
+// Wait until every CSS animation/transition inside the overlay has finished,
+// so modal screenshots don't catch the popup mid-"pop" (half visible).
+const settleModal = async (selector = ".modal-overlay") => {
+  await page
+    .waitForFunction(
+      (sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return false;
+        return el
+          .getAnimations({ subtree: true })
+          .every((a) => a.playState === "finished" || a.playState === "idle");
+      },
+      selector,
+      { timeout: 5000 }
+    )
+    .catch(() => {});
+  await page.waitForTimeout(60);
+};
+
 // Bounding boxes of the shortest timed event and its title, used to verify
 // that 15-minute events still show readable text.
 async function shortestEvent() {
@@ -152,7 +171,7 @@ check(
   JSON.stringify(dayShort)
 );
 
-await page.click('.segmented-btn:has-text("Agenda")');
+await page.click('.segmented-btn:has-text("List")');
 await page.waitForSelector(".agenda", { timeout: 10000 });
 await page.waitForTimeout(800);
 await shot("agenda-en");
@@ -178,9 +197,11 @@ await page.waitForSelector(".month-grid", { timeout: 10000 });
 await page.waitForTimeout(800);
 await page.locator(".chip", { hasText: "Lunch with Sam" }).first().click();
 await page.waitForSelector(".details-modal", { timeout: 10000 });
+await settleModal(".details-modal");
 await shot("details-en");
 await page.click('.details-modal button:has-text("Edit")');
 await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
+await settleModal('.modal:not(.details-modal)');
 
 // all-day switch alignment vs date input
 const align = await page.evaluate(() => {
@@ -272,12 +293,14 @@ await page.waitForTimeout(500);
 await shot("month-de");
 await page.locator(".chip", { hasText: "Lunch with Sam" }).first().click();
 await page.waitForSelector(".details-modal", { timeout: 10000 });
+await settleModal(".details-modal");
 await shot("details-de");
 await scanDe(".details-modal", "event details");
 await page.click('.details-modal button:has-text("Bearbeiten")').catch(async () => {
   await page.click('.details-modal button:has-text("Edit")');
 });
 await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
+await settleModal('.modal:not(.details-modal)');
 await shot("editor-de");
 await scanDe('.modal:not(.details-modal)', "event editor");
 await page.click('.modal button:has-text("Abbrechen")');

@@ -1,7 +1,6 @@
 //! Read-only event details. The editor opens only from the pencil button.
 
 use caldav::ics::{DtValue, VEvent};
-use caldav::recurrence::describe_rule;
 use chrono::Duration;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -62,6 +61,20 @@ fn duration_days(ev: &VEvent) -> Option<i64> {
 pub fn EventDetails() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let tz = state.tz;
+    // Copy-link feedback; resets when the modal is closed (component unmounts).
+    let copied = RwSignal::new(false);
+    let copy_link = move |_| {
+        if let Some(win) = web_sys::window() {
+            if let Ok(href) = win.location().href() {
+                let clipboard = win.navigator().clipboard();
+                wasm_bindgen_futures::spawn_local(async move {
+                    if clipboard.write_text(&href).await.is_ok() {
+                        copied.set(true);
+                    }
+                });
+            }
+        }
+    };
     let modal = state.modal.get().expect("details modal is open");
     let (index, occurrence, display_start) = match modal {
         ModalState::Details {
@@ -170,6 +183,13 @@ pub fn EventDetails() -> impl IntoView {
                             </Show>
                             <div class="modal-actions">
                                 <span class="spacer"></span>
+                                <button
+                                    class="btn btn-ghost copy-link"
+                                    title=move || crate::i18n::t(state.lang.get(), "copy_link")
+                                    on:click=copy_link
+                                >
+                                    {move || crate::i18n::t(state.lang.get(), if copied.get() { "link_copied" } else { "copy_link" })}
+                                </button>
                                 <button class="btn btn-ghost" on:click=move |_| state.modal.set(None)>
                                     {move || crate::i18n::t(state.lang.get(), "close")}
                                 </button>

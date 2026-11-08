@@ -26,6 +26,7 @@ idb = "0.6"
 js-sys = "0.3"
 leptos = { version = "0.8", features = ["csr"] }
 leptos_router = "0.8"
+percent-encoding = "2"
 reqwest = { version = "0.13", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
@@ -49,6 +50,7 @@ web-sys = { version = "0.3", features = [
     "Event",
     "Navigator",
     "Clipboard",
+    "Location",
 ] }
 
 # getrandom (pulled in via aes-gcm/uuid) needs its wasm_js backend on wasm32.

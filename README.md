@@ -18,9 +18,14 @@ modern look, Rust reliability.
 
 ## What you get
 
-- **Five views** — Month grid, Week timeline, Day timeline, a 30-day Agenda list
+- **Five views** — Month grid, Week timeline, Day timeline, a 30-day List view
   and a Tasks list — with a shared toolbar (prev / today / next, view switcher,
   search).
+- **Deep links** — every event and task has its own URL
+  (`/event/<calendar>/<uid>`, `/task/<calendar>/<uid>`, with `?occ=…` for a
+  single occurrence of a recurring event). Opening a resource updates the
+  address bar (and there is a copy-link button in the details card); opening
+  such a link — also on a fresh load — opens that resource directly.
 - **Full event CRUD** over CalDAV (create / edit / delete, optimistic
   concurrency via `If-Match`), with a read-only details card before the editor.
 - **Recurrence** — RRULE/RDATE/EXDATE expanded client-side in the event's own
@@ -42,9 +47,9 @@ modern look, Rust reliability.
   descriptions), keyboard shortcuts (`n t m w d a k / arrows Esc`), responsive
   down to phone widths.
 
-| Week | Agenda | Event details with map |
+| Week | List | Event details with map |
 | --- | --- | --- |
-| ![Week view](docs/screenshots/week.png) | ![Agenda view](docs/screenshots/agenda.png) | ![Event details with OSM map](docs/screenshots/details-map.png) |
+| ![Week view](docs/screenshots/week.png) | ![List view](docs/screenshots/agenda.png) | ![Event details with OSM map](docs/screenshots/details-map.png) |
 
 ## How it works
 

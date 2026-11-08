@@ -1,10 +1,13 @@
 //! Global reactive state (Leptos signals), provided once at the app root.
 
+use std::rc::Rc;
+
 use caldav::client::CalendarInfo;
 use caldav::ics::{VEvent, VTodo};
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate};
 use chrono_tz::Tz;
 use leptos::prelude::*;
+use leptos_router::NavigateOptions;
 use url::Url;
 
 /// An authenticated CalDAV session. The password lives here (in memory) for
@@ -227,6 +230,16 @@ pub struct AppState {
     pub restoring: RwSignal<bool>,
     /// Error from the automatic session restore, shown on the login page.
     pub login_error: RwSignal<Option<String>>,
+    /// True while the address bar shows a resource link (`/event/…`,
+    /// `/task/…`) whose modal is open.
+    pub link_active: RwSignal<bool>,
+    /// Resource path currently being resolved via a direct server fetch
+    /// (guards against spawning the fetch repeatedly).
+    pub link_fetching: RwSignal<String>,
+    /// Router navigate function, stored by the Shell so any view can push a
+    /// resource URL into the address bar. (`LocalStorage`: an `Rc` closure is
+    /// not `Send + Sync`, which `RwSignal` otherwise requires.)
+    pub navigator: RwSignal<Option<Rc<dyn Fn(&str, NavigateOptions)>>, LocalStorage>,
     pub tz: Tz,
 }
 
@@ -261,6 +274,9 @@ impl AppState {
             lang: RwSignal::new(Lang::En),
             restoring: RwSignal::new(true),
             login_error: RwSignal::new(None),
+            link_active: RwSignal::new(false),
+            link_fetching: RwSignal::new(String::new()),
+            navigator: RwSignal::new_local(None),
             tz,
         }
     }
@@ -294,5 +310,88 @@ impl AppState {
             .get()
             .into_iter()
             .find(|c| !c.read_only() && c.info.supports_todos())
+    }
+
+    pub fn navigate_to(&self, url: &str, replace: bool) {
+        if let Some(nav) = self.navigator.get() {
+            nav(
+                url,
+                NavigateOptions {
+                    replace,
+                    scroll: false,
+                    ..Default::default()
+                },
+            );
+        }
+    }
+
+    /// Open the read-only details card for an event **and** push its resource
+    /// link (`/event/<calendar>/<uid>`) into the address bar.
+    pub fn open_details(
+        &self,
+        index: usize,
+        occurrence: Option<DateTime<Tz>>,
+        display_start: Option<DateTime<Tz>>,
+    ) {
+        if let Some(url) = self.event_url(index, occurrence) {
+            self.navigate_to(&url, false);
+        }
+        self.link_active.set(true);
+        self.modal.set(Some(ModalState::Details {
+            index,
+            occurrence,
+            display_start,
+        }));
+    }
+
+    /// Open the task editor **and** push its resource link
+    /// (`/task/<calendar>/<uid>`) into the address bar.
+    pub fn open_todo(&self, index: usize) {
+        if let Some(url) = self.task_url(index) {
+            self.navigate_to(&url, false);
+        }
+        self.link_active.set(true);
+        self.modal.set(Some(ModalState::EditTodo { index }));
+    }
+
+    /// Resource URL for the event at `index`, if it can be determined.
+    pub fn event_url(&self, index: usize, occurrence: Option<DateTime<Tz>>) -> Option<String> {
+        let ev = self.events.get().get(index)?.clone();
+        let cal = self.calendar_for(&ev.calendar_href)?;
+        Some(crate::links::event_path(
+            &cal.info.display_name,
+            &ev.event.uid,
+            occurrence,
+        ))
+    }
+
+    /// Resource URL for the task at `index`, if it can be determined.
+    pub fn task_url(&self, index: usize) -> Option<String> {
+        let t = self.todos.get().get(index)?.clone();
+        let cal = self.calendar_for(&t.calendar_href)?;
+        Some(crate::links::task_path(&cal.info.display_name, &t.todo.uid))
+    }
+
+    /// The address bar left a resource URL: close the linked modal (if open).
+    pub fn leave_resource_url(&self) {
+        if !self.link_active.get() {
+            return;
+        }
+        self.link_active.set(false);
+        if matches!(
+            self.modal.get(),
+            Some(ModalState::Details { .. } | ModalState::Edit { .. } | ModalState::EditTodo { .. })
+        ) {
+            self.modal.set(None);
+        }
+    }
+
+    /// A linked modal was closed from the UI while its URL is still in the
+    /// address bar: return the address bar to the plain view.
+    pub fn close_linked_modal_url(&self) {
+        if self.link_active.get() && self.modal.get().is_none() {
+            self.link_active.set(false);
+            self.navigate_to("/", true);
+        }
     }
 }

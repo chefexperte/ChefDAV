@@ -90,7 +90,7 @@ await page.waitForSelector(".week-view", { timeout: 10000 });
 const dayCols = await page.locator(".week-day-head").count();
 check("day view renders", dayCols === 1, `${dayCols} day column`);
 
-await page.click('.segmented-btn:has-text("Agenda")');
+await page.click('.segmented-btn:has-text("List")');
 await page.waitForSelector(".agenda", { timeout: 10000 });
 await page.waitForSelector(".agenda-day, .empty-state", { timeout: 10000 });
 check("agenda view renders", true, await page.textContent(".month-title"));
