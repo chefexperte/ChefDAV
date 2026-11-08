@@ -7,6 +7,9 @@
 *.pem
 *.key
 
+# agent-only working notes: local, never committed
+AGENTS.md
+
 # e2e
 /e2e/node_modules
 /e2e/login-failure.png

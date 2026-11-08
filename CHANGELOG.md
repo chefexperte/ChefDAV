@@ -5,6 +5,8 @@ latest section of this file (baked into each build).
 
 ## 0.1.1 — 2026-11-08
 
+- README now warns prominently that the project is **written entirely by AI**.
+
 - README rewritten as a proper project readme (what it is, screenshots, setup,
   dev setup, limitations, licensing).
 
