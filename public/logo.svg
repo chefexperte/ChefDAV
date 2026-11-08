@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="ChefDAV">
   <!-- True pastel mint parallelogram with rounded corners. -->
   <path d="M 21,4 L 57,4 Q 62,4 60.79,8.85 L 49.21,55.15 Q 48,60 43,60 L 7,60 Q 2,60 3.21,55.15 L 14.79,8.85 Q 16,4 21,4 Z" fill="#a9e2cc"/>
-  <!-- Abstract mark: a ring with an offset dot (a day marker on a calendar). -->
+  <!-- Abstract mark: a ring with a dot on its south-east edge. -->
   <circle cx="31.5" cy="31.5" r="12.5" fill="none" stroke="#0f5c48" stroke-width="5.5"/>
-  <circle cx="43" cy="42" r="4.6" fill="#0f5c48"/>
+  <circle cx="40.34" cy="40.34" r="6.5" fill="#0f5c48"/>
 </svg>
