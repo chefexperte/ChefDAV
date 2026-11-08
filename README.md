@@ -80,8 +80,8 @@ modern look, Rust reliability.
 - **Polish**: mint design tokens + dark theme, **full English/German UI**
   (labels, dates, month/weekday names, recurrence descriptions), switch-style
   toggles matching the input height, keyboard shortcuts
-  (`n t m w d a k / arrows Esc`), responsive/mobile layout, a solid mint
-  parallelogram logo, and a changelog on the login screen.
+  (`n t m w d a k / arrows Esc`), responsive/mobile layout, a pastel mint
+  parallelogram logo with rounded corners, and a changelog on the login screen.
 - **Stable instance** (`./scripts/stable.sh`, ports 3200/8081, separate
   Radicale volume) built from the `stable` git tag.
 - **Dev stack**: Radicale + Caddy (CORS) via Docker **or rootless Podman**;
@@ -130,7 +130,7 @@ dialog. Everything else in the list above is usable day-to-day.
       forgets the password).
 - [x] **Location maps** in event details (OSM embed for coordinates/addresses).
 - [x] **Search popover alignment** under the search box.
-- [x] **Logo refresh**: solid pastel mint parallelogram with the "CD." wordmark.
+- [x] **Logo refresh**: pastel mint parallelogram with rounded corners and a centered "CD." wordmark in deep green.
 - [ ] **Intentionally deferred (user request)**: encrypted credentials at rest.
 
 ## Quickstart (local dev)

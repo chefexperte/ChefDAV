@@ -85,29 +85,37 @@ check("logo loads", logo && logo.complete && logo.w > 0, JSON.stringify(logo));
 
 const logoShape = await page.evaluate(async () => {
   const text = await (await fetch("/logo.svg")).text();
-  const match = text.match(/<polygon points="([^"]+)"/);
-  if (!match) return null;
-  const [a, b, c, d] = match[1]
-    .trim()
-    .split(/\s+/)
-    .map((pair) => pair.split(",").map(Number));
-  const top = Math.hypot(b[0] - a[0], b[1] - a[1]);
-  const bottom = Math.hypot(c[0] - d[0], c[1] - d[1]);
-  const left = [d[0] - a[0], d[1] - a[1]];
-  const right = [c[0] - b[0], c[1] - b[1]];
+  let corners = null;
+  const poly = text.match(/<polygon\s+points="([^"]+)"/);
+  if (poly) {
+    corners = poly[1]
+      .trim()
+      .split(/\s+/)
+      .map((pair) => pair.split(",").map(Number));
+  } else {
+    // rounded path: M x,y L .. Q ctrl end .. — corners are the Q control points
+    const path = text.match(/<path\s+d="([^"]+)"/);
+    if (!path) return null;
+    const nums = path[1].match(/-?\d+(?:\.\d+)?/g).map(Number);
+    const pairs = [];
+    for (let i = 0; i + 1 < nums.length; i += 2) pairs.push([nums[i], nums[i + 1]]);
+    corners = [pairs[2], pairs[5], pairs[8], pairs[11]]; // Q control points B, C, D, A
+  }
+  const [a, b, c, d] = corners;
+  const side = (p, q) => [q[0] - p[0], q[1] - p[1]];
+  const ab = side(a, b);
+  const bc = side(b, c);
+  const cd = side(c, d);
+  const da = side(d, a);
+  const close = (u, v) => Math.hypot(u[0] + v[0], u[1] + v[1]) < 0.01;
   return {
-    top,
-    bottom,
-    left,
-    right,
-    parallel: left[0] === right[0] && left[1] === right[1],
+    corners,
+    parallelogram: close(ab, cd) && close(bc, da),
   };
 });
 check(
   "logo is a proper parallelogram",
-  logoShape &&
-    Math.abs(logoShape.top - logoShape.bottom) < 0.01 &&
-    logoShape.parallel,
+  logoShape && logoShape.parallelogram,
   JSON.stringify(logoShape)
 );
 

@@ -19,7 +19,7 @@ latest section of this file (baked into each build).
   title is no longer clipped.
 - The search results panel is now anchored **directly under the search box**.
 - Removed the non-functional reminders bell and the reminder service worker.
-- New **solid pastel mint parallelogram logo** with the "CD." wordmark.
+- New **logo**: pastel mint parallelogram with rounded corners and a centered "CD." wordmark in deep green.
 
 ## 0.1.0 — 2026-11-07
 
