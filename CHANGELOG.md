@@ -3,6 +3,24 @@
 All notable, user-visible changes to ChefDAV. The login screen shows the
 latest section of this file (baked into each build).
 
+## 0.1.1 — 2026-11-08
+
+- **Stay logged in**: the saved session is restored automatically on reload;
+  a "Stay logged in on this device" checkbox (on by default) controls it.
+  Logging out deletes the saved password, and the login page keeps the server
+  and username for prefilling.
+- The login page now has **dark/light and EN/DE controls** and applies the
+  saved theme before rendering.
+- **OpenStreetMap preview** in event details: coordinates show a pinned map
+  (click opens OSM in a new tab); address-like locations are geocoded with
+  Photon, and other names get an OSM search link.
+- Agenda view shows **start–end times** (e.g. `12:30–13:30`).
+- Week/day: short events (15–45 min) use a **compact one-line layout** so the
+  title is no longer clipped.
+- The search results panel is now anchored **directly under the search box**.
+- Removed the non-functional reminders bell and the reminder service worker.
+- New **solid mint parallelogram logo** with the "CD." wordmark.
+
 ## 0.1.0 — 2026-11-07
 
 - Month, week, day, agenda and tasks views with a shared toolbar.

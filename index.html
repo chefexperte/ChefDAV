@@ -12,8 +12,6 @@
     <link data-trunk rel="copy-file" href="public/favicon.svg" />
     <!-- design tokens are imported by main.css; copy them so /tokens.css exists -->
     <link data-trunk rel="copy-file" href="style/tokens.css" />
-    <!-- service worker for reminder notifications -->
-    <link data-trunk rel="copy-file" href="public/sw.js" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -25,6 +23,14 @@
     <link data-trunk rel="rust" data-target-name="chef-dav" data-cargo-no-default-features="true" />
     <!-- trunk compiles this to dist/main.css and injects the link -->
     <link data-trunk rel="css" href="style/main.css" />
+    <!-- Older builds registered a reminder service worker; remove it. -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          for (const reg of regs) reg.unregister();
+        });
+      }
+    </script>
   </head>
   <body>
     <!-- trunk injects the wasm-bindgen glue (chef_dav.js + .wasm) here -->

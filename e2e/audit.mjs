@@ -31,6 +31,8 @@ const englishUiWords = [
   "No matching events", "Nothing here", "All clear", "No tasks yet",
   "No due date", "What needs doing", "Edit task", "This calendar is read-only",
   "Go to day", "No events at this time", "New all-day event", "Unknown",
+  "Stay logged in", "Restoring your session", "Open in OpenStreetMap",
+  "Search on OpenStreetMap", "Looking up the location",
 ];
 function englishIn(text) {
   return englishUiWords.filter((w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text));
@@ -51,9 +53,58 @@ page.on("console", (m) => {
 
 const shot = (name, opts = {}) => page.screenshot({ path: `${OUT}/${name}.png`, ...opts });
 
+// Bounding boxes of the shortest timed event and its title, used to verify
+// that 15-minute events still show readable text.
+async function shortestEvent() {
+  return page.evaluate(() => {
+    const rows = [...document.querySelectorAll(".timed-event")].map((e) => {
+      const title = e.querySelector(".te-title");
+      const er = e.getBoundingClientRect();
+      const tr = title?.getBoundingClientRect();
+      return {
+        title: title?.textContent?.trim() ?? "",
+        eventHeight: Math.round(er.height * 10) / 10,
+        titleHeight: tr ? Math.round(tr.height * 10) / 10 : 0,
+        titleWidth: tr ? Math.round(tr.width * 10) / 10 : 0,
+        inside: tr ? tr.top >= er.top - 0.5 && tr.bottom <= er.bottom + 0.5 : false,
+      };
+    });
+    return rows.sort((a, b) => a.eventHeight - b.eventHeight)[0] ?? null;
+  });
+}
+
 await page.goto(APP, { waitUntil: "networkidle" });
-await page.waitForSelector(".login-card", { timeout: 20000 });
+await page.waitForSelector(".login-card form", { timeout: 20000 });
 await shot("login-en");
+
+const logo = await page.evaluate(() => {
+  const img = document.querySelector(".login-brand img");
+  return img ? { complete: img.complete, w: img.naturalWidth, h: img.naturalHeight } : null;
+});
+check("logo loads", logo && logo.complete && logo.w > 0, JSON.stringify(logo));
+
+// login page: theme + language controls
+check(
+  "login page has theme + language controls",
+  (await page.locator(".login-prefs .prefs-row button").count()) === 2
+);
+await page.click('.login-prefs .prefs-row button:has-text("Dark")');
+await page.waitForTimeout(300);
+const loginTheme = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+check("login page applies the dark theme", loginTheme === "dark", loginTheme ?? "(none)");
+await shot("login-dark");
+await page.click('.login-prefs .prefs-row button:has-text("Light")');
+await page.click('.login-prefs .prefs-row button:has-text("EN")');
+await page.waitForTimeout(300);
+const deLoginText = await page.evaluate(() => {
+  const parts = [".login-brand", ".login-card form", ".login-prefs"];
+  return parts.map((sel) => document.querySelector(sel)?.innerText ?? "").join("\n");
+});
+const loginEnglish = englishIn(deLoginText);
+check("German login page has no English labels", loginEnglish.length === 0, loginEnglish.join(", "));
+await shot("login-de");
+await page.click('.login-prefs .prefs-row button:has-text("DE")');
+await page.waitForTimeout(300);
 
 await page.fill('input[type="url"]', DAV);
 await page.fill('input[autocomplete="username"]', USER);
@@ -85,18 +136,42 @@ check("chips stay inside day cells", maxRight <= 1 && maxBottom <= 1, `right+${m
 // ---------- views ----------
 await page.click('.segmented-btn:has-text("Week")');
 await page.waitForSelector(".week-view", { timeout: 10000 });
-await page.waitForTimeout(800);
+await page.click('button[title="Next"]');
+await page.waitForTimeout(900);
 await shot("week-en");
+const weekShort = await shortestEvent();
+check(
+  "short week events show their title",
+  weekShort && weekShort.titleHeight >= 8 && weekShort.titleWidth > 0 && weekShort.inside,
+  JSON.stringify(weekShort)
+);
 
 await page.click('.segmented-btn:has-text("Day")');
 await page.waitForSelector(".week-view", { timeout: 10000 });
-await page.waitForTimeout(800);
+for (let i = 0; i < 5; i++) await page.click('button[title="Previous"]');
+await page.waitForTimeout(900);
 await shot("day-en");
+const dayShort = await shortestEvent();
+check(
+  "short day events show their title",
+  dayShort && dayShort.titleHeight >= 8 && dayShort.titleWidth > 0 && dayShort.inside,
+  JSON.stringify(dayShort)
+);
 
 await page.click('.segmented-btn:has-text("Agenda")');
 await page.waitForSelector(".agenda", { timeout: 10000 });
 await page.waitForTimeout(800);
 await shot("agenda-en");
+
+const agendaTimes = await page.$$eval(".agenda-time", (els) =>
+  els.map((e) => e.textContent.trim())
+);
+const timedAgenda = agendaTimes.filter((t) => !/^(all day|ganztägig)$/i.test(t));
+check(
+  "agenda shows start–end ranges",
+  timedAgenda.length > 0 && timedAgenda.every((t) => t.includes("–")),
+  timedAgenda.slice(0, 5).join(", ")
+);
 
 await page.click('.segmented-btn:has-text("Tasks")');
 await page.waitForSelector(".tasks-view", { timeout: 10000 });
@@ -158,7 +233,9 @@ await page.click(".popover-backdrop", { position: { x: 5, y: 5 } });
 // ---------- slot popover (week) ----------
 await page.click('.segmented-btn:has-text("Week")');
 await page.waitForSelector(".week-view", { timeout: 10000 });
-await page.waitForTimeout(600);
+// Reset to the current (quiet) week so the slot is empty.
+await page.click('button:has-text("Today")');
+await page.waitForTimeout(900);
 await page.locator(".day-column").nth(2).click({ position: { x: 20, y: 14 * 42 + 5 } });
 await page.waitForSelector(".popover", { timeout: 10000 });
 await page.waitForTimeout(300);
@@ -169,6 +246,19 @@ await page.click(".popover-backdrop", { position: { x: 5, y: 5 } });
 await page.fill(".search-box input", "review");
 await page.waitForSelector(".search-panel", { timeout: 10000 });
 await page.waitForTimeout(300);
+const searchAlign = await page.evaluate(() => {
+  const input = document.querySelector(".search-box input").getBoundingClientRect();
+  const panel = document.querySelector(".search-panel").getBoundingClientRect();
+  return {
+    right: Math.round((panel.right - input.right) * 10) / 10,
+    top: Math.round((panel.top - (input.bottom + 8)) * 10) / 10,
+  };
+});
+check(
+  "search panel anchored under the search box",
+  Math.abs(searchAlign.right) <= 1 && Math.abs(searchAlign.top) <= 1,
+  JSON.stringify(searchAlign)
+);
 await shot("search-en");
 await page.fill(".search-box input", "");
 await page.waitForTimeout(300);

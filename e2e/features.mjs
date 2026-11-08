@@ -29,7 +29,7 @@ page.on("pageerror", (e) => consoleErrors.push(String(e)));
 
 async function login() {
   await page.goto(APP, { waitUntil: "networkidle" });
-  await page.waitForSelector(".login-card", { timeout: 20000 });
+  await page.waitForSelector(".login-card form", { timeout: 20000 });
   await page.fill('input[type="url"]', DAV);
   await page.fill('input[autocomplete="username"]', USER);
   await page.fill('input[autocomplete="current-password"]', PASS);
@@ -62,14 +62,6 @@ async function chips() {
 
 await login();
 check("login", true, await page.textContent(".month-title"));
-
-// service worker (background reminders)
-await page.waitForTimeout(1200);
-const swCount = await page.evaluate(async () => {
-  if (!("serviceWorker" in navigator)) return -1;
-  return (await navigator.serviceWorker.getRegistrations()).length;
-});
-check("reminder service worker registered", swCount > 0, `${swCount} registration(s)`);
 
 // ---------- day click popup ----------
 const dayCells = page.locator(".day");

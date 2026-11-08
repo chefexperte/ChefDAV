@@ -294,6 +294,11 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                         let width = 100.0 / cols as f64;
                                         let left = col as f64 * width;
                                         let time = occ.start.with_timezone(&tz).format("%H:%M").to_string();
+                                        // Short events cannot fit the usual two lines
+                                        // (time above title); switch to a single-line
+                                        // layout so the title stays readable.
+                                        let compact = height < 34.0;
+                                        let tooltip = format!("{time} – {summary}");
                                         let draggable = !read_only && !recurring;
                                         let drag_href = href.clone();
                                         let selected = Memo::new({
@@ -303,7 +308,9 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                         view! {
                                             <div
                                                 class="timed-event"
+                                                class:compact=compact
                                                 class:selected=move || selected.get()
+                                                title=tooltip
                                                 draggable=draggable
                                                 style=format!(
                                                     "--chip:{color};top:{top}px;height:{height}px;left:{left}%;width:calc({width}% - 3px)"

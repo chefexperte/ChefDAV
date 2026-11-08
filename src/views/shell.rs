@@ -12,11 +12,12 @@ use crate::components::day_popup::DayPopup;
 use crate::components::event_details::EventDetails;
 use crate::components::event_modal::EventModal;
 use crate::components::new_calendar::NewCalendarModal;
+use crate::components::prefs::PrefsRow;
 use crate::components::slot_popup::SlotPopup;
 use crate::components::todo_modal::TodoModal;
 use crate::components::toolbar::Toolbar;
 use crate::components::week_more::WeekMoreModal;
-use crate::state::{AppState, CalendarAction, Lang, ModalState, Theme};
+use crate::state::{AppState, CalendarAction, ModalState};
 use crate::store;
 
 #[component]
@@ -52,16 +53,6 @@ pub fn Shell() -> impl IntoView {
                     api::refresh_todos(&st).await;
                 }
             });
-        }
-    });
-
-    // Theme: apply to the document root.
-    Effect::new(move |_| {
-        let theme = state.theme.get();
-        if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
-            if let Some(root) = doc.document_element() {
-                let _ = root.set_attribute("data-theme", theme.as_str());
-            }
         }
     });
 
@@ -160,61 +151,21 @@ pub fn Shell() -> impl IntoView {
     }
 
     let logout = move |_| {
-        state.session.set(None);
-        state.calendars.set(Vec::new());
-        state.events.set(Vec::new());
-        state.todos.set(Vec::new());
-        navigate("/login", Default::default());
-    };
-
-    let toggle_theme = move |_| {
-        let next = match state.theme.get() {
-            Theme::Light => Theme::Dark,
-            Theme::Dark => Theme::Light,
-        };
-        state.theme.set(next);
         let st = state;
+        let nav = navigate.clone();
         spawn_local(async move {
-            let mut s = store::settings_load().await;
-            s.theme = st.theme.get().as_str().to_string();
-            store::settings_save(&s).await;
+            // Forgetting the password is what makes "Log out" stick across a
+            // reload; server/username stay for prefilling the form. Wait for
+            // the delete so the login page cannot prefill a stale password.
+            let _ = store::kv_delete("creds").await;
+            st.session.set(None);
+            st.calendars.set(Vec::new());
+            st.events.set(Vec::new());
+            st.todos.set(Vec::new());
+            st.login_error.set(None);
+            st.restoring.set(false);
+            nav("/login", Default::default());
         });
-    };
-    let toggle_lang = move |_| {
-        let next = match state.lang.get() {
-            Lang::En => Lang::De,
-            Lang::De => Lang::En,
-        };
-        state.lang.set(next);
-        let st = state;
-        spawn_local(async move {
-            let mut s = store::settings_load().await;
-            s.lang = st.lang.get().code().to_string();
-            store::settings_save(&s).await;
-        });
-    };
-    let toggle_reminders = move |_| {
-        let st = state;
-        if state.reminders.get() {
-            state.reminders.set(false);
-            spawn_local(async move {
-                let mut s = store::settings_load().await;
-                s.reminders = false;
-                store::settings_save(&s).await;
-            });
-        } else {
-            spawn_local(async move {
-                if crate::reminders::request_permission().await {
-                    st.reminders.set(true);
-                    let mut s = store::settings_load().await;
-                    s.reminders = true;
-                    store::settings_save(&s).await;
-                } else {
-                    st.error
-                        .set(Some("Notifications are blocked by the browser.".into()));
-                }
-            });
-        }
     };
 
     view! {
@@ -321,25 +272,7 @@ pub fn Shell() -> impl IntoView {
                             {move || format!("{} {}", state.pending.get(), crate::i18n::t(state.lang.get(), "changes_pending"))}
                         </span>
                     </Show>
-                    <div class="prefs-row">
-                        <button class="btn btn-ghost" on:click=toggle_theme>
-                            {move || match state.theme.get() {
-                                Theme::Light => crate::i18n::t(state.lang.get(), "dark"),
-                                Theme::Dark => crate::i18n::t(state.lang.get(), "light"),
-                            }}
-                        </button>
-                        <button class="btn btn-ghost" on:click=toggle_lang>
-                            {move || state.lang.get().code().to_uppercase()}
-                        </button>
-                        <button
-                            class="btn btn-ghost"
-                            class:active-pref=move || state.reminders.get()
-                            title=move || crate::i18n::t(state.lang.get(), "reminders")
-                            on:click=toggle_reminders
-                        >
-                            {move || if state.reminders.get() { "🔔" } else { "🔕" }}
-                        </button>
-                    </div>
+                    <PrefsRow />
                     <button class="btn btn-ghost btn-block" on:click=logout>
                         {move || crate::i18n::t(state.lang.get(), "log_out")}
                     </button>

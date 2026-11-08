@@ -4,6 +4,7 @@ use caldav::ics::{DtValue, VEvent};
 use caldav::recurrence::describe_rule;
 use chrono::Duration;
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 
 use crate::state::{AppState, Lang, ModalState};
 
@@ -156,6 +157,7 @@ pub fn EventDetails() -> impl IntoView {
                             </p>
                             <Show when=move || has_location fallback=|| ()>
                                 <p class="details-row"><span class="details-label">{move || crate::i18n::t(state.lang.get(), "location")}</span>{location.clone()}</p>
+                                <LocationMap location=location.clone() />
                             </Show>
                             <Show when=move || has_description fallback=|| ()>
                                 <p class="details-row details-notes"><span class="details-label">{move || crate::i18n::t(state.lang.get(), "notes")}</span>{description.clone()}</p>
@@ -190,4 +192,177 @@ pub fn EventDetails() -> impl IntoView {
             </div>
         </div>
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum MapState {
+    Hidden,
+    Loading,
+    Ready {
+        embed: String,
+        link: String,
+        label: String,
+    },
+    NotFound {
+        search: String,
+    },
+}
+
+/// A small OpenStreetMap preview under the location row. Coordinates are
+/// used directly; address-like strings are geocoded with Photon. Clicking
+/// the preview opens the full OSM page in a new tab.
+#[component]
+fn LocationMap(location: String) -> impl IntoView {
+    let state = use_context::<AppState>().unwrap();
+    let map = RwSignal::new(MapState::Hidden);
+    let loc = location.clone();
+
+    Effect::new(move |_| {
+        let lang = state.lang.get();
+        let loc = loc.clone();
+        if loc.trim().is_empty() {
+            map.set(MapState::Hidden);
+            return;
+        }
+        if let Some((lat, lon)) = crate::location::parse_coords(&loc) {
+            map.set(MapState::Ready {
+                embed: crate::location::osm_embed(lat, lon),
+                link: crate::location::osm_link(lat, lon),
+                label: String::new(),
+            });
+            return;
+        }
+        if !crate::location::looks_like_address(&loc) {
+            map.set(MapState::Hidden);
+            return;
+        }
+        map.set(MapState::Loading);
+        spawn_local(async move {
+            match geocode(&loc, lang).await {
+                Some((lat, lon, label)) => map.set(MapState::Ready {
+                    embed: crate::location::osm_embed(lat, lon),
+                    link: crate::location::osm_link(lat, lon),
+                    label,
+                }),
+                None => map.set(MapState::NotFound {
+                    search: crate::location::osm_search(&loc),
+                }),
+            }
+        });
+    });
+
+    view! {
+        {move || match map.get() {
+            MapState::Hidden => view! {
+                <a
+                    class="details-map-search"
+                    href=crate::location::osm_search(&location)
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    {move || format!("{} ↗", crate::i18n::t(state.lang.get(), "search_on_osm"))}
+                </a>
+            }.into_any(),
+            MapState::Loading => view! {
+                <p class="details-map-loading">
+                    {move || crate::i18n::t(state.lang.get(), "loading_map")}
+                </p>
+            }.into_any(),
+            MapState::NotFound { search } => view! {
+                <a
+                    class="details-map-search"
+                    href=search
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    {move || format!("{} ↗", crate::i18n::t(state.lang.get(), "search_on_osm"))}
+                </a>
+            }.into_any(),
+            MapState::Ready { embed, link, label } => {
+                let has_label = !label.is_empty();
+                let label_text = label.clone();
+                view! {
+                    <div class="details-map">
+                        <iframe
+                            src=embed
+                            title=move || crate::i18n::t(state.lang.get(), "map")
+                        ></iframe>
+                        <a
+                            class="details-map-overlay"
+                            href=link
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label=move || crate::i18n::t(state.lang.get(), "open_in_osm")
+                        >
+                            <span class="details-map-open">
+                                {move || format!("{} ↗", crate::i18n::t(state.lang.get(), "open_in_osm"))}
+                            </span>
+                        </a>
+                    </div>
+                    <Show when=move || has_label fallback=|| ()>
+                        <p class="details-map-label">{label_text.clone()}</p>
+                    </Show>
+                }.into_any()
+            }
+        }}
+    }
+}
+
+/// Geocode an address with Photon (OSM data, CORS-enabled).
+async fn geocode(query: &str, lang: Lang) -> Option<(f64, f64, String)> {
+    let q = url::form_urlencoded::Serializer::new(String::new())
+        .append_pair("q", query)
+        .append_pair("limit", "1")
+        .append_pair("lang", if lang == Lang::De { "de" } else { "en" })
+        .finish();
+    let resp = reqwest::Client::new()
+        .get(format!("https://photon.komoot.io/api/?{q}"))
+        .send()
+        .await
+        .ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let body = resp.text().await.ok()?;
+    let json: serde_json::Value = serde_json::from_str(&body).ok()?;
+    let feature = json.get("features")?.as_array()?.first()?;
+    let props = feature.get("properties")?;
+    // Only trust results that actually resolved to an address; this keeps
+    // room names like "Room 4" from pinning a random building abroad.
+    if props.get("street").is_none() && props.get("housenumber").is_none() {
+        return None;
+    }
+    let coords = feature.get("geometry")?.get("coordinates")?.as_array()?;
+    let lon = coords.first()?.as_f64()?;
+    let lat = coords.get(1)?.as_f64()?;
+    Some((lat, lon, photon_label(props)))
+}
+
+fn photon_label(props: &serde_json::Value) -> String {
+    let get = |key: &str| {
+        props
+            .get(key)
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim()
+    };
+    let name = get("name");
+    let street = get("street");
+    let number = get("housenumber");
+    let city = get("city");
+    let mut parts = Vec::new();
+    if !name.is_empty() {
+        parts.push(name.to_string());
+    }
+    if !street.is_empty() {
+        parts.push(if number.is_empty() {
+            street.to_string()
+        } else {
+            format!("{street} {number}")
+        });
+    }
+    if !city.is_empty() {
+        parts.push(city.to_string());
+    }
+    parts.join(", ")
 }

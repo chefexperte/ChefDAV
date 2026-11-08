@@ -71,6 +71,39 @@ pub fn Toolbar() -> impl IntoView {
         state.search_results.set(Vec::new());
     };
 
+    // Anchor the results panel under the search input instead of the
+    // toolbar's right edge (the view switcher sits between them).
+    let search_input = NodeRef::<leptos::html::Input>::new();
+    let search_panel = NodeRef::<leptos::html::Div>::new();
+    Effect::new(move |_| {
+        if !state.search_open.get() {
+            return;
+        }
+        let (Some(input), Some(panel)) = (search_input.get(), search_panel.get()) else {
+            return;
+        };
+        let Some(wrap) = panel.parent_element() else {
+            return;
+        };
+        let ir = input.get_bounding_client_rect();
+        let wr = wrap.get_bounding_client_rect();
+        let vw = web_sys::window()
+            .and_then(|w| w.inner_width().ok())
+            .and_then(|v| v.as_f64())
+            .unwrap_or(1280.0);
+        let width = 460.0_f64.min(vw - 24.0);
+        let viewport_left = (ir.right() - width)
+            .max(12.0)
+            .min((vw - width - 12.0).max(12.0));
+        let left = viewport_left - wr.left();
+        let top = ir.bottom() - wr.top() + 8.0;
+        let style = web_sys::HtmlElement::style(&panel);
+        let _ = style.set_property("left", &format!("{left}px"));
+        let _ = style.set_property("top", &format!("{top}px"));
+        let _ = style.set_property("width", &format!("{width}px"));
+        let _ = style.set_property("right", "auto");
+    });
+
     let selected = Memo::new(move |_| state.selected.get());
     let clear_selection = move |_| state.selected.set(Vec::new());
     let delete_selected = move |_| {
@@ -105,6 +138,7 @@ pub fn Toolbar() -> impl IntoView {
                     </Show>
                     <div class="search-box">
                         <input
+                            node_ref=search_input
                             type="search"
                             placeholder=move || crate::i18n::t(state.lang.get(), "search_placeholder")
                             prop:value=move || state.search_query.get()
@@ -135,7 +169,7 @@ pub fn Toolbar() -> impl IntoView {
             </div>
 
             <Show when=move || state.search_open.get() fallback=|| ()>
-                <div class="search-panel">
+                <div class="search-panel" node_ref=search_panel>
                     <Show
                         when=move || !state.search_results.get().is_empty()
                         fallback=move || {

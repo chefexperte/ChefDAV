@@ -9,8 +9,9 @@ use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
 
 use crate::api;
+use crate::components::prefs::PrefsRow;
 use crate::state::AppState;
-use crate::store::{self, StoredCreds};
+use crate::store::{self, LastLogin, StoredCreds};
 
 const CHANGELOG: &str = include_str!("../../CHANGELOG.md");
 
@@ -46,16 +47,26 @@ pub fn LoginPage() -> impl IntoView {
     let server = RwSignal::new(crate::config::DEFAULT_SERVER.to_string());
     let username = RwSignal::new(String::new());
     let password = RwSignal::new(String::new());
+    let stay = RwSignal::new(true);
     let busy = RwSignal::new(false);
     let error = RwSignal::new(None::<String>);
     let (changelog_title, changelog_items) = latest_changelog();
 
-    // Prefill the last used server/username/password (plain IndexedDB).
+    // Prefill the last used server/username (and the password when it was
+    // saved). The checkbox mirrors the persisted "stay logged in" choice.
     spawn_local(async move {
-        if let Ok(Some(creds)) = store::kv_get::<StoredCreds>("creds").await {
-            server.set(creds.server);
-            username.set(creds.username);
-            password.set(creds.password);
+        let settings = store::settings_load().await;
+        stay.set(settings.stay_logged_in);
+        if let Ok(Some(last)) = store::kv_get::<LastLogin>("last_login").await {
+            server.set(last.server);
+            username.set(last.username);
+        }
+        if settings.stay_logged_in {
+            if let Ok(Some(creds)) = store::kv_get::<StoredCreds>("creds").await {
+                server.set(creds.server);
+                username.set(creds.username);
+                password.set(creds.password);
+            }
         }
     });
 
@@ -74,22 +85,39 @@ pub fn LoginPage() -> impl IntoView {
         let server_s = server.get();
         let user = username.get();
         let pass = password.get();
+        let remember = stay.get();
         busy.set(true);
         error.set(None);
+        state.login_error.set(None);
         spawn_local(async move {
             match api::login(&server_s, &user, &pass).await {
                 Ok(session) => {
-                    // Store the credentials so the next visit is one click.
-                    // NOTE: plain IndexedDB — not encrypted (temporary).
+                    // Keep the non-secret part for prefilling after logout.
                     let _ = store::kv_set(
-                        "creds",
-                        &StoredCreds {
+                        "last_login",
+                        &LastLogin {
                             server: server_s.clone(),
                             username: user.clone(),
-                            password: pass.clone(),
                         },
                     )
                     .await;
+                    let mut settings = store::settings_load().await;
+                    settings.stay_logged_in = remember;
+                    store::settings_save(&settings).await;
+                    if remember {
+                        // NOTE: plain IndexedDB — not encrypted (temporary).
+                        let _ = store::kv_set(
+                            "creds",
+                            &StoredCreds {
+                                server: server_s.clone(),
+                                username: user.clone(),
+                                password: pass.clone(),
+                            },
+                        )
+                        .await;
+                    } else {
+                        let _ = store::kv_delete("creds").await;
+                    }
                     state.session.set(Some(session));
                 }
                 Err(e) => {
@@ -127,8 +155,19 @@ pub fn LoginPage() -> impl IntoView {
                             prop:value=move || password.get()
                             on:input=move |ev| password.set(event_target_value(&ev)) />
                     </label>
-                    <Show when=move || error.get().is_some() fallback=|| ()>
-                        <p class="form-error">{move || error.get().unwrap_or_default()}</p>
+                    <label class="check-row">
+                        <input type="checkbox"
+                            prop:checked=move || stay.get()
+                            on:change=move |ev| stay.set(event_target_checked(&ev)) />
+                        <span>{move || crate::i18n::t(state.lang.get(), "stay_logged_in")}</span>
+                    </label>
+                    <Show
+                        when=move || error.get().is_some() || state.login_error.get().is_some()
+                        fallback=|| ()
+                    >
+                        <p class="form-error">
+                            {move || error.get().or_else(|| state.login_error.get()).unwrap_or_default()}
+                        </p>
                     </Show>
                     <button class="btn btn-primary btn-block" type="submit" disabled=move || busy.get()>
                         {move || if busy.get() { crate::i18n::t(state.lang.get(), "connecting") } else { crate::i18n::t(state.lang.get(), "login") }}
@@ -150,6 +189,9 @@ pub fn LoginPage() -> impl IntoView {
                         />
                     </ul>
                 </details>
+                <div class="login-prefs">
+                    <PrefsRow />
+                </div>
             </div>
         </div>
     }

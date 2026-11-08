@@ -46,18 +46,25 @@ modern look, Rust reliability.
 - **Week/day timeline**: all-day row and time-slot **popovers** listing the
   events there (click → details) with a prefilled "New event" action;
   overlapping events are capped at two columns with a readable "+N more"
-  popup.
+  popup. Short events (15–45 min) switch to a compact one-line layout so their
+  title stays visible.
+- **Agenda view**: a 30-day chronological list with **start–end times**
+  (e.g. `12:30–13:30`), grouped by day.
 - **Day click popup**: choose "New event", "New task" or "Go to day" instead
   of jumping straight into the editor.
 - **Event details first**: clicking an event opens a read-only details card
   (time, calendar, location, notes, recurrence); the pencil button opens the
-  editor. Read-only calendars show a lock and no edit button.
+  editor. Read-only calendars show a lock and no edit button. Locations with
+  coordinates show an **OpenStreetMap preview with a pin** (click → OSM in a
+  new tab); address-like locations are geocoded with Photon, and other names
+  get an OSM search link.
 - **Event CRUD**: create, edit (optimistic concurrency via `If-Match`), delete.
 - **Recurrence**: RRULE/RDATE/EXDATE expanded client-side in the event's own
   timezone (DST-correct), an editor for daily/weekly/monthly/yearly rules
   (interval, weekdays, count/until, raw RRULE fallback), and **RECURRENCE-ID
   exceptions**: edit/cancel *this event*, *this and following*, or *all events*.
-- **Search** across the cached calendar, **multi-select + bulk delete**.
+- **Search** across the cached calendar (results anchored under the search
+  box), **multi-select + bulk delete**.
 - **Calendars**: create, rename, delete, show/hide, **change color** (palette
   swatches or a custom picker, stored via PROPPATCH), read-only detection via
   `current-user-privilege-set`, and a **sharing info panel** (calendar URL,
@@ -66,29 +73,30 @@ modern look, Rust reliability.
 - **Incremental sync** via `sync-token` + `calendar-multiget`, with a full
   fetch fallback; **offline outbox** retries queued writes when back online.
 - **Local cache** in IndexedDB for instant paint (calendars, events, tasks).
+- **Stay logged in**: the saved session is restored on reload (with a splash
+  while it verifies). The login page has its own **dark/light + EN/DE
+  controls**; logging out deletes the saved password, and unchecking "Stay
+  logged in" keeps it out of IndexedDB.
 - **Polish**: mint design tokens + dark theme, **full English/German UI**
   (labels, dates, month/weekday names, recurrence descriptions), switch-style
   toggles matching the input height, keyboard shortcuts
-  (`n t m w d a k / arrows Esc`), responsive/mobile layout, and a changelog on
-  the login screen.
-- **Reminders**: page notifications plus a **service worker** that schedules
-  upcoming reminders; true delivery while the browser is fully closed would
-  require Web Push and a push server.
+  (`n t m w d a k / arrows Esc`), responsive/mobile layout, a solid mint
+  parallelogram logo, and a changelog on the login screen.
 - **Stable instance** (`./scripts/stable.sh`, ports 3200/8081, separate
   Radicale volume) built from the `stable` git tag.
 - **Dev stack**: Radicale + Caddy (CORS) via Docker **or rootless Podman**;
   optional glauth LDAP fixture (verified: LDAP login + e2e).
-- **Tests/CI**: 58 native unit tests for the CalDAV/ICS/recurrence/crypto core,
-  four committed Playwright suites (`smoke.mjs`, `features.mjs`,
-  `recurrence.mjs`, `visibility.mjs`), a screenshot/layout/translation audit
-  (`audit.mjs`), and a GitHub Actions workflow (unit tests + WASM build + e2e).
+- **Tests/CI**: 62 native unit tests for the CalDAV/ICS/recurrence/crypto/location
+  core, six committed Playwright suites (`smoke.mjs`, `features.mjs`,
+  `recurrence.mjs`, `visibility.mjs`, `session.mjs`, `location.mjs`), a
+  screenshot/layout/translation audit (`audit.mjs`), and a GitHub Actions
+  workflow (unit tests + WASM build + e2e).
 
 ### 🚧 Intentionally deferred
 
 | Item | Why |
 | --- | --- |
-| Encrypted credentials at rest | **Explicit user request** to drop the passphrase/AES-GCM flow for now. The code remains in `caldav::crypto` and can be wired back in later. |
-| True push reminders while the browser is fully closed | A client-only app has no push server; the service worker schedules reminders while the browser keeps it alive. |
+| Encrypted credentials at rest | **Explicit user request** to drop the passphrase/AES-GCM flow for now. The code remains in `caldav::crypto` and can be wired back in later. The password is plain IndexedDB while "Stay logged in" is on (origin-scoped; the practical limit for a client-only Basic-auth app). |
 
 **Known limitation:** calendar sharing is managed by Radicale's server-side
 `[rights]` file (the app shows the calendar URL, your privileges and guidance);
@@ -107,12 +115,22 @@ dialog. Everything else in the list above is usable day-to-day.
 - [x] **M4 — parity & polish**: search, drag & drop, multi-select, VTODO,
       `sync-token` incremental sync, read-only detection, keyboard shortcuts,
       responsive/mobile layout.
-- [x] **Later**: offline write queue, reminders, i18n (main UI), themes,
-      stable instance, CI.
-- [x] **Sharing info UI**, **service-worker reminders**, **full EN/DE i18n**.
+- [x] **Later**: offline write queue, i18n (main UI), themes, stable instance,
+      CI.
+- [x] **Sharing info UI**, **full EN/DE i18n**.
 - [x] **Polish round**: equal-sized month cells + "+N more", day and
       time-slot popovers, switch-style toggles, mobile overflow fix,
       localized dates/modals, screenshots + layout/translation audit.
+- [x] **Agenda end times** (start–end range) and **compact week/day events**
+      so short events keep their title visible.
+- [x] **Removed reminders/notifications** (unused sidebar bell + service
+      worker).
+- [x] **Login page theming/language controls** (dark mode + EN/DE before login).
+- [x] **Stay logged in** (auto-login on reload, opt-out checkbox, logout
+      forgets the password).
+- [x] **Location maps** in event details (OSM embed for coordinates/addresses).
+- [x] **Search popover alignment** under the search box.
+- [x] **Logo refresh**: solid mint parallelogram with the "CD." wordmark.
 - [ ] **Intentionally deferred (user request)**: encrypted credentials at rest.
 
 ## Quickstart (local dev)

@@ -45,7 +45,9 @@ pub fn AgendaView() -> impl IntoView {
                 let time = if is_all_day {
                     crate::i18n::t(state.lang.get(), "all_day").to_string()
                 } else {
-                    occ.start.with_timezone(&tz).format("%H:%M").to_string()
+                    let start = occ.start.with_timezone(&tz);
+                    let end = occ.end.with_timezone(&tz);
+                    format!("{}–{}", start.format("%H:%M"), end.format("%H:%M"))
                 };
                 let summary = occ
                     .override_idx

@@ -1,5 +1,5 @@
-//! IndexedDB persistence (via the `idb` crate): encrypted credentials, a
-//! per-calendar event cache with sync tokens, an offline outbox, and settings.
+//! IndexedDB persistence (via the `idb` crate): credentials, a per-calendar
+//! event cache with sync tokens, an offline outbox, and settings.
 
 use idb::{Database, DatabaseEvent, Factory, ObjectStoreParams, TransactionMode};
 use serde::{Deserialize, Serialize};
@@ -91,6 +91,14 @@ pub struct StoredCreds {
     pub password: String,
 }
 
+/// Non-secret part of the last login, kept for prefilling the form after the
+/// user logs out (when the password itself is deleted).
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LastLogin {
+    pub server: String,
+    pub username: String,
+}
+
 /// One cached event; `ics` is the raw VEVENT source for cheap re-parsing.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CachedEvent {
@@ -143,11 +151,18 @@ pub enum OutboxOp {
     },
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Settings {
     pub theme: String,
     pub lang: String,
-    pub reminders: bool,
+    /// Keep the password in IndexedDB and sign in automatically on reload.
+    /// Defaults to true so existing installs keep their saved credentials.
+    #[serde(default = "default_true")]
+    pub stay_logged_in: bool,
 }
 
 impl Default for Settings {
@@ -155,7 +170,7 @@ impl Default for Settings {
         Self {
             theme: "light".into(),
             lang: "en".into(),
-            reminders: false,
+            stay_logged_in: true,
         }
     }
 }

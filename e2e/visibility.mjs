@@ -29,7 +29,7 @@ page.on("console", (m) => {
 });
 
 await page.goto(APP, { waitUntil: "networkidle" });
-await page.waitForSelector(".login-card", { timeout: 20000 });
+await page.waitForSelector(".login-card form", { timeout: 20000 });
 await page.fill('input[type="url"]', DAV);
 await page.fill('input[autocomplete="username"]', USER);
 await page.fill('input[autocomplete="current-password"]', PASS);

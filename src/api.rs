@@ -274,7 +274,6 @@ pub async fn refresh_events(state: &AppState) {
     state.loading.set(false);
     state.events.set(all);
     store::cache_save(&caches.into_values().collect::<Vec<_>>()).await;
-    crate::reminders::schedule_in_service_worker(*state);
 }
 
 /// Fetch all tasks for visible calendars that support VTODO.

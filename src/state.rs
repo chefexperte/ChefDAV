@@ -8,7 +8,8 @@ use leptos::prelude::*;
 use url::Url;
 
 /// An authenticated CalDAV session. The password lives here (in memory) for
-/// the lifetime of the tab; at rest it only exists encrypted in IndexedDB.
+/// the lifetime of the tab; at rest it is kept in plain IndexedDB when
+/// "Stay logged in" is enabled.
 #[derive(Clone, Debug)]
 pub struct Session {
     pub server: Url,
@@ -222,7 +223,10 @@ pub struct AppState {
     pub online: RwSignal<bool>,
     pub theme: RwSignal<Theme>,
     pub lang: RwSignal<Lang>,
-    pub reminders: RwSignal<bool>,
+    /// True while the app is trying to restore a saved session at startup.
+    pub restoring: RwSignal<bool>,
+    /// Error from the automatic session restore, shown on the login page.
+    pub login_error: RwSignal<Option<String>>,
     pub tz: Tz,
 }
 
@@ -255,7 +259,8 @@ impl AppState {
             online: RwSignal::new(true),
             theme: RwSignal::new(Theme::Light),
             lang: RwSignal::new(Lang::En),
-            reminders: RwSignal::new(false),
+            restoring: RwSignal::new(true),
+            login_error: RwSignal::new(None),
             tz,
         }
     }

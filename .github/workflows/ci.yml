@@ -26,6 +26,9 @@ jobs:
       - name: Unit tests (CalDAV/ICS/recurrence/crypto core)
         run: cargo test -p caldav
 
+      - name: Unit tests (location helpers)
+        run: cargo test -p chef-dav --lib
+
       - name: Type-check the WASM app
         run: cargo check --target wasm32-unknown-unknown
 
@@ -70,9 +73,10 @@ jobs:
             --data '<?xml version="1.0"?><D:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:set><D:prop><D:resourcetype><D:collection/><C:calendar/></D:resourcetype><D:displayname>Personal</D:displayname></D:prop></D:set></D:mkcalendar>' \
             http://127.0.0.1:8080/alice/personal/
 
-      - name: Start the app
+      - name: Build and start the app
         run: |
-          trunk serve --address 127.0.0.1 --port 3100 > /tmp/trunk.log 2>&1 &
+          trunk build
+          python3 scripts/serve.py 3100 dist > /tmp/app.log 2>&1 &
           for i in $(seq 1 60); do
             if curl -sf -o /dev/null http://127.0.0.1:3100/; then break; fi
             sleep 2
@@ -92,6 +96,8 @@ jobs:
           node features.mjs
           node recurrence.mjs
           node visibility.mjs
+          node session.mjs
+          node location.mjs
 
       - name: Upload failure artifacts
         if: failure()
@@ -100,5 +106,5 @@ jobs:
           name: e2e-failure
           path: |
             e2e/login-failure.png
-            /tmp/trunk.log
+            /tmp/app.log
           if-no-files-found: ignore

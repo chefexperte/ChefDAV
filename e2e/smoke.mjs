@@ -44,7 +44,7 @@ page.on("pageerror", (e) => consoleErrors.push(String(e)));
 
 async function login() {
   await page.goto(APP, { waitUntil: "networkidle" });
-  await page.waitForSelector(".login-card", { timeout: 20000 });
+  await page.waitForSelector(".login-card form", { timeout: 20000 });
   await page.fill('input[type="url"]', DAV);
   await page.fill('input[autocomplete="username"]', USER);
   await page.fill('input[autocomplete="current-password"]', PASS);
@@ -133,18 +133,23 @@ await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
 await page.waitForTimeout(1200);
 check("delete event", !(await chips()).includes(EVENT_EDITED));
 
-// ---------- stored credentials ----------
+// ---------- stay logged in ----------
 await page.reload({ waitUntil: "networkidle" });
-await page.waitForSelector(".login-card", { timeout: 15000 });
-const prefilledUser = await page.inputValue('input[autocomplete="username"]');
-check("reload prefills stored credentials", prefilledUser === USER, prefilledUser);
-await page.click('button[type="submit"]');
 await page.waitForSelector(".month-grid", { timeout: 20000 });
-check("log in with stored credentials", true);
+check("reload stays logged in", (await page.locator(".login-card form").count()) === 0);
+
+// logout forgets the password but keeps server/username for prefill
+await page.click('button:has-text("Log out")');
+await page.waitForSelector(".login-card form", { timeout: 15000 });
+const prefilledUser = await page.inputValue('input[autocomplete="username"]');
+const prefilledPass = await page.inputValue('input[autocomplete="current-password"]');
+check(
+  "logout prefills username but not password",
+  prefilledUser === USER && prefilledPass === "",
+  `${prefilledUser} / ${prefilledPass ? "***" : "(empty)"}`
+);
 
 // ---------- wrong password ----------
-await page.click('button:has-text("Log out")');
-await page.waitForSelector(".login-card", { timeout: 15000 });
 await page.fill('input[autocomplete="current-password"]', "definitely-wrong");
 await page.click('button[type="submit"]');
 await page.waitForSelector(".form-error", { timeout: 15000 });
