@@ -130,7 +130,7 @@ dialog. Everything else in the list above is usable day-to-day.
       forgets the password).
 - [x] **Location maps** in event details (OSM embed for coordinates/addresses).
 - [x] **Search popover alignment** under the search box.
-- [x] **Logo refresh**: solid mint parallelogram with the "CD." wordmark.
+- [x] **Logo refresh**: solid pastel mint parallelogram with the "CD." wordmark.
 - [ ] **Intentionally deferred (user request)**: encrypted credentials at rest.
 
 ## Quickstart (local dev)
