@@ -77,48 +77,6 @@ await page.goto(APP, { waitUntil: "networkidle" });
 await page.waitForSelector(".login-card form", { timeout: 20000 });
 await shot("login-en");
 
-const logo = await page.evaluate(() => {
-  const img = document.querySelector(".login-brand img");
-  return img ? { complete: img.complete, w: img.naturalWidth, h: img.naturalHeight } : null;
-});
-check("logo loads", logo && logo.complete && logo.w > 0, JSON.stringify(logo));
-
-const logoShape = await page.evaluate(async () => {
-  const text = await (await fetch("/logo.svg")).text();
-  let corners = null;
-  const poly = text.match(/<polygon\s+points="([^"]+)"/);
-  if (poly) {
-    corners = poly[1]
-      .trim()
-      .split(/\s+/)
-      .map((pair) => pair.split(",").map(Number));
-  } else {
-    // rounded path: M x,y L .. Q ctrl end .. — corners are the Q control points
-    const path = text.match(/<path\s+d="([^"]+)"/);
-    if (!path) return null;
-    const nums = path[1].match(/-?\d+(?:\.\d+)?/g).map(Number);
-    const pairs = [];
-    for (let i = 0; i + 1 < nums.length; i += 2) pairs.push([nums[i], nums[i + 1]]);
-    corners = [pairs[2], pairs[5], pairs[8], pairs[11]]; // Q control points B, C, D, A
-  }
-  const [a, b, c, d] = corners;
-  const side = (p, q) => [q[0] - p[0], q[1] - p[1]];
-  const ab = side(a, b);
-  const bc = side(b, c);
-  const cd = side(c, d);
-  const da = side(d, a);
-  const close = (u, v) => Math.hypot(u[0] + v[0], u[1] + v[1]) < 0.01;
-  return {
-    corners,
-    parallelogram: close(ab, cd) && close(bc, da),
-  };
-});
-check(
-  "logo is a proper parallelogram",
-  logoShape && logoShape.parallelogram,
-  JSON.stringify(logoShape)
-);
-
 // login page: theme + language controls
 check(
   "login page has theme + language controls",

@@ -19,7 +19,7 @@ latest section of this file (baked into each build).
   title is no longer clipped.
 - The search results panel is now anchored **directly under the search box**.
 - Removed the non-functional reminders bell and the reminder service worker.
-- New **logo**: pastel mint parallelogram with rounded corners and a centered "CD." wordmark in deep green.
+- New **logo**: pastel mint parallelogram with rounded corners and an abstract deep-green ring-and-dot mark (no rendered text).
 
 ## 0.1.0 — 2026-11-07
 
@@ -53,6 +53,7 @@ latest section of this file (baked into each build).
   and switch-style toggles matching the text-input height.
 - Keyboard shortcuts: `n` new event, `t` today, `m/w/d/a/k` views, `/` search,
   arrow keys navigate, `Esc` closes dialogs.
-- "CD." logo (Fraunces outlines, mint dot) and a changelog on the login screen.
+- Abstract logo (ring + dot on a pastel parallelogram) and a changelog on the
+  login screen.
 - Stable instance script (`scripts/stable.sh`) with its own Radicale volume and
   ports, built from the `stable` git tag.
