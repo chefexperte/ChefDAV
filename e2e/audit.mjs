@@ -83,6 +83,34 @@ const logo = await page.evaluate(() => {
 });
 check("logo loads", logo && logo.complete && logo.w > 0, JSON.stringify(logo));
 
+const logoShape = await page.evaluate(async () => {
+  const text = await (await fetch("/logo.svg")).text();
+  const match = text.match(/<polygon points="([^"]+)"/);
+  if (!match) return null;
+  const [a, b, c, d] = match[1]
+    .trim()
+    .split(/\s+/)
+    .map((pair) => pair.split(",").map(Number));
+  const top = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const bottom = Math.hypot(c[0] - d[0], c[1] - d[1]);
+  const left = [d[0] - a[0], d[1] - a[1]];
+  const right = [c[0] - b[0], c[1] - b[1]];
+  return {
+    top,
+    bottom,
+    left,
+    right,
+    parallel: left[0] === right[0] && left[1] === right[1],
+  };
+});
+check(
+  "logo is a proper parallelogram",
+  logoShape &&
+    Math.abs(logoShape.top - logoShape.bottom) < 0.01 &&
+    logoShape.parallel,
+  JSON.stringify(logoShape)
+);
+
 // login page: theme + language controls
 check(
   "login page has theme + language controls",
