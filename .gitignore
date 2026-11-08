@@ -2,6 +2,10 @@
 /dist
 **/*.rs.bk
 .DS_Store
+.env
+.env.*
+*.pem
+*.key
 
 # e2e
 /e2e/node_modules
