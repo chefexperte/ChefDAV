@@ -5,6 +5,9 @@ latest section of this file (baked into each build).
 
 ## 0.1.1 — 2026-11-08
 
+- README rewritten as a proper project readme (what it is, screenshots, setup,
+  dev setup, limitations, licensing).
+
 - License clarified: all original code and assets are **MIT** (`LICENSE`,
   `license = "MIT"` in both Cargo.tomls). No AgenDAV code was ever copied;
   dependencies are permissive crates (see NOTICE.md), fonts are OFL and loaded

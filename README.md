@@ -1,12 +1,46 @@
 # ChefDAV
 
-A **client-side-only calendar web app written in Rust, compiled to WebAssembly**,
-talking directly to a **CalDAV server (Radicale)**. No app backend: the only
-server-side pieces you operate are Radicale itself plus a tiny reverse proxy
-that adds CORS headers.
+A **calendar web app that runs entirely in your browser** — written in **Rust,
+compiled to WebAssembly**, talking directly to a **CalDAV server (Radicale)**.
+There is no application backend: the only server-side pieces you operate are
+Radicale itself plus a tiny reverse proxy that adds CORS headers.
 
 Inspired by [AgenDAV](https://github.com/agendav/agendav) (PHP) — same idea,
 modern look, Rust reliability.
+
+![Month view](docs/screenshots/month.png)
+
+## What you get
+
+- **Five views** — Month grid, Week timeline, Day timeline, a 30-day Agenda list
+  and a Tasks list — with a shared toolbar (prev / today / next, view switcher,
+  search).
+- **Full event CRUD** over CalDAV (create / edit / delete, optimistic
+  concurrency via `If-Match`), with a read-only details card before the editor.
+- **Recurrence** — RRULE/RDATE/EXDATE expanded client-side in the event's own
+  timezone (DST-correct), an RRULE editor, and RECURRENCE-ID exceptions
+  (*this event* / *this and following* / *all events*).
+- **Multiple calendars** — create, rename, delete, show/hide, recolor (stored on
+  the server via PROPPATCH), read-only detection, and a sharing panel with the
+  calendar URL, your privileges and Radicale `[rights]` guidance.
+- **Tasks (VTODO)** — create, edit, complete, delete.
+- **Search, multi-select + bulk delete, drag & drop** between days.
+- **Offline-friendly** — IndexedDB cache for instant paint, `sync-token`
+  incremental sync, and an offline outbox that retries queued writes.
+- **Stay logged in** — the saved session is restored on reload (with an opt-out
+  checkbox; logging out forgets the password).
+- **Location maps** — coordinates or addresses in an event's location show an
+  OpenStreetMap preview with a pin; clicking it opens OSM in a new tab.
+- **Look & feel** — warm paper + single mint accent (`#2f9e7f`), Fraunces +
+  Inter, dark theme, full **English/German** UI (labels, dates, recurrence
+  descriptions), keyboard shortcuts (`n t m w d a k / arrows Esc`), responsive
+  down to phone widths.
+
+| Week | Agenda | Event details with map |
+| --- | --- | --- |
+| ![Week view](docs/screenshots/week.png) | ![Agenda view](docs/screenshots/agenda.png) | ![Event details with OSM map](docs/screenshots/details-map.png) |
+
+## How it works
 
 ```
 ┌───────────────────────────────┐     fetch: PROPFIND / REPORT / PUT / MKCALENDAR …
@@ -22,286 +56,112 @@ modern look, Rust reliability.
                               └──────────────┘
 ```
 
-## Current status
+- **Who may log in** is decided by Radicale (`[auth] type = ldap`); the SPA only
+  sends Basic auth.
+- **Who may read/write what** is decided by Radicale's `[rights]` file; the app
+  reflects read-only calendars with a lock.
+- All protocol, ICS and recurrence logic lives in a **pure-Rust crate**
+  (`crates/caldav`) with native unit tests — the browser code is only glue + UI.
 
-> **Honest snapshot (2026-11-07).** Everything listed under "Works today" is
-> implemented and exercised against a real Radicale. The short "Intentionally
-> deferred" list covers items that need a server-side feature or an explicit
-> user decision.
+## Setup (production / day-to-day)
 
-### ✅ Works today
+You need three things: a CalDAV server, a reverse proxy with CORS, and a static
+host for the app.
 
-- **Login** with Basic auth through the CORS proxy (LDAP is enforced by
-  Radicale; the SPA doesn't care which auth backend is used). Credentials are
-  saved in IndexedDB (plain for now; the AES-GCM flow is kept in
-  `caldav::crypto` for later).
-- **Discovery**: `current-user-principal` → `calendar-home-set` → calendars,
-  display names, Apple colors and per-calendar privileges.
-- **Five views**: Month (grid), Week (7-day timeline), Day (1-day timeline),
-  Agenda (30-day list), Tasks.
-- **Month view**: Monday-first grid, today highlight, **equal-height cells**
-  (max 3 chips + "+N more"), multi-day events on every day they span, drag &
-  drop between days (non-recurring events). Clicking a day opens a **popover
-  with all of that day's events** (click → details) plus create actions.
-- **Week/day timeline**: all-day row and time-slot **popovers** listing the
-  events there (click → details) with a prefilled "New event" action;
-  overlapping events are capped at two columns with a readable "+N more"
-  popup. Short events (15–45 min) switch to a compact one-line layout so their
-  title stays visible.
-- **Agenda view**: a 30-day chronological list with **start–end times**
-  (e.g. `12:30–13:30`), grouped by day.
-- **Day click popup**: choose "New event", "New task" or "Go to day" instead
-  of jumping straight into the editor.
-- **Event details first**: clicking an event opens a read-only details card
-  (time, calendar, location, notes, recurrence); the pencil button opens the
-  editor. Read-only calendars show a lock and no edit button. Locations with
-  coordinates show an **OpenStreetMap preview with a pin** (click → OSM in a
-  new tab); address-like locations are geocoded with Photon, and other names
-  get an OSM search link.
-- **Event CRUD**: create, edit (optimistic concurrency via `If-Match`), delete.
-- **Recurrence**: RRULE/RDATE/EXDATE expanded client-side in the event's own
-  timezone (DST-correct), an editor for daily/weekly/monthly/yearly rules
-  (interval, weekdays, count/until, raw RRULE fallback), and **RECURRENCE-ID
-  exceptions**: edit/cancel *this event*, *this and following*, or *all events*.
-- **Search** across the cached calendar (results anchored under the search
-  box), **multi-select + bulk delete**.
-- **Calendars**: create, rename, delete, show/hide, **change color** (palette
-  swatches or a custom picker, stored via PROPPATCH), read-only detection via
-  `current-user-privilege-set`, and a **sharing info panel** (calendar URL,
-  your privileges, and guidance for Radicale's server-side `[rights]`).
-- **Tasks (VTODO)**: create, edit, complete/uncomplete, delete.
-- **Incremental sync** via `sync-token` + `calendar-multiget`, with a full
-  fetch fallback; **offline outbox** retries queued writes when back online.
-- **Local cache** in IndexedDB for instant paint (calendars, events, tasks).
-- **Stay logged in**: the saved session is restored on reload (with a splash
-  while it verifies). The login page has its own **dark/light + EN/DE
-  controls**; logging out deletes the saved password, and unchecking "Stay
-  logged in" keeps it out of IndexedDB.
-- **Polish**: mint design tokens + dark theme, **full English/German UI**
-  (labels, dates, month/weekday names, recurrence descriptions), switch-style
-  toggles matching the input height, keyboard shortcuts
-  (`n t m w d a k / arrows Esc`), responsive/mobile layout, a pastel mint parallelogram logo
-  with an abstract mark, and a changelog on the login screen.
-- **Stable instance** (`./scripts/stable.sh`, ports 3200/8081, separate
-  Radicale volume) built from the `stable` git tag.
-- **Dev stack**: Radicale + Caddy (CORS) via Docker **or rootless Podman**;
-  optional glauth LDAP fixture (verified: LDAP login + e2e).
-- **Tests/CI**: 62 native unit tests for the CalDAV/ICS/recurrence/crypto/location
-  core, six committed Playwright suites (`smoke.mjs`, `features.mjs`,
-  `recurrence.mjs`, `visibility.mjs`, `session.mjs`, `location.mjs`), a
-  screenshot/layout/translation audit (`audit.mjs`), and a GitHub Actions
-  workflow (unit tests + WASM build + e2e).
+1. **Radicale** — any self-hosted Radicale works (e.g. the Docker image
+   `tomsquest/docker-radicale`), configured with your auth backend (htpasswd or
+   LDAP) and `[rights]`.
+2. **Caddy** in front of it, adding CORS headers (see `docker/caddy/Caddyfile`
+   for a ready-made config):
+   ```caddy
+   your-caldav.example.com {
+       reverse_proxy radicale:5232
+       header Access-Control-Allow-Origin "https://your-app.example.com"
+       header Access-Control-Allow-Methods "PROPFIND, REPORT, PUT, DELETE, MKCALENDAR, OPTIONS"
+       header Access-Control-Allow-Headers "Authorization, Content-Type, Depth"
+   }
+   ```
+3. **The app** — build and serve the static bundle:
+   ```sh
+   cargo install trunk          # once
+   trunk build --release        # output in dist/
+   # serve dist/ from any static host; optionally bake in your CalDAV URL:
+   CHEFDAV_DAV_URL=https://your-caldav.example.com trunk build --release
+   ```
+   Then open the app, log in with server URL + your CalDAV credentials, and go.
+   "Stay logged in" keeps you signed in across reloads on that device.
 
-### 🚧 Intentionally deferred
+A single static file server is enough — no Node, no PHP, no app server. The
+release bundle is ~2.7 MB wasm (~853 KB gzipped, mostly the timezone database).
 
-| Item | Why |
-| --- | --- |
-| Encrypted credentials at rest | **Explicit user request** to drop the passphrase/AES-GCM flow for now. The code remains in `caldav::crypto` and can be wired back in later. The password is plain IndexedDB while "Stay logged in" is on (origin-scoped; the practical limit for a client-only Basic-auth app). |
-
-**Known limitation:** calendar sharing is managed by Radicale's server-side
-`[rights]` file (the app shows the calendar URL, your privileges and guidance);
-recurrence edits are applied per occurrence/series as chosen in the scope
-dialog. Everything else in the list above is usable day-to-day.
-
-## Roadmap
-
-- [x] **M1 — vertical slice**: login (stored creds), calendar discovery,
-      month view, event create/edit/delete over CalDAV, local cache.
-- [x] **M2 — usable daily driver**: week/day/agenda views, calendar colors +
-      show/hide, create/rename/delete calendars, day popup, time-slot and
-      all-day creation, concurrent-event "+N more", details-first event view.
-- [x] **M3 — recurrence**: client-side recurrence display plus a simple RRULE
-      editor (series-wide).
-- [x] **M4 — parity & polish**: search, drag & drop, multi-select, VTODO,
-      `sync-token` incremental sync, read-only detection, keyboard shortcuts,
-      responsive/mobile layout.
-- [x] **Later**: offline write queue, i18n (main UI), themes, stable instance,
-      CI.
-- [x] **Sharing info UI**, **full EN/DE i18n**.
-- [x] **Polish round**: equal-sized month cells + "+N more", day and
-      time-slot popovers, switch-style toggles, mobile overflow fix,
-      localized dates/modals, screenshots + layout/translation audit.
-- [x] **Agenda end times** (start–end range) and **compact week/day events**
-      so short events keep their title visible.
-- [x] **Removed reminders/notifications** (unused sidebar bell + service
-      worker).
-- [x] **Login page theming/language controls** (dark mode + EN/DE before login).
-- [x] **Stay logged in** (auto-login on reload, opt-out checkbox, logout
-      forgets the password).
-- [x] **Location maps** in event details (OSM embed for coordinates/addresses).
-- [x] **Search popover alignment** under the search box.
-- [x] **Logo refresh**: pastel mint parallelogram with rounded corners and an abstract ring-and-dot mark (no rendered font).
-- [ ] **Intentionally deferred (user request)**: encrypted credentials at rest.
-
-## Quickstart (local dev)
+## Development setup
 
 Prerequisites: Rust toolchain with the `wasm32-unknown-unknown` target,
-[trunk](https://trunkrs.dev) (`cargo install trunk` or a release binary), and a
-container runtime.
-
-### Containers: Podman (recommended here) or Docker
-
-Both work. On this machine the Docker socket is root-only, so **rootless
-Podman** is the path of least resistance:
+[trunk](https://trunkrs.dev), and a container runtime (Docker or rootless
+Podman), plus Node.js + Playwright for the e2e tests.
 
 ```sh
-# start the rootless Podman API socket once per login session
-systemctl --user start podman.socket
+# 1. local CalDAV stack: Radicale + Caddy (CORS) on 127.0.0.1:8080
+systemctl --user start podman.socket        # rootless Podman socket (once per session)
+podman compose -f docker/docker-compose.yml up -d
+#    (with Docker: docker compose -f docker/docker-compose.yml up -d)
+#    optional LDAP variant: add -f docker/docker-compose.ldap.yml
+#    dev login: alice / secret
 
-cd docker
-podman compose -f docker-compose.yml up -d
+# 2. the app with hot reload
+trunk serve        # → http://127.0.0.1:3100
+
+# 3. tests (deterministic build, not trunk serve)
+cargo test -p caldav && cargo test -p chef-dav --lib
+cargo check --target wasm32-unknown-unknown
+trunk build && python3 scripts/serve.py 3100 dist &
+cd e2e && npm install && npx playwright install chromium
+npm test && node features.mjs && node recurrence.mjs && node visibility.mjs \
+  && node session.mjs && node location.mjs && node audit.mjs
 ```
 
-If your user is in the `docker` group (or you run Docker rootful), the same
-stack works with:
+There is also a **stable instance** for day-to-day use that is isolated from
+development (own git tag, own ports 3200/8081, own Radicale volume):
 
 ```sh
-cd docker
-docker compose -f docker-compose.yml up -d
+./scripts/stable.sh     # → app on http://127.0.0.1:3200, CalDAV on :8081
 ```
 
-The stack starts:
-
-| Service | Address | Purpose |
-| --- | --- | --- |
-| Caddy | `http://127.0.0.1:8080` | CalDAV endpoint with CORS headers |
-| Radicale | internal `:5232` | CalDAV server, htpasswd auth |
-| glauth (optional) | internal `:389` | LDAP fixture for the LDAP variant |
-
-Dev login: **`alice` / `secret`**.
-
-### App
-
-```sh
-# from the repo root
-trunk serve
-# open http://127.0.0.1:3100
-```
-
-Log in with server `http://127.0.0.1:8080`, user `alice`, password `secret`,
-and click "Log in".
-
-> If you have no calendar yet, create one once with curl (the UI can't do it
-> until M2):
-> ```sh
-> curl -u alice:secret -X MKCALENDAR \
->   --data '<?xml version="1.0"?><D:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:set><D:prop><D:resourcetype><D:collection/><C:calendar/></D:resourcetype><D:displayname>Personal</D:displayname></D:prop></D:set></D:mkcalendar>' \
->   http://127.0.0.1:8080/alice/personal/
-> ```
-
-### LDAP variant
-
-```sh
-cd docker
-podman compose -f docker-compose.yml -f docker-compose.ldap.yml up -d
-# logs in via the glauth fixture: alice / secret  (see docker/ldap/)
-```
-
-> Status: verified. LDAP login (`alice/secret` → 207, wrong password → 401)
-> and the full Playwright e2e suite pass against this stack.
-> Note: Radicale 3.9 uses `ldap_uri` / `ldap_reader_dn` / `ldap_secret` and a
-> `{0}` placeholder in `ldap_filter` — older `ldap_url`/`ldap_bind_dn` names
-> are rejected.
-
-## Stable instance (for day-to-day use)
-
-Development builds and tests change constantly. For a stable copy that is
-unaffected by that work:
-
-```sh
-./scripts/stable.sh
-```
-
-| What | Where |
-| --- | --- |
-| App | <http://127.0.0.1:3200> |
-| CalDAV server | <http://127.0.0.1:8081> |
-| Login | `alice` / `secret` |
-
-How it stays stable:
-
-- It builds from the **`stable` git tag** in an isolated worktree
-  (`.stable-worktree/`), not from the working tree.
-- It runs its **own Radicale + Caddy stack** (`docker/docker-compose.stable.yml`)
-  with a separate data volume, on ports 8081/3200. Your calendars there are
-  never touched by development or the e2e tests.
-- The login screen shows the changelog baked into that build (`CHANGELOG.md`).
-
-After a verified milestone the maintainer moves the `stable` tag forward; re-run
-`./scripts/stable.sh` to rebuild and restart the stable app. The containers keep
-running when you stop the web server with Ctrl+C.
-
-The stable build defaults the login form to `http://127.0.0.1:8081` (compiled in
-via `CHEFDAV_DAV_URL`), creates a starter `Personal` calendar on first run, and
-shows its `CHANGELOG.md` section on the login screen. Development and e2e tests
-use ports 3100/8080 and a different Radicale volume, so they never touch it.
-
-## Architecture
-
-| Layer | Tech | Notes |
-| --- | --- | --- |
-| UI | [Leptos](https://leptos.dev) 0.8 (CSR) → WASM | fine-grained signals; hand-rolled month grid |
-| CalDAV/ICS core | `crates/caldav` (pure Rust) | XML via roxmltree, own ICS parser, `rrule` for recurrence — **all unit-tested natively** (`cargo test -p caldav`) |
-| HTTP | reqwest (wasm → `fetch`) | arbitrary methods/headers for PROPFIND/REPORT/PUT |
-| Recurrence | `rrule` + `chrono-tz` | expanded client-side in the event's own TZID → DST-correct |
-| Storage | IndexedDB (`idb`) | event/calendar cache for instant paint; credentials stored plain for now (`caldav::crypto` is ready for AES-GCM later) |
-| Auth | Basic auth per request | *who may log in* = Radicale `[auth] type = ldap`; *who may write what* = Radicale `[rights]` |
-| Build | trunk | `dist/` is a plain static site |
-
-The CalDAV client is generic over a tiny `HttpTransport` trait, so the exact
-same protocol code runs against the browser's `fetch` and against mock
-transports in tests.
-
-### Project layout
+## Project layout
 
 ```
 ChefDAV/
-├── AGENTS.md             # goal, decisions, status, pitfalls (read this first)
 ├── Cargo.toml            # the WASM app (root package) + workspace
 ├── index.html  style/  public/  Trunk.toml
 ├── src/
-│   ├── app.rs            # router
+│   ├── app.rs            # router + session restore
 │   ├── api.rs            # fetch transport + sync operations
-│   ├── browser.rs        # wasm glue: CSPRNG, clock, browser timezone
 │   ├── state.rs          # Leptos signals (session, calendars, events, …)
-│   ├── store.rs          # IndexedDB (creds + cache + outbox)
-│   ├── views/            # login, shell, month
-│   └── components/       # event modal
+│   ├── store.rs          # IndexedDB (credentials, cache, outbox, settings)
+│   ├── location.rs       # coordinate parsing + OSM/Photon URLs
+│   ├── views/            # login, shell, month, week, agenda, tasks
+│   └── components/       # toolbar, modals, popovers, details + map
 ├── crates/caldav/        # pure-Rust, native-testable core
 │   └── src/{client,xml,ics,recurrence,time,crypto,transport}.rs
-└── docker/               # Radicale + Caddy (CORS) + optional glauth LDAP
+├── e2e/                  # Playwright suites + screenshot/layout audit
+├── docker/               # Radicale + Caddy (CORS) + optional glauth LDAP
+└── scripts/              # serve.py (SPA static server), stable.sh
 ```
 
-## Design
+## Limitations
 
-Warm paper background, ink text, a single **mint** accent (`#2f9e7f`),
-Fraunces for display type, Inter for UI, soft rounded cards. The full palette
-(brand, surfaces, calendar colors, dark theme) lives in **`style/tokens.css`**
-and is reused everywhere via CSS variables; the Rust fallback palette mirrors
-it in `src/state.rs`.
-
-## Production notes
-
-- Serve the built SPA (`trunk build --release`, output in `dist/`) from any
-  static host. The release bundle is ~2.7 MB wasm (~853 KB gzipped, mostly the
-  timezone database) plus ~10 KB JS and ~3 KB CSS gzipped.
-- Pin `Access-Control-Allow-Origin` to your app origin in the Caddyfile
-  (the dev one echoes the request origin).
-- A single-threaded WASM build needs no COOP/COEP headers (no shared memory).
-- If you ever point ChefDAV at a hosted CalDAV you don't control and can't get
-  CORS headers, the fallback is a tiny Rust (axum) proxy that adds CORS.
-- The native binary (`cargo run --release`) is an optional static file server
-  for `dist/`; it is not needed in production.
-
-## Testing
-
-```sh
-cargo test -p caldav                            # protocol core (native unit tests)
-cargo check --target wasm32-unknown-unknown     # type-check the WASM app
-trunk build                                     # full frontend build
-# optional production bundle:
-trunk build --release
-```
+- **Credentials at rest are plain IndexedDB** while "Stay logged in" is enabled
+  (origin-scoped — the practical limit of a client-only Basic-auth app). The
+  AES-256-GCM/PBKDF2 flow exists in `crates/caldav/src/crypto.rs` and can be
+  wired back in later. Turn off "Stay logged in" on shared devices.
+- **Calendar sharing** is managed server-side in Radicale's `[rights]` file;
+  the app shows the URL, your privileges and guidance but does not write ACLs.
+- **Recurrence edits** are applied per occurrence/series as chosen in the scope
+  dialog (RECURRENCE-ID / THISANDFUTURE).
+- **No push notifications** — reminders were removed; use your OS calendar
+  notifications if you need them.
+- Location maps need internet access to OpenStreetMap/Photon; the calendar
+  itself works fully offline from cache once loaded.
 
 ## Licensing / credits
 
@@ -310,4 +170,4 @@ code and assets) is **MIT**. AgenDAV is AGPL-3.0 — we take inspiration from it
 only, no code copied; if any of its code is ever ported verbatim, this project
 must be relicensed AGPL-3.0 accordingly. Dependencies are permissive crates
 (MIT/Apache-2.0/BSD/CC0/Zlib/Unicode-3.0 — see NOTICE.md); fonts (Fraunces,
-Inter) are OFL and loaded at runtime.
+Inter) are OFL and loaded at runtime from Google Fonts.
