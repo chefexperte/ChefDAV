@@ -305,6 +305,9 @@ trunk build --release
 
 ## Licensing / credits
 
-See [NOTICE.md](NOTICE.md). ChefDAV itself is MIT OR Apache-2.0. AgenDAV is
-AGPL-3.0 — we take inspiration from it, and if any of its code is ever ported
-verbatim, this project must be relicensed AGPL-3.0 accordingly.
+See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md). ChefDAV itself (all original
+code and assets) is **MIT**. AgenDAV is AGPL-3.0 — we take inspiration from it
+only, no code copied; if any of its code is ever ported verbatim, this project
+must be relicensed AGPL-3.0 accordingly. Dependencies are permissive crates
+(MIT/Apache-2.0/BSD/CC0/Zlib/Unicode-3.0 — see NOTICE.md); fonts (Fraunces,
+Inter) are OFL and loaded at runtime.

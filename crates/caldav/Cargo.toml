@@ -2,7 +2,7 @@
 name = "caldav"
 version = "0.1.0"
 edition = "2021"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 description = "Pure-Rust CalDAV + iCalendar core for ChefDAV (natively unit-testable)"
 
 [dependencies]

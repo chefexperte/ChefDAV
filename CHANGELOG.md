@@ -5,6 +5,11 @@ latest section of this file (baked into each build).
 
 ## 0.1.1 — 2026-11-08
 
+- License clarified: all original code and assets are **MIT** (`LICENSE`,
+  `license = "MIT"` in both Cargo.tomls). No AgenDAV code was ever copied;
+  dependencies are permissive crates (see NOTICE.md), fonts are OFL and loaded
+  at runtime.
+
 - **Stay logged in**: the saved session is restored automatically on reload;
   a "Stay logged in on this device" checkbox (on by default) controls it.
   Logging out deletes the saved password, and the login page keeps the server
