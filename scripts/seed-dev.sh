@@ -57,25 +57,35 @@ END:VEVENT
 END:VCALENDAR"
 }
 
-# --- the events e2e/audit.mjs and the screenshots rely on ---
+# --- the events e2e/audit.mjs rely on (days the suites assert on: 10, 11,
+#     12, 17 must keep these; see e2e/*.mjs) ---
 ev "seed-lunch-sam@chef-dav"   "Lunch with Sam"  "20261110T120000" "20261110T130000" "LOCATION:Caf\\u00e9 Central"
 ev "seed-standup@chef-dav"     "Standup"         "20261111T090000" "20261111T091500"
 ev "seed-design-review@chef-dav" "Design review" "20261112T140000" "20261112T150000"
 ev "seed-quick-sync@chef-dav"  "Quick sync"      "20261117T090000" "20261117T091500"
-# --- a few more so the views look alive in screenshots ---
-ev "seed-weekly-sync@chef-dav"  "Weekly sync"     "20261109T100000" "20261109T103000" "RRULE:FREQ=WEEKLY;BYDAY=MO,WE;COUNT=8"
+ev "seed-weekly-sync@chef-dav"  "Weekly sync"    "20261109T100000" "20261109T103000" "RRULE:FREQ=WEEKLY;BYDAY=MO,WE;COUNT=8"
 ev "seed-dentist@chef-dav"     "Dentist"         "20261125T080000" "20261125T090000"
 
+# --- fun demo data on days the e2e suites do NOT use (1–9, 13, 14, 16, 27, 29, 30) ---
+ev "seed-doener-yolo@chef-dav"  "Döner-YOLO-Meeting"        "20261103T120000" "20261103T130000"
+ev "seed-kacken@chef-dav"       "Kacken"                    "20261105T080000" "20261105T081500"
+ev "seed-ram-altman@chef-dav"   "Meeting with Ram Altman"   "20261106T100000" "20261106T110000"
+ev "seed-katerfruehstueck@chef-dav" "Katerfrühstück mit KI"  "20261108T110000" "20261108T130000"
+ev "seed-slopping@chef-dav"     "Slopping with the stars"   "20261113T200000" "20261113T230000"
+ev "seed-bib-date@chef-dav"     "Bib-Date"                  "20261114T190000" "20261114T210000" "LOCATION:Caf\\u00e9 Kn\\u00f6sel, Heidelberg"
+ev "seed-ai-slop@chef-dav"      "Seminar über AI Slop"      "20261116T140000" "20261116T160000"
+ev "seed-hausaufgaben@chef-dav" "Hausaufgaben generieren lassen" "20261127T090000" "20261127T100000"
+
 # multi-day all-day event (spanning bar in the month view screenshots)
-put "/alice/personal/seed-conference@chef-dav.ics" "seed-conference@chef-dav" "BEGIN:VCALENDAR
+put "/alice/personal/seed-tacos@chef-dav.ics" "seed-tacos@chef-dav" "BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//ChefDAV//seed//EN
 BEGIN:VEVENT
-UID:seed-conference@chef-dav
+UID:seed-tacos@chef-dav
 DTSTAMP:20261101T090000Z
-DTSTART;VALUE=DATE:20261126
-DTEND;VALUE=DATE:20261128
-SUMMARY:Conference
+DTSTART;VALUE=DATE:20261130
+DTEND;VALUE=DATE:20261203
+SUMMARY:TaCoS Conference
 END:VEVENT
 END:VCALENDAR"
 
