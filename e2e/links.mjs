@@ -10,6 +10,7 @@
 // Environment overrides: APP_URL, DAV_URL, DAV_USER, DAV_PASS
 
 import { chromium } from "playwright";
+import { cleanupRun } from "./davclean.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
 const DAV = process.env.DAV_URL ?? "http://127.0.0.1:8080";
@@ -199,21 +200,8 @@ check(
   page.url()
 );
 
-// ---------- cleanup ----------
-await page.locator(".task-title", { hasText: TASK }).first().click().catch(() => {});
-await page.waitForSelector(".modal-small", { timeout: 5000 }).catch(() => {});
-await page.click('.modal-small button:has-text("Delete")').catch(() => {});
-await page.waitForSelector(".modal-small", { state: "detached", timeout: 15000 }).catch(() => {});
-
-await page.click('.segmented-btn:has-text("Month")');
-await page.waitForSelector(".month-grid", { timeout: 10000 });
-await page.locator(".chip", { hasText: EVENT }).first().click();
-await page.waitForSelector(".details-modal", { timeout: 10000 });
-await page.click('.details-modal button:has-text("Edit")');
-await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
-await page.click('.modal button:has-text("Delete")');
-await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-await page.waitForTimeout(1200);
+// ---------- cleanup via CalDAV (UI cleanup can miss hidden chips) ----------
+await cleanupRun(run);
 
 const unexpectedErrors = consoleErrors.filter((e) => !e.includes("404"));
 check("no console errors", unexpectedErrors.length === 0, unexpectedErrors.join(" | "));

@@ -6,6 +6,7 @@
 // Run: cd e2e && node location.mjs
 
 import { chromium } from "playwright";
+import { cleanupRun } from "./davclean.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
 const DAV = process.env.DAV_URL ?? "http://127.0.0.1:8080";
@@ -164,15 +165,13 @@ await page.click('.details-modal button:has-text("Close")');
 await page.waitForSelector(".details-modal", { state: "detached" });
 
 // ---------- cleanup ----------
-// The title is fixed (for reproducible screenshots), so delete every match in
-// case an earlier interrupted run left one behind.
-for (let i = 0; i < 3; i++) {
-  if ((await page.locator(".chip", { hasText: TITLE }).count()) === 0) break;
-  await openEditor();
-  await page.click('.modal button:has-text("Delete")');
-  await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-  await page.waitForTimeout(1200);
-}
+// The title is fixed (for reproducible screenshots), so delete every match via
+// CalDAV in case an earlier interrupted run left one behind; then reload so
+// the app drops it from local state before we verify.
+await cleanupRun(TITLE);
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForSelector(".month-grid", { timeout: 30000 });
+await page.waitForTimeout(1200);
 check("map event deleted", (await page.locator(".chip", { hasText: TITLE }).count()) === 0);
 
 check("no console errors", errors.length === 0, errors.join(" | "));

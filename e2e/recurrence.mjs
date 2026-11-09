@@ -4,6 +4,7 @@
 // Run: cd e2e && node recurrence.mjs
 
 import { chromium } from "playwright";
+import { cleanupRun } from "./davclean.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
 const DAV = process.env.DAV_URL ?? "http://127.0.0.1:8080";
@@ -115,15 +116,12 @@ check(
   afterCancel.join(", ")
 );
 
-// ---------- cleanup: delete the whole series ----------
-await page.locator(".chip", { hasText: FUTURE }).first().click();
-await page.waitForSelector(".details-modal", { timeout: 10000 });
-await page.click('.details-modal button:has-text("Edit")');
-await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
-await page.locator('.modal label:has-text("Apply to") select').selectOption("all");
-await page.click('.modal button:has-text("Delete")');
-await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-await page.waitForTimeout(3500);
+// ---------- cleanup: delete the whole series via CalDAV, then reload so the
+// app drops the deleted resources from its local state before we verify ----------
+await cleanupRun(run);
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForSelector(".month-grid", { timeout: 30000 });
+await page.waitForTimeout(1500);
 const finalChips = await chips();
 check(
   "whole series deleted",

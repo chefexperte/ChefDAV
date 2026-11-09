@@ -5,6 +5,7 @@
 // Run: cd e2e && node features.mjs
 
 import { chromium } from "playwright";
+import { cleanupRun } from "./davclean.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
 const DAV = process.env.DAV_URL ?? "http://127.0.0.1:8080";
@@ -60,6 +61,20 @@ async function chips() {
   return page.$$eval(".chip .chip-title", (els) => els.map((e) => e.textContent.trim()));
 }
 
+// Wait until a DOM condition holds (default 10 s); returns false on timeout
+// instead of throwing, so the check reports FAIL with detail instead of
+// crashing the whole suite and skipping the DAV cleanup.
+async function waitFor(condFn, arg, timeout = 10000) {
+  try {
+    await page.waitForFunction(condFn, arg, { timeout });
+    return true;
+  } catch {
+    return false;
+  }
+}
+// NOTE: conditions passed to waitFor run in the PAGE, so they must be
+// self-contained (no references to Node-side helpers).
+
 await login();
 check("login", true, await page.textContent(".month-title"));
 
@@ -111,6 +126,10 @@ await page.fill('.modal input[type="number"] >> nth=0', "1");
 await page.selectOption('.modal select >> nth=2', "count");
 await page.fill('.modal input[type="number"] >> nth=1', "3");
 await saveModal();
+await waitFor(
+  (t) => [...document.querySelectorAll(".chip .chip-title")].filter((c) => c.textContent.trim() === t).length >= 3,
+  recTitle
+);
 const recCount = (await chips()).filter((c) => c === recTitle).length;
 check("recurrence editor creates 3 occurrences", recCount === 3, `${recCount} occurrences`);
 
@@ -134,19 +153,20 @@ const taskTitle = `Task ${run}`;
 await page.fill('.modal-small input[type="text"]', taskTitle);
 await page.click('.modal-small button:has-text("Save")');
 await page.waitForSelector(".modal-small", { state: "detached", timeout: 15000 });
-await page.waitForTimeout(1200);
-check("task created", (await page.locator(".task-item").count()) > 0, await page.textContent(".task-item .task-title").catch(() => ""));
+await waitFor((t) => [...document.querySelectorAll(".task-item")].some((r) => r.textContent.includes(t)), taskTitle);
+check("task created", (await page.locator(".task-item", { hasText: taskTitle }).count()) > 0, await page.textContent(".task-item .task-title").catch(() => ""));
 const taskRow = page.locator(".task-item", { hasText: taskTitle }).first();
 await taskRow.locator('input[type="checkbox"]').check();
-await page.waitForTimeout(1500);
-check("task toggled done", await page.locator(".task-item.done", { hasText: taskTitle }).count() === 1);
+check(
+  "task toggled done",
+  await waitFor((t) => [...document.querySelectorAll(".task-item")].some((r) => r.classList.contains("done") && r.textContent.includes(t)), taskTitle)
+);
 // delete it
 await page.locator(".task-title", { hasText: taskTitle }).first().click();
 await page.waitForSelector(".modal-small");
 await page.click('.modal-small button:has-text("Delete")');
 await page.waitForSelector(".modal-small", { state: "detached", timeout: 15000 });
-await page.waitForTimeout(1200);
-check("task deleted", (await page.locator(".task-item", { hasText: taskTitle }).count()) === 0);
+check("task deleted", await waitFor((t) => ![...document.querySelectorAll(".task-item")].some((r) => r.textContent.includes(t)), taskTitle));
 
 // ---------- search ----------
 await page.click('.segmented-btn:has-text("Month")');
@@ -178,8 +198,11 @@ await selChip.click({ modifiers: ["Control"] });
 await page.waitForSelector(".selection-bar", { timeout: 10000 });
 check("ctrl-click selects event", (await page.textContent(".selection-count")).includes("1"));
 await page.click('button:has-text("Delete selected")');
-await page.waitForTimeout(1800);
-check("bulk delete removes event", !(await chips()).includes(selTitle));
+check(
+  "bulk delete removes event",
+  await waitFor((t) => ![...document.querySelectorAll(".chip .chip-title")].some((c) => c.textContent.includes(t)), selTitle),
+  (await chips()).join(", ")
+);
 
 // ---------- calendar create / rename / delete ----------
 const calName = `Cal ${run}`;
@@ -270,28 +293,26 @@ await openNewEventFromSidebar();
 await fillEvent(offlineTitle, "12:00", "13:00", "2026-11-25");
 await page.click('.modal button:has-text("Save")');
 await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-await page.waitForTimeout(1500);
-check("offline write shows pending badge", (await page.locator(".pending-badge").count()) > 0);
-check("offline write shown optimistically", (await chips()).includes(offlineTitle));
+check(
+  "offline write shows pending badge",
+  await waitFor(() => document.querySelectorAll(".pending-badge").length > 0, null)
+);
+check(
+  "offline write shown optimistically",
+  await waitFor((t) => [...document.querySelectorAll(".chip .chip-title")].some((c) => c.textContent.includes(t)), offlineTitle),
+  (await chips()).join(", ")
+);
 await page.unroute("**/*.ics");
 // trigger the online handler
 await page.evaluate(() => window.dispatchEvent(new Event("online")));
-await page.waitForTimeout(3000);
-check("outbox flushed after reconnect", (await page.locator(".pending-badge").count()) === 0);
+check(
+  "outbox flushed after reconnect",
+  await waitFor(() => document.querySelectorAll(".pending-badge").length === 0, null, 15000)
+);
 
-// cleanup: delete the offline event and the recurring series
-for (const title of [offlineTitle, recTitle]) {
-  const chip = page.locator(".chip", { hasText: title }).first();
-  if (await chip.count()) {
-    await chip.click();
-    await page.waitForSelector(".details-modal", { timeout: 10000 });
-    await page.click('.details-modal button:has-text("Edit")');
-    await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
-    await page.click('.modal button:has-text("Delete")');
-    await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-    await page.waitForTimeout(1000);
-  }
-}
+// cleanup: delete everything tagged with this run directly via CalDAV (a chip
+// hidden behind a cell's "Show all" overflow can't be clicked in the UI)
+await cleanupRun(run, [calName]);
 
 // the offline test intentionally aborts a PUT, which the browser logs
 const unexpectedErrors = consoleErrors.filter((e) => !e.includes("net::ERR_FAILED"));

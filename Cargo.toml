@@ -68,6 +68,16 @@ tower-http = { version = "0.6", features = ["fs"] }
 # `trunk build --release`. The [[bin]] below is the optional native static
 # server for the built dist/ folder (production convenience).
 
+# Dev builds (trunk build / trunk serve) go to wasm: full debuginfo makes the
+# .wasm ~99 MB and slow to link. Line-tables-only keeps line numbers in
+# backtraces but cuts the dev wasm to a fraction of that and links faster.
+# Cold builds are dominated by dependency compilation (~4-5 min); warm rebuilds
+# after touching src/ are ~40 s. Never kill a foreground build mid-run — the
+# orphaned cargo child keeps the target/ lock and the next build appears to
+# hang; launch builds in the background and check `pgrep -f "trunk build"`.
+[profile.dev]
+debug = "line-tables-only"
+
 [profile.release]
 opt-level = 'z'
 lto = true

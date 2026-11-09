@@ -22,7 +22,10 @@ Playwright suites that drive the real app against the real dev stack:
 # 1. dev stack
 systemctl --user start podman.socket
 podman compose -f docker/docker-compose.yml up -d
-# a calendar must exist (see README quickstart)
+# on a fresh volume: seed the demo calendars + events the suites expect
+../scripts/seed-dev.sh
+# after interrupted/failed runs: remove test leftovers (keeps the seed)
+../scripts/clean-dev.sh
 
 # 2. deterministic build + SPA-fallback server (not `trunk serve`: it can
 #    serve a half-applied bundle mid-rebuild)
