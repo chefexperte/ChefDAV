@@ -61,9 +61,15 @@ const settleModal = async (selector = ".modal-overlay") => {
       (sel) => {
         const el = document.querySelector(sel);
         if (!el) return false;
-        return el
-          .getAnimations({ subtree: true })
-          .every((a) => a.playState === "finished" || a.playState === "idle");
+        // getAnimations() polled too early returns an EMPTY list, which would
+        // pass `.every()` — so also require the computed style to be settled.
+        const modal = el.querySelector(".modal") ?? el;
+        const cs = getComputedStyle(modal);
+        return (
+          cs.opacity === "1" &&
+          cs.transform === "none" &&
+          el.getAnimations({ subtree: true }).every((a) => a.playState === "finished" || a.playState === "idle")
+        );
       },
       selector,
       { timeout: 5000 }

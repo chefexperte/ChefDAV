@@ -71,6 +71,41 @@ check("map event created", (await page.locator(".chip", { hasText: TITLE }).coun
 await page.locator(".chip", { hasText: TITLE }).first().click();
 await page.waitForSelector(".details-modal", { timeout: 10000 });
 await page.waitForSelector(".details-map iframe", { timeout: 10000 });
+// Let the modal pop animation finish and the OSM tiles load before shooting,
+// otherwise the screenshot catches the popup half-visible / the map blank.
+// NB: polling getAnimations() too early returns an EMPTY list, which would
+// pass `.every()` — so also require the computed style to be fully settled.
+const settleModal = () =>
+  page
+    .waitForFunction(
+      () => {
+        const m = document.querySelector(".modal-overlay .modal");
+        if (!m) return false;
+        const cs = getComputedStyle(m);
+        return (
+          cs.opacity === "1" &&
+          cs.transform === "none" &&
+          m.getAnimations({ subtree: true }).every((a) => a.playState === "finished" || a.playState === "idle")
+        );
+      },
+      { timeout: 10000 }
+    )
+    .catch(() => {});
+// Poll for the OSM embed frame — it may not be registered on the first check,
+// in which case the networkidle wait below would be skipped silently.
+let mapFrame = null;
+for (let i = 0; i < 40 && !mapFrame; i++) {
+  mapFrame = page.frames().find((f) => f.url().includes("openstreetmap.org/export/embed.html"));
+  if (!mapFrame) await page.waitForTimeout(250);
+}
+if (mapFrame) {
+  await mapFrame.waitForLoadState("load", { timeout: 30000 }).catch(() => {});
+  await mapFrame.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
+}
+// The modal can re-render (restarting `pop`) when the map finishes loading,
+// so settle the animation only after the frame is done.
+await settleModal();
+await page.waitForTimeout(400);
 const embed = await page.getAttribute(".details-map iframe", "src");
 const link = await page.getAttribute(".details-map-overlay", "href");
 check(
