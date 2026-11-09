@@ -391,7 +391,11 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                 // striped fade only at the week boundaries (cont-left/cont-right)
                 <For
                     each=move || allday_bars.get().0
-                    key=|b| (b.idx, b.occ.start, b.slot)
+                    // key must include the segment geometry + fade flags:
+                    // navigating weeks keeps (idx, occ.start, slot) identical,
+                    // and without c0/c1/cont the row would keep the old
+                    // cont-left/cont-right classes and left/width styles
+                    key=|b| (b.idx, b.occ.start, b.slot, b.c0, b.c1, b.cont_left, b.cont_right, b.fp.clone())
                     children=move |b| {
                         let ev = state.events.get().get(b.idx).cloned();
                         let (summary, color, href, read_only, recurring) = match &ev {

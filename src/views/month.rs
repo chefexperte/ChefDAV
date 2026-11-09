@@ -415,7 +415,10 @@ pub fn MonthView() -> impl IntoView {
                             // spanning bars for multi-day events in this week row
                             <For
                                 each=move || week_bars.get()
-                                key=|b| (b.idx, b.occ.start, b.week, b.slot)
+                                // key must include geometry + content: (idx, occ, week, slot)
+                                // alone survives a date edit inside the same week row, and
+                                // the children read c0/c1/true_start/true_end as plain values
+                                key=|b| (b.idx, b.occ.start, b.week, b.slot, b.c0, b.c1, b.true_start, b.true_end, b.fp.clone())
                                 children=move |b| {
                                     let ev = state.events.get().get(b.idx).cloned();
                                     let (summary, color, href, read_only, recurring) = match &ev {

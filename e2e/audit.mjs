@@ -44,7 +44,9 @@ async function scanDe(selector, name) {
 }
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+// 1440 wide so the week-range title ("16 – 22 November 2026") is not truncated
+// in the screenshots that land in docs/screenshots/
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => {
@@ -156,6 +158,7 @@ check("chips stay inside day cells", maxRight <= 1 && maxBottom <= 1, `right+${m
 await page.click('.segmented-btn:has-text("Week")');
 await page.waitForSelector(".week-view", { timeout: 10000 });
 await page.click('button[title="Next"]');
+await page.waitForURL(/\/week\/2026-11-16/, { timeout: 10000 });
 await page.waitForTimeout(900);
 await shot("week-en");
 const weekShort = await shortestEvent();
@@ -168,6 +171,7 @@ check(
 await page.click('.segmented-btn:has-text("Day")');
 await page.waitForSelector(".week-view", { timeout: 10000 });
 for (let i = 0; i < 5; i++) await page.click('button[title="Previous"]');
+await page.waitForURL(/\/day\/2026-11-11/, { timeout: 10000 });
 await page.waitForTimeout(900);
 await shot("day-en");
 const dayShort = await shortestEvent();
@@ -256,6 +260,7 @@ await page.click('.segmented-btn:has-text("Week")');
 await page.waitForSelector(".week-view", { timeout: 10000 });
 // Reset to the current (quiet) week so the slot is empty.
 await page.click('button[title="Today"]');
+await page.waitForURL(/\/week\/2026-11-09/, { timeout: 10000 });
 await page.waitForTimeout(900);
 await page.locator(".day-column").nth(2).click({ position: { x: 20, y: 14 * 42 + 5 } });
 await page.waitForSelector(".popover", { timeout: 10000 });

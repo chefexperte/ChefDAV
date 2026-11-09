@@ -6,6 +6,7 @@
 // Run: cd e2e && node multiday.mjs   (dev stack + built app on APP_URL)
 
 import { chromium } from "playwright";
+import { cleanupRun } from "./davclean.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
 const DAV = process.env.DAV_URL ?? "http://127.0.0.1:8080";
@@ -52,6 +53,19 @@ async function saveAndClose(title) {
     .locator(".chip, .span-bar", { hasText: title })
     .first()
     .waitFor({ timeout: 20000 });
+}
+
+// Click a toolbar nav button and wait until the URL actually moved — a bare
+// waitForTimeout raced the navigation and sometimes checked the old week.
+async function navAndWait(title, urlRe) {
+  await page.click(`button[title="${title}"]`);
+  try {
+    await page.waitForURL(urlRe, { timeout: 8000 });
+  } catch {
+    await page.click(`button[title="${title}"]`); // click sometimes gets lost mid-render
+    await page.waitForURL(urlRe, { timeout: 8000 });
+  }
+  await page.waitForTimeout(900);
 }
 
 // ---------- edit popup must not have a horizontal scrollbar ----------
@@ -161,8 +175,7 @@ await page.click('.segmented-btn:has-text("Week")');
 await page.waitForSelector(".week-view", { timeout: 10000 });
 await page.waitForTimeout(800);
 // the test events live in the week of Nov 16–22
-await page.click('button[title="Next"]');
-await page.waitForTimeout(900);
+await navAndWait("Next", /\/week\/2026-11-16/);
 const contEnd = await page.locator(".timed-event.cont-bottom", { hasText: OVERNIGHT }).count();
 const contStart = await page.locator(".timed-event.cont-top", { hasText: OVERNIGHT }).count();
 check("week: overnight event fades out at the bottom on the start day", contEnd >= 1, `${contEnd}`);
@@ -180,8 +193,7 @@ check(
   JSON.stringify(adBars)
 );
 // next week: the continuation segment fades in at the left edge
-await page.click('button[title="Next"]');
-await page.waitForTimeout(900);
+await navAndWait("Next", /\/week\/2026-11-23/);
 const adBars2 = await page.evaluate((t) => {
   return {
     bars: [...document.querySelectorAll(".allday-bar")].filter((c) => c.textContent.includes(t)).length,
@@ -194,8 +206,7 @@ check(
   JSON.stringify(adBars2)
 );
 // back to the week of Nov 16–22 for the row/overflow checks
-await page.click('button[title="Previous"]');
-await page.waitForTimeout(900);
+await navAndWait("Previous", /\/week\/2026-11-16/);
 const withinWeek = await page.evaluate((t) => {
   // an all-day event fully inside this week: one spanning bar, no fade
   const bars = [...document.querySelectorAll(".allday-bar")].filter((c) => c.textContent.includes(t));
@@ -263,24 +274,7 @@ check(
 );
 
 // ---------- cleanup (directly via CalDAV, so hidden events are caught too) ----------
-async function cleanupViaDav() {
-  const auth = "Basic " + Buffer.from(`${USER}:${PASS}`).toString("base64");
-  for (const cal of ["personal", "Arbeit"]) {
-    const pf = await fetch(`${DAV}/alice/${cal}/`, {
-      method: "PROPFIND",
-      headers: { Authorization: auth, Depth: "1" },
-    });
-    const xml = await pf.text();
-    const hrefs = [...xml.matchAll(/href>([^<]*\.ics)/g)].map((m) => m[1]);
-    for (const h of hrefs) {
-      const ics = await (await fetch(`${DAV}${h}`, { headers: { Authorization: auth } })).text();
-      if (ics.includes(run)) {
-        await fetch(`${DAV}${h}`, { method: "DELETE", headers: { Authorization: auth } });
-      }
-    }
-  }
-}
-await cleanupViaDav();
+await cleanupRun(run);
 await page.goto(`${APP}/month/2026-11`, { waitUntil: "networkidle" });
 await page.waitForSelector(".month-grid", { timeout: 30000 });
 await page.waitForTimeout(1500);
