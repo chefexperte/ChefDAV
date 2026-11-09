@@ -255,7 +255,7 @@ await page.click(".popover-backdrop", { position: { x: 5, y: 5 } });
 await page.click('.segmented-btn:has-text("Week")');
 await page.waitForSelector(".week-view", { timeout: 10000 });
 // Reset to the current (quiet) week so the slot is empty.
-await page.click('button:has-text("Today")');
+await page.click('button[title="Today"]');
 await page.waitForTimeout(900);
 await page.locator(".day-column").nth(2).click({ position: { x: 20, y: 14 * 42 + 5 } });
 await page.waitForSelector(".popover", { timeout: 10000 });

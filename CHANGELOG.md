@@ -12,6 +12,41 @@ latest section of this file (baked into each build).
   load — opens that resource directly (the calendar is found by name, hidden
   calendars are fetched on demand).
 - The **Agenda view is now called "List"** (EN) / **"Liste"** (DE).
+- The **Copy link button** in the event details card is now an **icon** (link
+  glyph; turns into a check mark once the link is in the clipboard).
+- In the event details card the **"Location" text label is now a pin icon**.
+- Fixed a **horizontal scrollbar in the edit-event popup** (field rows could
+  overflow the modal width).
+- Fixed the week view **"+N more" badge** being rendered too high instead of in
+  its day column.
+- The **day view no longer shows the redundant day header** (weekday
+  abbreviation + circled number); the toolbar already shows the date.
+- **Multi-day events**: all-day and timed events in the editor now have an
+  **end date** picker (overnight events like 23:00 → 01:00 next day work). In
+  the month view, multi-day and overnight events render as a **bar spanning
+  the day cells**; week/day/all-day rows and the list view respect
+  continuation, shown as a **striped fade-out** at the continuing edge.
+- **Event styling**: event chips/bars are now **solid calendar color** (no more
+  pale tint + left border) and a bit bigger; month cells show **two events +
+  a "+N more" entry** that looks like an event but in a neutral color (clicking
+  it opens the day popover — no more badge). The week-view "+N more" is
+  event-like as well. The **Edit button** uses a proper pencil icon.
+- **Continuation fades**: events crossing into another day/week fade out with
+  a striped dissolve (smooth, rounded) at the continuing edge — horizontal at
+  week boundaries (month view renders multi-day events as one spanning bar per
+  week row; the week all-day row as one longer bar), vertical for timed events
+  clipped at the day top/bottom (also in day view).
+- The toolbar **"Today" button is now a home icon button** left of prev/next
+  (jumps to the current day; prev/next unchanged).
+- Week/day: the **all-day row is a fixed 3-entry height** (up to 3 events; more
+  → an event-sized neutral **"Show all"** entry), and each timeline column
+  shows **2 slots — on overflow the second slot is a "Show all" entry**
+  instead of the "+N more" badge.
+- **The URL now reflects the current view and date** — `/month/2026-11`,
+  `/week/2026-11-09`, `/day/…`, `/list/…`, `/tasks` — so a copied link restores
+  exactly that view (resource links `/event/…` still work and return to the
+  view URL on close). Month cells show up to 3 events (more → 2 + "Show all"),
+  with more spacing and the same border inset for spanning bars.
 
 ## 0.1.1 — 2026-11-08
 

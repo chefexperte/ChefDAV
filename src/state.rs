@@ -236,6 +236,9 @@ pub struct AppState {
     /// Resource path currently being resolved via a direct server fetch
     /// (guards against spawning the fetch repeatedly).
     pub link_fetching: RwSignal<String>,
+    /// URL of the calendar view the user was on (e.g. `/month/2026-11`) —
+    /// resource links return here when closed.
+    pub base_url: RwSignal<String>,
     /// Router navigate function, stored by the Shell so any view can push a
     /// resource URL into the address bar. (`LocalStorage`: an `Rc` closure is
     /// not `Send + Sync`, which `RwSignal` otherwise requires.)
@@ -276,6 +279,7 @@ impl AppState {
             login_error: RwSignal::new(None),
             link_active: RwSignal::new(false),
             link_fetching: RwSignal::new(String::new()),
+            base_url: RwSignal::new("/".to_string()),
             navigator: RwSignal::new_local(None),
             tz,
         }
@@ -387,11 +391,12 @@ impl AppState {
     }
 
     /// A linked modal was closed from the UI while its URL is still in the
-    /// address bar: return the address bar to the plain view.
+    /// address bar: return the address bar to the calendar view.
     pub fn close_linked_modal_url(&self) {
         if self.link_active.get() && self.modal.get().is_none() {
             self.link_active.set(false);
-            self.navigate_to("/", true);
+            let base = self.base_url.get();
+            self.navigate_to(if base.is_empty() { "/" } else { &base }, true);
         }
     }
 }

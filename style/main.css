@@ -39,6 +39,10 @@ button {
 /* ---------- buttons ---------- */
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--ink);
@@ -49,6 +53,12 @@ button {
   cursor: pointer;
   transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease;
   box-shadow: var(--shadow-sm);
+}
+
+.btn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
 }
 
 .btn:hover {
@@ -106,6 +116,15 @@ button {
   font-size: 19px;
   line-height: 1;
   border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .btn-block {
@@ -214,6 +233,9 @@ button {
   flex-direction: column;
   gap: 5px;
   margin-bottom: 13px;
+  /* flex item: allow shrinking below the input's intrinsic width, otherwise
+     .field-row (date + 2 times + switch) overflows the modal -> h-scrollbar */
+  min-width: 0;
 }
 
 .field > span {
@@ -239,6 +261,9 @@ button {
   border-radius: var(--radius-sm);
   padding: 9px 11px;
   outline: none;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
@@ -267,6 +292,19 @@ button {
   align-items: flex-end;
 }
 
+/* the flexible field (date / select) takes the remaining width */
+.field-row > .field {
+  flex: 1 1 0;
+}
+
+.field-row > .field-time {
+  flex: 0 0 96px;
+}
+
+.field-row > .field-check {
+  flex: 0 0 auto;
+}
+
 .field-time {
   flex: 0 0 96px;
 }
@@ -277,7 +315,7 @@ button {
   gap: 5px;
   margin-bottom: 13px;
   cursor: pointer;
-  min-width: 86px;
+  min-width: 0;
 }
 
 .field-check > span:first-child {
@@ -651,6 +689,7 @@ button {
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
   grid-auto-rows: 124px;
+  position: relative; /* spanning bars for multi-day events are positioned in here */
 }
 
 .day {
@@ -704,41 +743,103 @@ button {
 .day-events {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   min-height: 0;
   overflow: hidden;
+  padding-top: var(--bar-pad, 0px); /* space reserved for spanning bars above */
 }
 
-.more-count {
-  font-size: 11px;
+/* ---------- multi-day spanning bars (month view) ---------- */
+
+.span-bar {
+  position: absolute;
+  height: 20px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  font-size: 12.5px;
   font-weight: 600;
-  color: var(--ink-faint);
-  padding-left: 4px;
+  background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
+  color: #fff8f3;
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
+.span-bar:hover {
+  background: var(--chip, var(--accent));
+}
+
+/* continuation segments keep the rounded corners — the striped fade zone
+   (see .cont-left/right) is clipped to that rounded shape */
+
+.span-bar .bar-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.span-bar .chip-time {
+  color: rgba(255, 248, 243, 0.85);
+}
+
+.span-bar.selected {
+  outline: 2px solid var(--ink);
+}
+
+/* "+N more" entry: looks like an event, but neutral (no calendar color) */
+.more-chip {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: none;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  border-radius: 7px;
+  padding: 4px 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.more-chip:hover {
+  background: var(--line);
+}
+
+/* events are solid calendar color */
 .chip {
+  position: relative;
   display: flex;
   align-items: baseline;
   gap: 6px;
   min-width: 0;
   max-width: 100%;
-  background: color-mix(in srgb, var(--chip, var(--accent)) 14%, var(--card));
-  border-left: 3px solid var(--chip, var(--accent));
-  border-radius: 6px;
-  padding: 3px 7px;
-  font-size: 12.5px;
+  background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
+  color: #fff8f3;
+  border-radius: 7px;
+  padding: 3px 8px;
+  font-size: 13px;
+  line-height: 1.3;
   cursor: pointer;
   overflow: hidden;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
 .chip:hover {
-  background: color-mix(in srgb, var(--chip, var(--accent)) 24%, var(--card));
+  background: var(--chip, var(--accent));
 }
 
 .chip-time {
   font-weight: 700;
   font-size: 11px;
-  color: var(--chip, var(--accent-deep));
+  color: rgba(255, 248, 243, 0.85);
   flex: none;
   font-variant-numeric: tabular-nums;
 }
@@ -749,7 +850,106 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: 600;
+}
+
+/* continuation fade-out zone: fine stripes over a gradient fade, with a mask
+   ramping BOTH down towards the inside of the chip — so the transition from
+   solid to striped is smooth (no abrupt cut) and the fade is strong.
+   Clipped to the chip's rounded shape by the parent's overflow/border-radius.
+   HORIZONTAL (left/right edge) — only at WEEK boundaries (month bars, week
+   all-day row), where the event continues into the next week row. */
+.cont-left::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  background:
+    repeating-linear-gradient(-45deg, var(--card) 0 2px, transparent 2px 6px),
+    linear-gradient(to right, var(--card) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 0%, transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, transparent 100%);
+}
+
+.cont-right::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  background:
+    repeating-linear-gradient(45deg, var(--card) 0 2px, transparent 2px 6px),
+    linear-gradient(to left, var(--card) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to left, #000 0%, transparent 100%);
+  mask-image: linear-gradient(to left, #000 0%, transparent 100%);
+}
+
+/* VERTICAL (top/bottom edge) — timed events in week/day clipped at the day
+   boundary: the bar fades out towards the top/bottom of the column. */
+.timed-event.cont-top::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 24px;
+  background:
+    repeating-linear-gradient(45deg, var(--card) 0 2px, transparent 2px 6px),
+    linear-gradient(to bottom, var(--card) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+}
+
+.timed-event.cont-bottom::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 24px;
+  background:
+    repeating-linear-gradient(-45deg, var(--card) 0 2px, transparent 2px 6px),
+    linear-gradient(to top, var(--card) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+}
+
+/* keep the text out of the fade zone so it stays readable */
+.span-bar.cont-left,
+.allday-bar.cont-left {
+  padding-left: 30px;
+}
+
+.span-bar.cont-right,
+.allday-bar.cont-right {
+  padding-right: 30px;
+}
+
+.timed-event.cont-top {
+  padding-top: 28px;
+}
+
+.timed-event.cont-bottom {
+  padding-bottom: 28px;
+}
+
+/* clipped at the day top/bottom: the time line is not useful there —
+   show the title instead */
+.timed-event.cont-top .te-time,
+.timed-event.cont-bottom .te-time {
+  display: none;
+}
+
+/* all-day chips with an edge fade (day view: continuation to/from next day) */
+.allday-chip.cont-left {
+  padding-left: 30px;
+}
+
+.allday-chip.cont-right {
+  padding-right: 30px;
 }
 
 /* ---------- week view ---------- */
@@ -821,27 +1021,80 @@ button {
   min-height: 30px;
 }
 
+.week-allday {
+  position: relative; /* spanning bars for multi-day all-day events */
+}
+
 .allday-cell {
   border-left: 1px solid var(--line);
   padding: 3px;
+  padding-top: var(--bar-pad, 3px); /* space reserved for spanning bars above */
   display: flex;
   flex-direction: column;
   gap: 3px;
-  min-height: 30px;
+  /* fixed 3-entry row: height does not change with the number of entries */
+  height: calc(3 * 22px + 2 * 3px + 6px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* one longer bar across the all-day row cells (multi-day all-day event) */
+.allday-bar {
+  position: absolute;
+  height: 20px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
+  color: #fff8f3;
+  border-radius: 5px;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.allday-bar:hover {
+  background: var(--chip, var(--accent));
+}
+
+.allday-bar .bar-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.allday-bar.selected {
+  outline: 2px solid var(--ink);
 }
 
 .allday-chip {
-  background: color-mix(in srgb, var(--chip, var(--accent)) 16%, var(--card));
-  border-left: 3px solid var(--chip, var(--accent));
+  position: relative;
+  background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
+  color: #fff8f3;
   border-radius: 5px;
-  padding: 2px 6px;
-  font-size: 11.5px;
+  padding: 3px 8px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
+
+.allday-chip:hover {
+  background: var(--chip, var(--accent));
+}
+
+/* continuation at a week boundary: horizontal striped fade (see .cont-left/
+   .cont-right); within the same week the all-day event is one longer bar */
 
 .week-timeline {
   max-height: calc(24 * var(--hour-height));
@@ -882,27 +1135,31 @@ button {
 
 .timed-event {
   position: absolute;
-  background: color-mix(in srgb, var(--chip, var(--accent)) 18%, var(--card));
-  border-left: 3px solid var(--chip, var(--accent));
+  background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
+  color: #fff8f3;
   border-radius: 6px;
-  padding: 2px 5px;
-  font-size: 11.5px;
+  padding: 3px 7px;
+  font-size: 12.5px;
   line-height: 1.25;
   overflow: hidden;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 1px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
 .timed-event:hover {
-  background: color-mix(in srgb, var(--chip, var(--accent)) 28%, var(--card));
+  background: var(--chip, var(--accent));
 }
 
+/* continuation: event starts before / ends after this day — vertical striped
+   fade at the clipped edge (see .cont-top/.cont-bottom), rounded corners */
+
 .te-time {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
-  color: var(--chip, var(--accent-deep));
+  color: rgba(255, 248, 243, 0.85);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1186,6 +1443,12 @@ button {
   letter-spacing: 0.06em;
   color: var(--ink-faint);
   padding-top: 2px;
+}
+
+.details-icon svg {
+  width: 15px;
+  height: 15px;
+  display: block;
 }
 
 .details-notes {
@@ -1485,8 +1748,9 @@ button {
 .chip.selected,
 .allday-chip.selected,
 .timed-event.selected,
+.span-bar.selected,
 .agenda-item.selected {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--ink);
   outline-offset: 1px;
 }
 
@@ -1610,25 +1874,32 @@ button {
   font-size: 16px;
 }
 
-.more-badge {
+/* week-view overflow: second column slot becomes a neutral "Show all" entry
+   (same size as an event, no calendar color) instead of a "+N more" badge */
+.more-bar {
   position: absolute;
-  right: 2px;
-  top: 4px;
+  left: calc(50% + 2px);
+  width: calc(50% - 5px);
+  height: 20px;
   z-index: 4;
-  border: 1px solid var(--line);
-  background: var(--card);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: var(--paper-deep);
   color: var(--ink-soft);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
-  border-radius: 999px;
-  padding: 2px 7px;
+  border-radius: 5px;
+  padding: 0 6px;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.more-badge:hover {
-  color: var(--accent-deep);
-  border-color: var(--accent);
+.more-bar:hover {
+  background: var(--line);
 }
 
 .more-list {

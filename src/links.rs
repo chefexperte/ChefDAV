@@ -12,12 +12,12 @@
 //! back/forward, pasted link) opens the resource. The router keeps path params
 //! percent-encoded, so `escape`/`unescape` are applied explicitly here.
 
-use chrono::{DateTime, SecondsFormat};
+use chrono::{DateTime, Datelike, NaiveDate, SecondsFormat};
 use chrono_tz::Tz;
 use leptos::prelude::*;
 use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 
-use crate::state::{AppState, CalState};
+use crate::state::{AppState, CalState, ViewMode};
 
 /// Encode set: everything except RFC 3986 unreserved characters
 /// (`A-Z a-z 0-9 - _ . ~`), matching what `encodeURIComponent` leaves alone
@@ -67,6 +67,48 @@ pub fn parse_path(path: &str) -> Option<(ResourceKind, String, String)> {
     match segs.as_slice() {
         ["event", cal, uid] => Some((ResourceKind::Event, unescape(cal), unescape(uid))),
         ["task", cal, uid] => Some((ResourceKind::Task, unescape(cal), unescape(uid))),
+        _ => None,
+    }
+}
+
+/// URL for a calendar view + anchor date, e.g. `/month/2026-11`,
+/// `/week/2026-11-09`. Always includes the date so the link is shareable.
+pub fn view_path(view: ViewMode, anchor: NaiveDate) -> String {
+    match view {
+        ViewMode::Month => format!("/month/{}-{:02}", anchor.year(), anchor.month()),
+        ViewMode::Week => format!("/week/{}", anchor.format("%Y-%m-%d")),
+        ViewMode::Day => format!("/day/{}", anchor.format("%Y-%m-%d")),
+        ViewMode::Agenda => format!("/list/{}", anchor.format("%Y-%m-%d")),
+        ViewMode::Tasks => "/tasks".to_string(),
+    }
+}
+
+/// Parse a view path (`/month/2026-11`, `/week/…`, `/day/…`, `/list/…`,
+/// `/tasks`, or the bare forms without a date). Returns the view and the
+/// anchor date if one was given.
+pub fn parse_view_path(path: &str) -> Option<(ViewMode, Option<NaiveDate>)> {
+    let segs: Vec<&str> = path.trim_matches('/').split('/').collect();
+    let date = |s: &str, fmt: &str| NaiveDate::parse_from_str(s, fmt).ok();
+    let month = |s: &str| {
+        let mut it = s.split('-');
+        match (it.next(), it.next(), it.next()) {
+            (Some(y), Some(m), None) => match (y.parse::<i32>().ok(), m.parse::<u32>().ok()) {
+                (Some(y), Some(m)) => NaiveDate::from_ymd_opt(y, m, 1),
+                _ => None,
+            },
+            _ => None,
+        }
+    };
+    match segs.as_slice() {
+        ["month"] => Some((ViewMode::Month, None)),
+        ["month", d] => month(d).map(|d| (ViewMode::Month, Some(d))),
+        ["week"] => Some((ViewMode::Week, None)),
+        ["week", d] => date(d, "%Y-%m-%d").map(|d| (ViewMode::Week, Some(d))),
+        ["day"] => Some((ViewMode::Day, None)),
+        ["day", d] => date(d, "%Y-%m-%d").map(|d| (ViewMode::Day, Some(d))),
+        ["list"] => Some((ViewMode::Agenda, None)),
+        ["list", d] => date(d, "%Y-%m-%d").map(|d| (ViewMode::Agenda, Some(d))),
+        ["tasks"] => Some((ViewMode::Tasks, None)),
         _ => None,
     }
 }
@@ -208,5 +250,33 @@ mod tests {
         assert_eq!(occ.to_rfc3339_opts(SecondsFormat::Secs, true), "2026-11-10T08:00:00Z");
         assert!(occ_from_search("?foo=bar", &tz).is_none());
         assert!(occ_from_search("", &tz).is_none());
+    }
+
+    #[test]
+    fn view_path_roundtrip() {
+        use chrono::NaiveDate;
+        let d = NaiveDate::from_ymd_opt(2026, 11, 9).unwrap();
+        for (view, expect) in [
+            (ViewMode::Month, "/month/2026-11"),
+            (ViewMode::Week, "/week/2026-11-09"),
+            (ViewMode::Day, "/day/2026-11-09"),
+            (ViewMode::Agenda, "/list/2026-11-09"),
+            (ViewMode::Tasks, "/tasks"),
+        ] {
+            let p = view_path(view, d);
+            assert_eq!(p, expect);
+            let (v2, date2) = parse_view_path(&p).unwrap();
+            assert_eq!(v2, view);
+            if view == ViewMode::Month {
+                assert_eq!(date2, Some(NaiveDate::from_ymd_opt(2026, 11, 1).unwrap()));
+            } else if view != ViewMode::Tasks {
+                assert_eq!(date2, Some(d));
+            }
+        }
+        // bare forms (no date) and junk
+        assert_eq!(parse_view_path("/month").unwrap().0, ViewMode::Month);
+        assert!(parse_view_path("/month/2026-13").is_none());
+        assert!(parse_view_path("/event/a/b").is_none());
+        assert!(parse_view_path("/").is_none());
     }
 }

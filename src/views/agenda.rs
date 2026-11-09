@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use caldav::recurrence::expand_series;
 use caldav::time::{agenda_range, today};
-use chrono::{Datelike, NaiveDate};
+use chrono::{Datelike, Duration, NaiveDate, TimeZone};
 use leptos::prelude::*;
 
 use crate::browser;
@@ -41,32 +41,57 @@ pub fn AgendaView() -> impl IntoView {
                 .map(|d| d.is_date())
                 .unwrap_or(false);
             for occ in expand_series(&ev.event, &ev.overrides, rs, re, &tz) {
-                let d = occ.start.with_timezone(&tz).date_naive();
-                let time = if is_all_day {
-                    crate::i18n::t(state.lang.get(), "all_day").to_string()
-                } else {
-                    let start = occ.start.with_timezone(&tz);
-                    let end = occ.end.with_timezone(&tz);
-                    format!("{}–{}", start.format("%H:%M"), end.format("%H:%M"))
-                };
-                let summary = occ
+                let start_d = occ.start.with_timezone(&tz).date_naive();
+                let end_d = (occ.end - Duration::seconds(1)).with_timezone(&tz).date_naive();
+                let summary0 = occ
                     .override_idx
                     .and_then(|idx| ev.overrides.get(idx))
                     .map(|o| o.summary.clone())
                     .unwrap_or_else(|| ev.event.summary.clone());
-                map.entry(d).or_default().push((
-                    i,
-                    time,
-                    summary,
-                    ev.color.clone(),
-                    is_all_day,
-                    occ.recurrence_id,
-                    Some(occ.start),
-                ));
+                // list the occurrence on every day it spans, with ← / →
+                // continuation hints on the title
+                let mut dd = start_d;
+                while dd <= end_d {
+                    let cont_start = dd > start_d;
+                    let cont_end = dd < end_d;
+                    let time = if is_all_day {
+                        crate::i18n::t(state.lang.get(), "all_day").to_string()
+                    } else {
+                        // clamp the shown range to this day
+                        let day0 = tz
+                            .from_local_datetime(&dd.and_hms_opt(0, 0, 0).unwrap())
+                            .earliest()
+                            .unwrap_or(occ.start);
+                        let day1 = tz
+                            .from_local_datetime(&(dd + Duration::days(1)).and_hms_opt(0, 0, 0).unwrap())
+                            .earliest()
+                            .unwrap_or(occ.end);
+                        let s = if cont_start { day0 } else { occ.start }.with_timezone(&tz);
+                        let e = if cont_end { day1 } else { occ.end }.with_timezone(&tz);
+                        format!("{}–{}", s.format("%H:%M"), e.format("%H:%M"))
+                    };
+                    let mut summary = summary0.clone();
+                    if cont_start {
+                        summary = format!("← {summary}");
+                    }
+                    if cont_end {
+                        summary = format!("{summary} →");
+                    }
+                    map.entry(dd).or_default().push((
+                        i,
+                        time,
+                        summary,
+                        ev.color.clone(),
+                        is_all_day,
+                        occ.recurrence_id,
+                        Some(occ.start),
+                    ));
+                    dd += Duration::days(1);
+                }
             }
         }
         for v in map.values_mut() {
-            v.sort_by_key(|(_, t, ..)| t.clone());
+            v.sort_by_key(|(_, _, _, _, _, occ, ds)| (*occ, *ds));
         }
         map.into_iter().collect::<Vec<_>>()
     });

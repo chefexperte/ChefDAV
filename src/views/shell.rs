@@ -3,6 +3,7 @@
 
 use std::rc::Rc;
 
+use chrono::Datelike;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::components::Outlet;
@@ -20,7 +21,7 @@ use crate::components::todo_modal::TodoModal;
 use crate::components::toolbar::Toolbar;
 use crate::components::week_more::WeekMoreModal;
 use crate::links;
-use crate::state::{AppState, CalendarAction, ModalState};
+use crate::state::{AppState, CalendarAction, ModalState, ViewMode};
 use crate::store;
 
 #[component]
@@ -108,7 +109,8 @@ pub fn Shell() -> impl IntoView {
                                         crate::i18n::t(st.lang.get(), "event_not_found")
                                             .to_string(),
                                     ));
-                                    st.navigate_to("/", true);
+                                    let base = st.base_url.get();
+                                    st.navigate_to(if base.is_empty() { "/" } else { &base }, true);
                                 }
                             });
                         }
@@ -146,7 +148,8 @@ pub fn Shell() -> impl IntoView {
                                         crate::i18n::t(st.lang.get(), "task_not_found")
                                             .to_string(),
                                     ));
-                                    st.navigate_to("/", true);
+                                    let base = st.base_url.get();
+                                    st.navigate_to(if base.is_empty() { "/" } else { &base }, true);
                                 }
                             });
                         }
@@ -158,12 +161,67 @@ pub fn Shell() -> impl IntoView {
         });
 
         // A linked modal was closed from the UI while its URL is still in the
-        // address bar: return the address bar to the plain view.
+        // address bar: return the address bar to the calendar view.
         Effect::new(move |_| {
             let _ = state.modal.get();
             let path = location.pathname.get();
             if links::parse_path(&path).is_some() {
                 state.close_linked_modal_url();
+            }
+        });
+
+        // View + date in the URL (/month/2026-11, /week/2026-11-09, …):
+        // URL -> state, so a shared link restores the view. Only react to actual
+        // path changes — otherwise this would stomp the user's own view clicks.
+        let last_view_path = RwSignal::new(String::new());
+        Effect::new(move |_| {
+            let path = location.pathname.get();
+            if path == last_view_path.get() {
+                return;
+            }
+            last_view_path.set(path.clone());
+            if links::parse_path(&path).is_some() {
+                return; // resource link — handled above
+            }
+            if let Some((view, date)) = links::parse_view_path(&path) {
+                if state.view.get() != view {
+                    state.view.set(view);
+                }
+                let anchor =
+                    date.unwrap_or_else(|| caldav::time::today(&state.tz, crate::browser::now_utc()));
+                let cur = state.anchor.get();
+                // for the month view any day in the month is the same view
+                let same = if view == ViewMode::Month {
+                    cur.year() == anchor.year() && cur.month() == anchor.month()
+                } else {
+                    cur == anchor
+                };
+                if !same {
+                    state.anchor.set(anchor);
+                }
+            } else if path == "/" {
+                let t = caldav::time::today(&state.tz, crate::browser::now_utc());
+                if state.view.get() != ViewMode::Month {
+                    state.view.set(ViewMode::Month);
+                }
+                if state.anchor.get() != t {
+                    state.anchor.set(t);
+                }
+            }
+        });
+
+        // state -> URL (replace, so arrow keys don't spam the history).
+        Effect::new(move |_| {
+            let view = state.view.get();
+            let anchor = state.anchor.get();
+            let url = links::view_path(view, anchor);
+            state.base_url.set(url.clone());
+            let path = location.pathname.get();
+            if links::parse_path(&path).is_some() {
+                return; // a resource link is shown; don't override it
+            }
+            if path != url {
+                state.navigate_to(&url, true);
             }
         });
     }

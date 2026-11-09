@@ -87,8 +87,9 @@ check("week view renders", dayHeads === 7 && hourLabels === 24, `${dayHeads} day
 
 await page.click('.segmented-btn:has-text("Day")');
 await page.waitForSelector(".week-view", { timeout: 10000 });
-const dayCols = await page.locator(".week-day-head").count();
-check("day view renders", dayCols === 1, `${dayCols} day column`);
+const dayCols = await page.locator(".day-column").count();
+const dayHeads2 = await page.locator(".week-day-head").count();
+check("day view renders without redundant day header", dayCols === 1 && dayHeads2 === 0, `${dayCols} column, ${dayHeads2} heads`);
 
 await page.click('.segmented-btn:has-text("List")');
 await page.waitForSelector(".agenda", { timeout: 10000 });

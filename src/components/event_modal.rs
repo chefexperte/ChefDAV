@@ -65,7 +65,7 @@ pub fn EventModal() -> impl IntoView {
         None => ("10:00".to_string(), "11:00".to_string()),
     };
 
-    let (summary0, location0, desc0, date0, start0, end0, allday0, cal0, uid0) = match &existing {
+    let (summary0, location0, desc0, date0, start0, end0, allday0, end_date0, cal0, uid0) = match &existing {
         Some(ev) => {
             let override_event = occurrence.and_then(|occ| {
                 ev.overrides
@@ -138,13 +138,21 @@ pub fn EventModal() -> impl IntoView {
             } else {
                 (shown.dtstart.clone(), shown.dtend.clone())
             };
-            let (d, s, e, ad) = match &dtstart {
-                Some(DtValue::Date(dd)) => (
-                    dd.format("%Y-%m-%d").to_string(),
-                    "00:00".to_string(),
-                    "00:00".to_string(),
-                    true,
-                ),
+            let (d, s, e, ad, ed) = match &dtstart {
+                Some(DtValue::Date(dd)) => {
+                    // all-day DTEND is exclusive: the last shown day is one before
+                    let ed = match &dtend {
+                        Some(DtValue::Date(x)) => *x - Duration::days(1),
+                        _ => *dd,
+                    };
+                    (
+                        dd.format("%Y-%m-%d").to_string(),
+                        "00:00".to_string(),
+                        "00:00".to_string(),
+                        true,
+                        ed.format("%Y-%m-%d").to_string(),
+                    )
+                }
                 Some(DtValue::DateTime(t)) => {
                     let lt = t.with_timezone(&tz);
                     let le = dtend
@@ -157,6 +165,7 @@ pub fn EventModal() -> impl IntoView {
                         lt.format("%H:%M").to_string(),
                         le.format("%H:%M").to_string(),
                         false,
+                        le.format("%Y-%m-%d").to_string(),
                     )
                 }
                 None => (
@@ -164,6 +173,7 @@ pub fn EventModal() -> impl IntoView {
                     def_start.clone(),
                     def_end.clone(),
                     false,
+                    default_date.format("%Y-%m-%d").to_string(),
                 ),
             };
             (
@@ -174,6 +184,7 @@ pub fn EventModal() -> impl IntoView {
                 s,
                 e,
                 ad,
+                ed,
                 ev.calendar_href.clone(),
                 ev.event.uid.clone(),
             )
@@ -186,6 +197,7 @@ pub fn EventModal() -> impl IntoView {
             def_start.clone(),
             def_end.clone(),
             state.new_event_all_day.get(),
+            default_date.format("%Y-%m-%d").to_string(),
             state
                 .first_writable_event_calendar()
                 .map(|c| c.info.href)
@@ -240,6 +252,7 @@ pub fn EventModal() -> impl IntoView {
     let location = RwSignal::new(location0);
     let description = RwSignal::new(desc0);
     let date_s = RwSignal::new(date0);
+    let end_date_s = RwSignal::new(end_date0);
     let start_s = RwSignal::new(start0);
     let end_s = RwSignal::new(end0);
     let all_day = RwSignal::new(allday0);
@@ -294,16 +307,19 @@ pub fn EventModal() -> impl IntoView {
             return;
         }
         let date = NaiveDate::parse_from_str(&date_s.get(), "%Y-%m-%d");
+        let edate = NaiveDate::parse_from_str(&end_date_s.get(), "%Y-%m-%d");
         let mk = |t: &str| NaiveTime::parse_from_str(t, "%H:%M");
         let draft = (|| -> Result<EventDraft, String> {
             let date = date.map_err(|e| format!("{}{e}", crate::i18n::t(state.lang.get(), "bad_date")))?;
+            let edate = edate.map_err(|e| format!("{}{e}", crate::i18n::t(state.lang.get(), "bad_date")))?;
             let (start, end) = if all_day.get() {
+                // all-day DTEND is stored exclusive (the day after the last shown day)
                 let s = tz
                     .from_local_datetime(&date.and_hms_opt(0, 0, 0).unwrap())
                     .single()
                     .ok_or(crate::i18n::t(state.lang.get(), "invalid_date"))?;
                 let e = tz
-                    .from_local_datetime(&(date + Duration::days(1)).and_hms_opt(0, 0, 0).unwrap())
+                    .from_local_datetime(&(edate + Duration::days(1)).and_hms_opt(0, 0, 0).unwrap())
                     .single()
                     .ok_or(crate::i18n::t(state.lang.get(), "invalid_date"))?;
                 (s, e)
@@ -315,7 +331,7 @@ pub fn EventModal() -> impl IntoView {
                     .single()
                     .ok_or(crate::i18n::t(state.lang.get(), "invalid_start"))?;
                 let e = tz
-                    .from_local_datetime(&date.and_time(et))
+                    .from_local_datetime(&edate.and_time(et))
                     .single()
                     .ok_or(crate::i18n::t(state.lang.get(), "invalid_end"))?;
                 (s, e)
@@ -510,8 +526,14 @@ pub fn EventModal() -> impl IntoView {
                                 on:input=move |ev| {
                                     let value = event_target_value(&ev);
                                     date_s.set(value.clone());
-                                    if !byday_touched.get() {
-                                        if let Ok(d) = NaiveDate::parse_from_str(&value, "%Y-%m-%d") {
+                                    // keep the end date >= start date
+                                    if let Ok(d) = NaiveDate::parse_from_str(&value, "%Y-%m-%d") {
+                                        if let Ok(ed) = NaiveDate::parse_from_str(&end_date_s.get(), "%Y-%m-%d") {
+                                            if ed < d {
+                                                end_date_s.set(value.clone());
+                                            }
+                                        }
+                                        if !byday_touched.get() {
                                             byday.set(vec![weekday_code(d)]);
                                         }
                                     }
@@ -523,12 +545,6 @@ pub fn EventModal() -> impl IntoView {
                                 prop:value=move || start_s.get()
                                 on:input=move |ev| start_s.set(event_target_value(&ev)) />
                         </label>
-                        <label class="field field-time" class:hidden=move || all_day.get()>
-                            <span>{move || crate::i18n::t(state.lang.get(), "end")}</span>
-                            <input type="time" required
-                                prop:value=move || end_s.get()
-                                on:input=move |ev| end_s.set(event_target_value(&ev)) />
-                        </label>
                         <label class="field field-check">
                             <span>{move || crate::i18n::t(state.lang.get(), "all_day")}</span>
                             <span class="switch">
@@ -536,6 +552,20 @@ pub fn EventModal() -> impl IntoView {
                                     prop:checked=move || all_day.get()
                                     on:change=move |ev| all_day.set(event_target_checked(&ev)) />
                             </span>
+                        </label>
+                    </div>
+                    <div class="field-row">
+                        <label class="field">
+                            <span>{move || crate::i18n::t(state.lang.get(), "end_date")}</span>
+                            <input type="date" required
+                                prop:value=move || end_date_s.get()
+                                on:input=move |ev| end_date_s.set(event_target_value(&ev)) />
+                        </label>
+                        <label class="field field-time" class:hidden=move || all_day.get()>
+                            <span>{move || crate::i18n::t(state.lang.get(), "end")}</span>
+                            <input type="time" required
+                                prop:value=move || end_s.get()
+                                on:input=move |ev| end_s.set(event_target_value(&ev)) />
                         </label>
                     </div>
                     <label class="field">

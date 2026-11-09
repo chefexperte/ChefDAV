@@ -169,7 +169,19 @@ pub fn EventDetails() -> impl IntoView {
                                 </Show>
                             </p>
                             <Show when=move || has_location fallback=|| ()>
-                                <p class="details-row"><span class="details-label">{move || crate::i18n::t(state.lang.get(), "location")}</span>{location.clone()}</p>
+                                <p class="details-row">
+                                    <span
+                                        class="details-label details-icon"
+                                        title=move || crate::i18n::t(state.lang.get(), "location")
+                                        aria-label=move || crate::i18n::t(state.lang.get(), "location")
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                            <circle cx="12" cy="10" r="3"></circle>
+                                        </svg>
+                                    </span>
+                                    {location.clone()}
+                                </p>
                                 <LocationMap location=location.clone() />
                             </Show>
                             <Show when=move || has_description fallback=|| ()>
@@ -184,11 +196,28 @@ pub fn EventDetails() -> impl IntoView {
                             <div class="modal-actions">
                                 <span class="spacer"></span>
                                 <button
-                                    class="btn btn-ghost copy-link"
-                                    title=move || crate::i18n::t(state.lang.get(), "copy_link")
+                                    class="btn btn-ghost btn-icon copy-link"
+                                    title=move || crate::i18n::t(state.lang.get(), if copied.get() { "link_copied" } else { "copy_link" })
+                                    aria-label=move || crate::i18n::t(state.lang.get(), "copy_link")
                                     on:click=copy_link
                                 >
-                                    {move || crate::i18n::t(state.lang.get(), if copied.get() { "link_copied" } else { "copy_link" })}
+                                    {move || {
+                                        if copied.get() {
+                                            // check mark: link is in the clipboard
+                                            view! {
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                                </svg>
+                                            }.into_any()
+                                        } else {
+                                            view! {
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                                </svg>
+                                            }.into_any()
+                                        }
+                                    }}
                                 </button>
                                 <button class="btn btn-ghost" on:click=move |_| state.modal.set(None)>
                                     {move || crate::i18n::t(state.lang.get(), "close")}
@@ -202,7 +231,10 @@ pub fn EventDetails() -> impl IntoView {
                                             display_start,
                                         }))
                                     >
-                                        {move || format!("✎ {}", crate::i18n::t(state.lang.get(), "edit_event"))}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                                            <path fill="currentColor" d="M 1,11.88 V 15 H 4.12 L 12,7.1195 8.88,4 Z M 14.76,4.3695 C 15.065,4.0647 15.09,3.5195 14.76,3.1895 L 12.81,1.2395 C 12.48,0.90947 11.934,0.93377 11.63,1.2395 L 10,2.8795 13.12,6 Z"></path>
+                                        </svg>
+                                        {move || crate::i18n::t(state.lang.get(), "edit_event")}
                                     </button>
                                 </Show>
                             </div>

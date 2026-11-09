@@ -54,7 +54,7 @@ const calNames = await page.$$eval(".cal-item .cal-name", (els) =>
 await page.click("button.new-event");
 await page.waitForSelector(".modal");
 await page.fill('.modal input[type="text"]', EVENT);
-await page.fill('.modal input[type="date"]', "2026-11-22");
+await page.fill('.modal input[type="date"]', "2026-11-24");
 await page.fill('.modal input[type="time"] >> nth=0', "12:30");
 await page.fill('.modal input[type="time"] >> nth=1', "13:30");
 await page.click('.modal button:has-text("Save")');
@@ -82,8 +82,11 @@ check(
   (await page.textContent(".details-modal h3")).trim() === EVENT
 );
 check(
-  "copy-link button exists",
-  (await page.locator(".details-modal .copy-link").count()) === 1
+  "copy-link button is an icon",
+  (await page.locator(".details-modal .copy-link").count()) === 1 &&
+    (await page.locator(".details-modal .copy-link svg").count()) === 1 &&
+    ((await page.locator(".details-modal .copy-link").innerText()).trim() === ""),
+  await page.locator(".details-modal .copy-link").getAttribute("title").catch(() => "")
 );
 const eventUrl = page.url();
 
@@ -99,7 +102,11 @@ check(
 // ---------- back / forward ----------
 await page.goBack();
 await page.waitForSelector(".details-modal", { state: "detached", timeout: 10000 });
-check("back closes the resource view", new URL(page.url()).pathname === "/", page.url());
+check(
+  "back closes the resource view (returns to the view URL)",
+  /^\/(month|week|day|list|tasks)/.test(new URL(page.url()).pathname),
+  page.url()
+);
 await page.goForward();
 await page.waitForSelector(".details-modal", { timeout: 10000 });
 check(
@@ -108,11 +115,53 @@ check(
   page.url()
 );
 
-// ---------- closing the modal resets the address bar ----------
+// ---------- closing the modal returns to the view URL ----------
 await page.click('.details-modal button:has-text("Close")');
 await page.waitForSelector(".details-modal", { state: "detached", timeout: 10000 });
 await page.waitForTimeout(300);
-check("close resets the address bar to /", new URL(page.url()).pathname === "/", page.url());
+check(
+  "close returns the address bar to the view URL",
+  /^\/(month|week|day|list|tasks)/.test(new URL(page.url()).pathname),
+  page.url()
+);
+
+// ---------- view + date in the URL ----------
+await page.click('.segmented-btn:has-text("Week")');
+await page.waitForSelector(".week-view", { timeout: 10000 });
+await page.waitForTimeout(500);
+const weekPath = new URL(page.url()).pathname;
+check("week view sets /week/<date>", /^\/week\/\d{4}-\d{2}-\d{2}$/.test(weekPath), weekPath);
+await page.click('button[title="Next"]');
+await page.waitForTimeout(600);
+const weekPath2 = new URL(page.url()).pathname;
+check("next week updates the URL", weekPath2 !== weekPath && /^\/week\/\d{4}-\d{2}-\d{2}$/.test(weekPath2), weekPath2);
+// reload restores the week + anchor from the URL
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 30000 });
+check(
+  "reload restores week view from the URL",
+  new URL(page.url()).pathname === weekPath2 &&
+    (await page.locator('.segmented-btn.active').innerText()) === "Week",
+  page.url()
+);
+// a shared day link opens that day directly
+await page.goto(`${APP}/day/2026-11-20`, { waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 30000 });
+check(
+  "shared /day/2026-11-20 link opens that day",
+  new URL(page.url()).pathname === "/day/2026-11-20" &&
+    (await page.textContent(".month-title")).includes("20"),
+  `${page.url()} — ${await page.textContent(".month-title")}`
+);
+await page.goto(`${APP}/month/2026-12`, { waitUntil: "networkidle" });
+await page.waitForSelector(".month-grid", { timeout: 30000 });
+check(
+  "shared /month/2026-12 link opens December",
+  (await page.textContent(".month-title")).includes("December"),
+  await page.textContent(".month-title")
+);
+await page.goto(`${APP}/`, { waitUntil: "networkidle" });
+await page.waitForSelector(".month-grid", { timeout: 30000 });
 
 // ---------- task link ----------
 await page.click('.segmented-btn:has-text("Tasks")');
@@ -145,9 +194,8 @@ await page.goto(`${APP}/event/${encodeURIComponent(calNames[0] ?? "x")}/no-such-
 await page.waitForSelector(".month-grid", { timeout: 30000 });
 await page.waitForTimeout(3000);
 check(
-  "unknown link returns to / with an error",
-  new URL(page.url()).pathname === "/" &&
-    (await page.locator(".error-toast, .error, .form-error").count()) >= 0,
+  "unknown link returns to the view URL with an error",
+  /^\/(month|week|day|list|tasks)/.test(new URL(page.url()).pathname),
   page.url()
 );
 

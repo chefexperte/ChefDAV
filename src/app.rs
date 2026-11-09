@@ -100,6 +100,16 @@ pub fn App() -> impl IntoView {
                         <Route path=path!("/login") view=LoginPage />
                         <ParentRoute path=path!("/") view=Shell>
                             <Route path=path!("") view=CalendarView />
+                            // View + date in the URL (shareable): /month/2026-11, …
+                            <Route path=path!("month") view=CalendarView />
+                            <Route path=path!("month/:date") view=CalendarView />
+                            <Route path=path!("week") view=CalendarView />
+                            <Route path=path!("week/:date") view=CalendarView />
+                            <Route path=path!("day") view=CalendarView />
+                            <Route path=path!("day/:date") view=CalendarView />
+                            <Route path=path!("list") view=CalendarView />
+                            <Route path=path!("list/:date") view=CalendarView />
+                            <Route path=path!("tasks") view=CalendarView />
                             // Resource deep links render the calendar view
                             // underneath; the Shell opens the resource modal
                             // from the URL.
