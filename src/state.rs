@@ -89,13 +89,16 @@ pub struct SlotPopupState {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ModalState {
     New { date: NaiveDate },
-    /// Read-only event details; the editor opens from here.
+    /// Read-only event details; the editor opens from here. Rendered as a
+    /// popover anchored at `anchor` (click position) when available.
     Details {
         index: usize,
         /// Original recurrence start (`RECURRENCE-ID`) for exceptions.
         occurrence: Option<chrono::DateTime<chrono_tz::Tz>>,
         /// The actual displayed start (may be shifted by THISANDFUTURE).
         display_start: Option<chrono::DateTime<chrono_tz::Tz>>,
+        /// Click position the popover is anchored to (None = deep link/search).
+        anchor: Option<(i32, i32)>,
     },
     Edit {
         index: usize,
@@ -383,6 +386,7 @@ impl AppState {
         index: usize,
         occurrence: Option<DateTime<Tz>>,
         display_start: Option<DateTime<Tz>>,
+        anchor: Option<(i32, i32)>,
     ) {
         if let Some(url) = self.event_url(index, occurrence) {
             self.navigate_to(&url, false);
@@ -392,6 +396,7 @@ impl AppState {
             index,
             occurrence,
             display_start,
+            anchor,
         }));
     }
 

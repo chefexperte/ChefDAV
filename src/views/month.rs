@@ -104,7 +104,7 @@ fn chip(
                 } else {
                     let occurrence = if recurring { occ.recurrence_id } else { None };
                     let display_start = if recurring { Some(occ.start) } else { None };
-                    state.open_details(idx, occurrence, display_start);
+                    state.open_details(idx, occurrence, display_start, Some((e.client_x() as i32, e.client_y() as i32)));
                 }
             }
         >
@@ -324,8 +324,14 @@ pub fn MonthView() -> impl IntoView {
                                 each=move || week_days.clone()
                                 key=|d| *d
                                 children=move |day| {
-                                    let anchor = state.anchor.get();
-                                    let in_month = day.year() == anchor.year() && day.month() == anchor.month();
+                                    // Must stay reactive: the boundary week row is shared
+                                    // between two month grids (same w[0] key), so a captured
+                                    // anchor would keep the old month's `out` marks when
+                                    // navigating e.g. Dec -> Jan.
+                                    let in_month = Memo::new(move |_| {
+                                        let a = state.anchor.get();
+                                        day.year() == a.year() && day.month() == a.month()
+                                    });
                                     let is_today = day == today_d;
                                     let col = week_cols.iter().position(|d| *d == day).unwrap_or(0);
                                     let day_items = Memo::new(move |_| {
@@ -371,7 +377,7 @@ pub fn MonthView() -> impl IntoView {
                                     view! {
                                         <div
                                             class="day"
-                                            class:out=!in_month
+                                            class:out=move || !in_month.get()
                                             class:today=is_today
                                             on:click=move |ev| {
                                                 state.day_popup.set(Some(DayPopupState {
@@ -472,7 +478,7 @@ pub fn MonthView() -> impl IntoView {
                                                         }
                                                     });
                                                 } else {
-                                                    state.open_details(b.idx, occurrence, display_start);
+                                                    state.open_details(b.idx, occurrence, display_start, Some((e.client_x() as i32, e.client_y() as i32)));
                                                 }
                                             }
                                         >

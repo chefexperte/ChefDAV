@@ -69,6 +69,7 @@ pub fn Shell() -> impl IntoView {
                                 index,
                                 occurrence,
                                 display_start,
+                                anchor: None,
                             }));
                             state.link_active.set(true);
                         } else if state.session.get().is_some()
@@ -102,6 +103,7 @@ pub fn Shell() -> impl IntoView {
                                         index,
                                         occurrence,
                                         display_start,
+                                        anchor: None,
                                     }));
                                     st.link_active.set(true);
                                 } else {

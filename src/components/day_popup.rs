@@ -95,9 +95,9 @@ pub fn DayPopup() -> impl IntoView {
                                         <button
                                             class="popover-event"
                                             style=format!("--chip:{color}")
-                                            on:click=move |_| {
+                                            on:click=move |e| {
                                                 state.day_popup.set(None);
-                                                state.open_details(idx, occ.recurrence_id, Some(occ.start));
+                                                state.open_details(idx, occ.recurrence_id, Some(occ.start), Some((e.client_x() as i32, e.client_y() as i32)));
                                             }
                                         >
                                             <span class="popover-time">{time}</span>

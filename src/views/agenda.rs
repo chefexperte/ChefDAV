@@ -161,7 +161,7 @@ pub fn AgendaView() -> impl IntoView {
                                                                     }
                                                                 });
                                                             } else {
-                                                                state.open_details(idx, occurrence, display_start)
+                                                                state.open_details(idx, occurrence, display_start, Some((e.client_x() as i32, e.client_y() as i32)))
                                                             }
                                                         }
                                                     >

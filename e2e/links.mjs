@@ -118,7 +118,7 @@ check(
 );
 
 // ---------- closing the modal returns to the view URL ----------
-await page.click('.details-modal button:has-text("Close")');
+await page.click('.details-modal .modal-close');
 await page.waitForSelector(".details-modal", { state: "detached", timeout: 10000 });
 await page.waitForTimeout(300);
 check(
@@ -161,6 +161,49 @@ check(
   "shared /month/2026-12 link opens December",
   (await page.textContent(".month-title")).includes("December"),
   await page.textContent(".month-title")
+);
+
+// ---------- month boundary across navigation (Dec 2026 -> Jan 2027) ----------
+// The boundary week row (Mon Dec 28 - Sun Jan 3) is shared between the two
+// grids; its cells must recompute the `out` class when the anchor changes.
+await page.click('button[title="Next"]');
+await page.waitForURL(/\/month\/2027-01/, { timeout: 10000 });
+await page.waitForTimeout(800);
+const boundary = await page.evaluate(() => {
+  const row = document.querySelector(".week");
+  return [...row.querySelectorAll(".day")].map((c) => ({
+    num: c.querySelector(".day-num")?.textContent.trim(),
+    out: c.classList.contains("out"),
+  }));
+});
+check(
+  "month nav Dec->Jan: boundary week marks Dec 28-31 as out, Jan 1-3 as in",
+  boundary.length === 7 &&
+    boundary.slice(0, 4).every((c) => c.out && ["28", "29", "30", "31"].includes(c.num)) &&
+    boundary.slice(4).every((c) => !c.out && ["1", "2", "3"].includes(c.num)),
+  JSON.stringify(boundary)
+);
+// and back: Nov <- Dec, the Nov 30 / Dec 1 boundary must be correct too
+await page.click('button[title="Previous"]');
+await page.waitForURL(/\/month\/2026-12/, { timeout: 10000 });
+await page.waitForTimeout(800);
+await page.click('button[title="Previous"]');
+await page.waitForURL(/\/month\/2026-11/, { timeout: 10000 });
+await page.waitForTimeout(800);
+const boundary2 = await page.evaluate(() => {
+  const rows = [...document.querySelectorAll(".week")];
+  const last = rows[rows.length - 1];
+  return [...last.querySelectorAll(".day")].map((c) => ({
+    num: c.querySelector(".day-num")?.textContent.trim(),
+    out: c.classList.contains("out"),
+  }));
+});
+check(
+  "month nav Dec->Nov: last week marks Dec 1-6 as out, Nov 30 as in",
+  boundary2.length === 7 &&
+    boundary2[0].num === "30" && !boundary2[0].out &&
+    boundary2.slice(1).every((c) => c.out && ["1", "2", "3", "4", "5", "6"].includes(c.num)),
+  JSON.stringify(boundary2)
 );
 await page.goto(`${APP}/`, { waitUntil: "networkidle" });
 await page.waitForSelector(".month-grid", { timeout: 30000 });

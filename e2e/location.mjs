@@ -84,7 +84,7 @@ const settleModal = () =>
   page
     .waitForFunction(
       () => {
-        const m = document.querySelector(".modal-overlay .modal");
+        const m = document.querySelector(".modal-overlay .modal, .popover-backdrop .details-modal");
         if (!m) return false;
         const cs = getComputedStyle(m);
         return (
@@ -130,7 +130,7 @@ check(
 );
 check("geocoded label shown under the map", (await page.locator(".details-map-label").count()) === 1);
 await page.screenshot({ path: "/tmp/opencode/screenshots/details-map.png" });
-await page.click('.details-modal button:has-text("Close")');
+await page.click('.details-modal .modal-close');
 await page.waitForSelector(".details-modal", { state: "detached" });
 
 // ---------- coordinate pin (parsed locally, no geocoder) ----------
@@ -149,7 +149,7 @@ check(
     coordLink.includes("mlon=13.377700"),
   coordLink ?? "(none)"
 );
-await page.click('.details-modal button:has-text("Close")');
+await page.click('.details-modal .modal-close');
 await page.waitForSelector(".details-modal", { state: "detached" });
 
 // ---------- plain venue name: search fallback ----------
@@ -161,7 +161,7 @@ check(
   search?.includes("openstreetmap.org/search?query=Caf%C3%A9+Nord"),
   search ?? "(none)"
 );
-await page.click('.details-modal button:has-text("Close")');
+await page.click('.details-modal .modal-close');
 await page.waitForSelector(".details-modal", { state: "detached" });
 
 // ---------- cleanup ----------

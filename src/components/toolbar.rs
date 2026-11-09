@@ -203,13 +203,13 @@ pub fn Toolbar() -> impl IntoView {
                                     <button
                                         class="search-hit"
                                         style=format!("--chip:{color}")
-                                        on:click=move |_| {
+                                        on:click=move |e| {
                                             state.anchor.set(date);
                                             state.view.set(ViewMode::Day);
                                             state.search_open.set(false);
                                             let idx = state.events.get().iter().position(|e| e.href == href);
                                             if let Some(idx) = idx {
-                                                state.open_details(idx, None, None);
+                                                state.open_details(idx, None, None, Some((e.client_x() as i32, e.client_y() as i32)));
                                             }
                                         }
                                     >

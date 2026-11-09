@@ -19,6 +19,16 @@ pub fn WeekMoreModal() -> impl IntoView {
     view! {
         <div class="modal-overlay" on:click=close>
             <div class="modal modal-small" on:click=move |e| e.stop_propagation() role="dialog" aria-modal="true">
+                <button
+                    class="modal-close"
+                    title=move || crate::i18n::t(state.lang.get(), "close")
+                    aria-label=move || crate::i18n::t(state.lang.get(), "close")
+                    on:click=close
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6L6 18"></path>
+                    </svg>
+                </button>
                 <h3>{move || crate::i18n::t(state.lang.get(), "more_events")}</h3>
                 <ul class="more-list">
                     <For
@@ -39,9 +49,9 @@ pub fn WeekMoreModal() -> impl IntoView {
                                     <button
                                         class="agenda-item"
                                         style=format!("--chip:{color}")
-                                        on:click=move |_| {
+                                        on:click=move |e| {
                                             state.week_more.set(None);
-                                            state.open_details(idx, None, None);
+                                            state.open_details(idx, None, None, Some((e.client_x() as i32, e.client_y() as i32)));
                                         }
                                     >
                                         <span class="agenda-time">{time}</span>
@@ -53,10 +63,6 @@ pub fn WeekMoreModal() -> impl IntoView {
                         }
                     />
                 </ul>
-                <div class="modal-actions">
-                    <span class="spacer"></span>
-                    <button class="btn btn-ghost" on:click=close>{move || crate::i18n::t(state.lang.get(), "close")}</button>
-                </div>
             </div>
         </div>
     }

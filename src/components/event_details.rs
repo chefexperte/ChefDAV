@@ -76,19 +76,56 @@ pub fn EventDetails() -> impl IntoView {
         }
     };
     let modal = state.modal.get().expect("details modal is open");
-    let (index, occurrence, display_start) = match modal {
+    let (index, occurrence, display_start, anchor) = match modal {
         ModalState::Details {
             index,
             occurrence,
             display_start,
-        } => (index, occurrence, display_start),
-        _ => (0, None, None),
+            anchor,
+        } => (index, occurrence, display_start, anchor),
+        _ => (0, None, None, None),
     };
     let event = move || state.events.get().get(index).cloned();
 
+    // Popover anchored at the click position; deep links / search results
+    // (no click) fall back to centered near the top.
+    let (left, top) = match anchor {
+        Some((x, y)) => crate::components::day_popup::clamp_position(x as f64, y as f64, 440.0, 560.0),
+        None => {
+            let win = web_sys::window();
+            let vw = win
+                .as_ref()
+                .and_then(|w| w.inner_width().ok())
+                .and_then(|v| v.as_f64())
+                .unwrap_or(1200.0);
+            let vh = win
+                .as_ref()
+                .and_then(|w| w.inner_height().ok())
+                .and_then(|v| v.as_f64())
+                .unwrap_or(800.0);
+            (((vw - 440.0) / 2.0).max(8.0), (vh * 0.12).max(8.0))
+        }
+    };
+
     view! {
-        <div class="modal-overlay" on:click=move |_| state.modal.set(None)>
-            <div class="modal details-modal" on:click=move |e| e.stop_propagation() role="dialog" aria-modal="true">
+        <div class="popover-backdrop" on:click=move |_| state.modal.set(None)>
+            <div
+                class="popover details-modal"
+                style=format!("left:{left}px;top:{top}px")
+                on:click=move |e| e.stop_propagation()
+                role="dialog"
+                aria-modal="true"
+            >
+                <button
+                    class="modal-close"
+                    title=move || crate::i18n::t(state.lang.get(), "close")
+                    aria-label=move || crate::i18n::t(state.lang.get(), "close")
+                    on:click=move |_| state.modal.set(None)
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6L6 18"></path>
+                    </svg>
+                </button>
                 {move || {
                     event().map(|ev| {
                         let override_event = occurrence.and_then(|occ| {
@@ -218,9 +255,6 @@ pub fn EventDetails() -> impl IntoView {
                                             }.into_any()
                                         }
                                     }}
-                                </button>
-                                <button class="btn btn-ghost" on:click=move |_| state.modal.set(None)>
-                                    {move || crate::i18n::t(state.lang.get(), "close")}
                                 </button>
                                 <Show when=move || !read_only fallback=|| ()>
                                     <button

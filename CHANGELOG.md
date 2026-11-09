@@ -5,6 +5,13 @@ latest section of this file (baked into each build).
 
 ## Unreleased
 
+- The **event details card is now a popover** anchored at the click position
+  (deep links / search results open it centered near the top), and the text
+  **"Close" button is now an × button in the top-right corner** (also in the
+  "more events" popup).
+- Fixed the **month view boundary cells** keeping stale out-of-month styling
+  when navigating between months (e.g. Dec → Jan showed the last December
+  days as in-month) — the `out` class is now computed reactively.
 - **Day view fits more events**: up to **four** overlapping timed events are
   shown side by side (the week view keeps two); from five on, three are shown
   plus a **"Show all" bar spanning the full column height** in the freed slot,

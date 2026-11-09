@@ -179,7 +179,7 @@ check("search finds recurring event", hits >= 1, `${hits} hits`);
 await page.locator(".search-hit").first().click();
 await page.waitForSelector(".details-modal", { timeout: 10000 });
 check("search result opens event details", true);
-await page.click('.details-modal button:has-text("Close")');
+await page.click('.details-modal .modal-close');
 await page.waitForSelector(".details-modal", { state: "detached" });
 await page.fill('.search-box input', "");
 await page.waitForTimeout(300);

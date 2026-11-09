@@ -1351,6 +1351,7 @@ button {
 }
 
 .modal {
+  position: relative;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -1361,6 +1362,34 @@ button {
   overflow-y: auto;
   padding: 22px 24px;
   animation: pop 0.14s ease;
+}
+
+/* × close button in the top-right corner (replaces the old text "Close") */
+.modal-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  z-index: 2;
+}
+
+.modal-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.modal-close:hover {
+  background: var(--paper-deep);
+  color: var(--ink);
 }
 
 .modal-small {
@@ -1394,7 +1423,13 @@ button {
   flex: 1;
 }
 
-/* ---------- event details ---------- */
+/* ---------- event details (rendered as a popover anchored at the click) ---------- */
+
+.popover.details-modal {
+  width: min(440px, calc(100vw - 16px));
+  max-height: 82vh;
+  animation: pop 0.14s ease;
+}
 
 .details-modal {
   max-width: 430px;
@@ -1404,6 +1439,7 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding-right: 34px; /* room for the × close button */
 }
 
 .details-head h3 {
