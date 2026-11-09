@@ -7,8 +7,10 @@
 *.pem
 *.key
 
-# agent-only working notes: local, never committed
+# agent-only working notes: local, never committed (and purged from history)
 AGENTS.md
+TODO.md
+DESIGN.md
 
 # e2e
 /e2e/node_modules
