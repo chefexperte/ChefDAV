@@ -5,6 +5,10 @@ latest section of this file (baked into each build).
 
 ## Unreleased
 
+- Fixed the **continuation fade of multi-day events when navigating weeks**: a
+  week-crossing all-day event kept the previous week's fade side (and position)
+  after clicking next/previous — the spanning-bar row is now re-rendered when
+  its segment geometry changes.
 - **Deep links for every resource**: opening an event or task pushes its own
   URL (`/event/<calendar>/<uid>`, `/task/<calendar>/<uid>`, plus `?occ=…` for
   one occurrence of a recurring event) into the address bar, and the details

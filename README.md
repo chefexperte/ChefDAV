@@ -20,7 +20,9 @@ modern look, Rust reliability.
 
 - **Five views** — Month grid, Week timeline, Day timeline, a 30-day List view
   and a Tasks list — with a shared toolbar (prev / today / next, view switcher,
-  search).
+  search). The current view and date live in the URL (`/month/2026-11`,
+  `/week/2026-11-16`, `/day/…`, `/list/…`, `/tasks`), so any screen can be
+  reloaded or shared.
 - **Deep links** — every event and task has its own URL
   (`/event/<calendar>/<uid>`, `/task/<calendar>/<uid>`, with `?occ=…` for a
   single occurrence of a recurring event). Opening a resource updates the
@@ -28,6 +30,9 @@ modern look, Rust reliability.
   such a link — also on a fresh load — opens that resource directly.
 - **Full event CRUD** over CalDAV (create / edit / delete, optimistic
   concurrency via `If-Match`), with a read-only details card before the editor.
+- **Multi-day events** — the editor has an end-date picker for all-day *and*
+  overnight timed events; month and week views render them as spanning bars
+  with striped continuation fades at week boundaries and day edges.
 - **Recurrence** — RRULE/RDATE/EXDATE expanded client-side in the event's own
   timezone (DST-correct), an RRULE editor, and RECURRENCE-ID exceptions
   (*this event* / *this and following* / *all events*).
@@ -118,6 +123,8 @@ podman compose -f docker/docker-compose.yml up -d
 #    (with Docker: docker compose -f docker/docker-compose.yml up -d)
 #    optional LDAP variant: add -f docker/docker-compose.ldap.yml
 #    dev login: alice / secret
+#    fresh volume (new machine)? seed the demo calendars + events:
+./scripts/seed-dev.sh
 
 # 2. the app with hot reload
 trunk serve        # → http://127.0.0.1:3100
