@@ -1,5 +1,6 @@
-// Location preview regression: coordinate pins, the OSM link, and the
-// search fallback for plain venue names.
+// Location preview regression: an address is geocoded (Photon) into an OSM
+// pin — that is also the canonical details-map.png screenshot — plus
+// coordinate pins, the OSM link, and the search fallback for plain venue names.
 //
 // Prerequisites: same as smoke.mjs (dev stack + app at APP_URL).
 // Run: cd e2e && node location.mjs
@@ -11,8 +12,10 @@ const DAV = process.env.DAV_URL ?? "http://127.0.0.1:8080";
 const USER = process.env.DAV_USER ?? "alice";
 const PASS = process.env.DAV_PASS ?? "secret";
 
-const run = Date.now().toString(36);
-const TITLE = `Map ${run}`;
+// Fixed title/location so the details-map.png screenshot is reproducible.
+const TITLE = "Bib-Date ❤️";
+const ADDRESS = "Im Neuenheimer Feld 289"; // Heidelberg — geocoded via Photon
+const COORDS = "52.5163, 13.3777"; // Berlin — parsed locally
 
 let failures = 0;
 function check(name, ok, detail = "") {
@@ -61,16 +64,17 @@ await page.fill('.modal input[type="text"]', TITLE);
 await page.fill('.modal input[type="date"]', "2026-11-26");
 await page.fill('.modal input[type="time"] >> nth=0', "15:00");
 await page.fill('.modal input[type="time"] >> nth=1', "16:00");
-await page.locator('.modal input[type="text"]').nth(1).fill("52.5163, 13.3777");
+await page.locator('.modal input[type="text"]').nth(1).fill(ADDRESS);
 await page.click('.modal button:has-text("Save")');
 await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
 await page.waitForTimeout(1800);
 check("map event created", (await page.locator(".chip", { hasText: TITLE }).count()) > 0);
 
-// ---------- coordinate pin ----------
+// ---------- address pin (the details-map.png screenshot) ----------
 await page.locator(".chip", { hasText: TITLE }).first().click();
 await page.waitForSelector(".details-modal", { timeout: 10000 });
-await page.waitForSelector(".details-map iframe", { timeout: 10000 });
+// The iframe only appears after the Photon geocoding round-trip.
+await page.waitForSelector(".details-map iframe", { timeout: 20000 });
 // Let the modal pop animation finish and the OSM tiles load before shooting,
 // otherwise the screenshot catches the popup half-visible / the map blank.
 // NB: polling getAnimations() too early returns an EMPTY list, which would
@@ -109,18 +113,41 @@ await page.waitForTimeout(400);
 const embed = await page.getAttribute(".details-map iframe", "src");
 const link = await page.getAttribute(".details-map-overlay", "href");
 check(
-  "coordinates render an OSM embed with a marker",
-  embed?.includes("openstreetmap.org/export/embed.html") &&
-    embed.includes("marker=52.516300%2C13.377700"),
+  "address is geocoded into an OSM embed with a marker",
+  embed?.includes("openstreetmap.org/export/embed.html") && embed.includes("marker="),
   embed ?? "(none)"
 );
 check(
-  "map overlay links to the OSM page",
-  link?.includes("openstreetmap.org/?mlat=52.516300") &&
-    link.includes("mlon=13.377700"),
+  "geocoded pin lands in Heidelberg (Im Neuenheimer Feld)",
+  link?.includes("openstreetmap.org/?mlat=49.4") && link.includes("&mlon=8.6"),
   link ?? "(none)"
 );
+check(
+  "map overlay links to the OSM page",
+  link?.includes("openstreetmap.org/?mlat=") && link.includes("&mlon="),
+  link ?? "(none)"
+);
+check("geocoded label shown under the map", (await page.locator(".details-map-label").count()) === 1);
 await page.screenshot({ path: "/tmp/opencode/screenshots/details-map.png" });
+await page.click('.details-modal button:has-text("Close")');
+await page.waitForSelector(".details-modal", { state: "detached" });
+
+// ---------- coordinate pin (parsed locally, no geocoder) ----------
+await setLocation(COORDS);
+const coordEmbed = await page.getAttribute(".details-map iframe", "src");
+const coordLink = await page.getAttribute(".details-map-overlay", "href");
+check(
+  "coordinates render an OSM embed with a marker",
+  coordEmbed?.includes("openstreetmap.org/export/embed.html") &&
+    coordEmbed.includes("marker=52.516300%2C13.377700"),
+  coordEmbed ?? "(none)"
+);
+check(
+  "map overlay links to the OSM page",
+  coordLink?.includes("openstreetmap.org/?mlat=52.516300") &&
+    coordLink.includes("mlon=13.377700"),
+  coordLink ?? "(none)"
+);
 await page.click('.details-modal button:has-text("Close")');
 await page.waitForSelector(".details-modal", { state: "detached" });
 
@@ -137,10 +164,15 @@ await page.click('.details-modal button:has-text("Close")');
 await page.waitForSelector(".details-modal", { state: "detached" });
 
 // ---------- cleanup ----------
-await openEditor();
-await page.click('.modal button:has-text("Delete")');
-await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
-await page.waitForTimeout(1200);
+// The title is fixed (for reproducible screenshots), so delete every match in
+// case an earlier interrupted run left one behind.
+for (let i = 0; i < 3; i++) {
+  if ((await page.locator(".chip", { hasText: TITLE }).count()) === 0) break;
+  await openEditor();
+  await page.click('.modal button:has-text("Delete")');
+  await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
+  await page.waitForTimeout(1200);
+}
 check("map event deleted", (await page.locator(".chip", { hasText: TITLE }).count()) === 0);
 
 check("no console errors", errors.length === 0, errors.join(" | "));
