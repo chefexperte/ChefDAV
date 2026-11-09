@@ -329,6 +329,53 @@ impl AppState {
         }
     }
 
+    /// `ModalState` stores positional indices into `events`/`todos`. Whenever
+    /// those vectors are replaced (sync refresh, cache restore), remap an open
+    /// modal by href so it keeps showing the same resource — a bare index would
+    /// silently point at a different event after reordering (this is what made
+    /// a reloaded `/event/...` deep link show the wrong event, 2026-11-09).
+    /// Closes the modal if its resource is gone.
+    pub fn remap_open_modal(
+        &self,
+        new_events: Option<&[DisplayEvent]>,
+        new_todos: Option<&[TodoItem]>,
+    ) {
+        let old_events = self.events.get();
+        let old_todos = self.todos.get();
+        // Decide first (Option<Option<usize>>: outer = applicable, inner = new
+        // index, or None when the resource is gone), then apply — avoids
+        // borrow conflicts inside the signal update.
+        let update: Option<Option<usize>> = match self.modal.get() {
+            Some(ModalState::Details { index, .. }) | Some(ModalState::Edit { index, .. }) => {
+                new_events.map(|new| {
+                    old_events
+                        .get(index)
+                        .and_then(|ev| new.iter().position(|e| e.href == ev.href))
+                })
+            }
+            Some(ModalState::EditTodo { index }) => new_todos.map(|new| {
+                old_todos
+                    .get(index)
+                    .and_then(|t| new.iter().position(|x| x.href == t.href))
+            }),
+            _ => None,
+        };
+        match update {
+            Some(Some(new_index)) => self.modal.update(|m| {
+                if let Some(
+                    ModalState::Details { index, .. }
+                    | ModalState::Edit { index, .. }
+                    | ModalState::EditTodo { index },
+                ) = m.as_mut()
+                {
+                    *index = new_index;
+                }
+            }),
+            Some(None) => self.modal.set(None), // resource deleted while open
+            None => {}
+        }
+    }
+
     /// Open the read-only details card for an event **and** push its resource
     /// link (`/event/<calendar>/<uid>`) into the address bar.
     pub fn open_details(

@@ -5,6 +5,18 @@ latest section of this file (baked into each build).
 
 ## Unreleased
 
+- **Day view fits more events**: up to **four** overlapping timed events are
+  shown side by side (the week view keeps two); from five on, three are shown
+  plus a **"Show all" bar spanning the full column height** in the freed slot,
+  so it stays visible while scrolling. The all-day row is unchanged.
+- **Event titles stick while scrolling**: in the week/day timeline the title of
+  a tall event stays pinned at the top of the viewport, so the event name
+  never scrolls out of sight.
+- Fixed event columns not resizing when a new overlapping event was created in
+  the day view (stale rows until reload).
+- Fixed a reloaded `/event/...` deep link occasionally opening the **wrong
+  event** (the details modal stored a positional index that shifted when the
+  event list was re-synced; it is now remapped by href).
 - Fixed the **continuation fade of multi-day events when navigating weeks**: a
   week-crossing all-day event kept the previous week's fade side (and position)
   after clicking next/previous — the spanning-bar row is now re-rendered when

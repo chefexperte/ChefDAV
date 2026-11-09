@@ -272,6 +272,7 @@ pub async fn refresh_events(state: &AppState) {
         caches.insert(cal.href.clone(), cache);
     }
     state.loading.set(false);
+    state.remap_open_modal(Some(&all), None);
     state.events.set(all);
     store::cache_save(&caches.into_values().collect::<Vec<_>>()).await;
 }
@@ -289,6 +290,7 @@ pub async fn refresh_todos(state: &AppState) {
         .map(|c| (c.info.clone(), c.color.clone()))
         .collect();
     if visible.is_empty() {
+        state.remap_open_modal(None, Some(&[]));
         state.todos.set(Vec::new());
         return;
     }
@@ -321,6 +323,7 @@ pub async fn refresh_todos(state: &AppState) {
                 .set(Some(format!("{} tasks: {e}", cal.display_name))),
         }
     }
+    state.remap_open_modal(None, Some(&all));
     state.todos.set(all);
     store::todos_cache_save(&cached).await;
 }
@@ -933,6 +936,7 @@ pub async fn restore_cache(state: &AppState) {
             }
         }
     }
+    state.remap_open_modal(Some(&events), None);
     state.events.set(events);
 
     let cached_todos = store::todos_cache_load().await;
@@ -956,6 +960,7 @@ pub async fn restore_cache(state: &AppState) {
             }
         }
     }
+    state.remap_open_modal(None, Some(&todos));
     state.todos.set(todos);
     state.pending.set(store::outbox_load().await.len());
 }

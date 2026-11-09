@@ -1,6 +1,9 @@
 //! Week/day view: Monday-first 7-day (or 1-day) grid with an all-day row and
-//! a 24-hour timeline. At most two events are shown side by side; the rest are
-//! collected behind a "+N more" badge so columns never become unreadable.
+//! a 24-hour timeline. Overlapping timed events are laid out side by side:
+//! up to two columns in the week view, up to four in the (full-width) day
+//! view. On overflow one column less is shown and the freed slot becomes a
+//! full-height neutral "Show all" entry. Event titles stick to the top of
+//! the page while scrolling (see .te-title in main.css).
 
 use std::collections::{HashMap, HashSet};
 
@@ -13,7 +16,8 @@ use crate::browser;
 use crate::state::{AppState, SlotPopupState};
 
 const HOUR_HEIGHT: f64 = 42.0; // px per hour in the timeline
-const MAX_COLUMNS: usize = 2;
+const MAX_COLUMNS_WEEK: usize = 2;
+const MAX_COLUMNS_DAY: usize = 4;
 
 fn minutes_of_day(t: chrono::DateTime<chrono_tz::Tz>, tz: &chrono_tz::Tz) -> f64 {
     let l = t.with_timezone(tz);
@@ -22,8 +26,8 @@ fn minutes_of_day(t: chrono::DateTime<chrono_tz::Tz>, tz: &chrono_tz::Tz) -> f64
 
 /// Assign overlapping events to columns (greedy interval partitioning).
 /// Returns `(column, column_count, event_index)`; events with `column >=
-/// MAX_COLUMNS` are hidden and shown behind a "+N more" badge.
-fn layout(events: &[Occurrence]) -> Vec<(usize, usize, usize)> {
+/// max_columns` are hidden and shown behind the "Show all" entry.
+fn layout(events: &[Occurrence], max_columns: usize) -> Vec<(usize, usize, usize)> {
     let mut order: Vec<usize> = (0..events.len()).collect();
     order.sort_by_key(|&i| events[i].start);
     let mut result = vec![(0usize, 1usize, 0usize); events.len()];
@@ -41,7 +45,7 @@ fn layout(events: &[Occurrence]) -> Vec<(usize, usize, usize)> {
         active.push((col, events[i].end));
         result[i] = (col, 1, i);
     }
-    let cols = (max_col + 1).min(MAX_COLUMNS);
+    let cols = (max_col + 1).min(max_columns);
     for r in &mut result {
         r.1 = cols;
     }
@@ -52,6 +56,13 @@ fn layout(events: &[Occurrence]) -> Vec<(usize, usize, usize)> {
 pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let tz = state.tz;
+    // The day view is full width, so it can afford more side-by-side events
+    // than the 7-column week view.
+    let max_columns = if n_days == 1 {
+        MAX_COLUMNS_DAY
+    } else {
+        MAX_COLUMNS_WEEK
+    };
 
     let days = Memo::new(move |_| {
         let anchor = state.anchor.get();
@@ -467,7 +478,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                         let laid_out = Memo::new(move |_| {
                             let items = items.get();
                             let occs: Vec<Occurrence> = items.iter().map(|(_, o, _)| o.clone()).collect();
-                            let layout = layout(&occs);
+                            let layout = layout(&occs, max_columns);
                             items
                                 .into_iter()
                                 .zip(layout)
@@ -475,18 +486,19 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                 .collect::<Vec<_>>()
                         });
                         let visible = Memo::new(move |_| {
-                            laid_out.get().into_iter().filter(|(_, _, _, col, _)| *col < MAX_COLUMNS).collect::<Vec<_>>()
+                            laid_out.get().into_iter().filter(|(_, _, _, col, _)| *col < max_columns).collect::<Vec<_>>()
                         });
                         let hidden = Memo::new(move |_| {
-                            laid_out.get().into_iter().filter(|(_, _, _, col, _)| *col >= MAX_COLUMNS).collect::<Vec<_>>()
+                            laid_out.get().into_iter().filter(|(_, _, _, col, _)| *col >= max_columns).collect::<Vec<_>>()
                         });
-                        // On overflow: show only the first column and put a
-                        // "Show all" entry in the second one (no "+N more" badge).
+                        // On overflow: show one column less and put a full-height
+                        // "Show all" entry in the freed slot (no "+N more" badge).
+                        // Week: 2 columns -> show 1 + Show all; day: 4 -> show 3 + Show all.
                         let overflow = Memo::new(move |_| !hidden.get().is_empty());
                         let shown = Memo::new(move |_| {
                             let vis = visible.get();
                             if overflow.get() {
-                                vis.into_iter().filter(|(_, _, _, col, _)| *col == 0).collect::<Vec<_>>()
+                                vis.into_iter().filter(|(_, _, _, col, _)| *col < max_columns - 1).collect::<Vec<_>>()
                             } else {
                                 vis
                             }
@@ -511,7 +523,11 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                             >
                                 <For
                                     each=move || shown.get()
-                                    key=|(i, o, fp, _, _)| (*i, o.start, fp.clone())
+                                    // key must include the layout (col/cols): the children
+                                    // read them as plain values for left/width, and a new
+                                    // overlapping event changes them without changing
+                                    // (i, occ.start, fp) — stale rows overlapped until reload
+                                    key=|(i, o, fp, col, cols)| (*i, o.start, fp.clone(), *col, *cols)
                                     children=move |(idx, occ, _, col, cols)| {
                                         let ev = state.events.get().get(idx).cloned();
                                         let (summary, color, href, read_only, recurring) = match &ev {
@@ -589,22 +605,19 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                 />
                                 <Show when=move || !hidden.get().is_empty() fallback=|| ()>
                                     {
-                                        let hidden = hidden.clone();
-                                        // Anchor the badge right below the last visible
-                                        // event (bottom of the rendered stack), not at
-                                        // the top of the day column.
-                                        let more_top = Memo::new(move |_| {
-                                            shown.get().iter().map(|(_, occ, _, _, _)| {
-                                                let s = minutes_of_day(occ.start, &tz);
-                                                let e = minutes_of_day(occ.end, &tz);
-                                                let dur = (e - s).max(20.0);
-                                                (s + dur) / 60.0 * HOUR_HEIGHT
-                                            }).fold(4.0, f64::max).round()
-                                        });
+                                        // The bar occupies the slot freed by the overflow
+                                        // collapse and spans the FULL column height
+                                        // (top:0 bottom:0 in CSS), so "Show all" is visible
+                                        // at every scroll position: week 1/2 = 50%, day 3/4 = 75%.
+                                        let more_left_pct = (max_columns - 1) as f64 / max_columns as f64 * 100.0;
                                         view! {
                                             <button
                                                 class="more-bar"
-                                                style=move || format!("top:{}px", more_top.get())
+                                                style=move || format!(
+                                                    "left:{:.4}%;width:calc({:.4}% - 3px)",
+                                                    more_left_pct,
+                                                    100.0 - more_left_pct
+                                                )
                                                 on:click=move |e| {
                                                     e.stop_propagation();
                                                     // "show all": every timed event of this day

@@ -2,11 +2,51 @@
 //! understands TZID and therefore handles DST correctly when a rule is
 //! expanded in the event's own timezone.
 
-use chrono::{DateTime, Duration};
+use chrono::{DateTime, Duration, NaiveDate, NaiveDateTime, TimeZone};
 use chrono_tz::Tz;
 use rrule::RRuleSet;
 
 use crate::ics::{DtValue, VEvent};
+
+/// Normalize one RDATE/EXDATE value for the RRuleSet string. The rrule parser
+/// reads *naive* datetimes (no `Z`, no TZID param — our parser drops the param)
+/// in the **system** local zone, which made EXDATEs silently miss on machines
+/// not in the event's timezone (CI runs UTC; the Berlin dev box passed).
+/// So: interpret naive values in the event's DTSTART timezone (fallback:
+/// `default_tz`) and re-emit them in UTC with a `Z` suffix — deterministic
+/// everywhere. Values may be comma-separated lists.
+fn rdate_exdate_utc(x: &str, ev: &VEvent, default_tz: &Tz) -> String {
+    let ref_tz = match &ev.dtstart {
+        Some(DtValue::DateTime(t)) => t.timezone(),
+        _ => *default_tz,
+    };
+    x.split(',')
+        .map(|part| {
+            let v = part.trim();
+            if v.ends_with('Z') || v.is_empty() {
+                return v.to_string();
+            }
+            let to_utc = |n: NaiveDateTime| -> Option<String> {
+                ref_tz
+                    .from_local_datetime(&n)
+                    .single()
+                    .map(|dt| dt.with_timezone(&chrono_tz::UTC).format("%Y%m%dT%H%M%SZ").to_string())
+            };
+            if let Ok(n) = NaiveDateTime::parse_from_str(v, "%Y%m%dT%H%M%S") {
+                if let Some(out) = to_utc(n) {
+                    return out;
+                }
+            }
+            if let Ok(d) = NaiveDate::parse_from_str(v, "%Y%m%d") {
+                if let Some(out) = to_utc(d.and_hms_opt(0, 0, 0).unwrap_or_default()) {
+                    return out;
+                }
+            }
+            v.to_string() // unparseable: emit as-is
+        })
+        .collect::<Vec<_>>()
+        .join(",")
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Occurrence {
@@ -323,12 +363,12 @@ pub fn expand_event(
         s.push('\n');
         for r in &ev.rdate {
             s.push_str("RDATE:");
-            s.push_str(r);
+            s.push_str(&rdate_exdate_utc(r, ev, default_tz));
             s.push('\n');
         }
         for x in &ev.exdate {
             s.push_str("EXDATE:");
-            s.push_str(x);
+            s.push_str(&rdate_exdate_utc(x, ev, default_tz));
             s.push('\n');
         }
         if let Ok(set) = s.parse::<RRuleSet>() {
@@ -436,6 +476,18 @@ mod tests {
         let occ = expand_event(&e, s, en, &Berlin);
         assert_eq!(occ.len(), 4);
         assert!(occ.iter().all(|o| o.start.format("%d").to_string() != "03"));
+    }
+
+    #[test]
+    fn exdate_comma_list_and_rdate_are_tz_stable() {
+        // Regression: naive EXDATE/RDATE values were parsed by the rrule crate
+        // in the SYSTEM local zone, so on a UTC machine (CI) the EXDATE missed
+        // the 09:00 Berlin occurrence. Must hold under any TZ.
+        let e = ev("BEGIN:VEVENT\nUID:d2\nDTSTART;TZID=Europe/Berlin:20261102T090000\nDTEND;TZID=Europe/Berlin:20261102T093000\nRRULE:FREQ=DAILY;COUNT=5\nEXDATE;TZID=Europe/Berlin:20261103T090000,20261104T090000\nRDATE;TZID=Europe/Berlin:20261110T090000\nEND:VEVENT");
+        let (s, en) = range(2026, 11, 1, 2026, 12, 1);
+        let occ = expand_event(&e, s, en, &Berlin);
+        let days: Vec<String> = occ.iter().map(|o| o.start.format("%d").to_string()).collect();
+        assert_eq!(days, vec!["02", "05", "06", "10"], "days: {days:?}");
     }
 
     #[test]

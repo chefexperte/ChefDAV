@@ -958,7 +958,9 @@ button {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  overflow: hidden;
+  /* clip, not hidden: still clips to the rounded corners but does not become
+     a scroll container, so the sticky .te-title can track the page scroller */
+  overflow: clip;
 }
 
 .week-head,
@@ -1098,7 +1100,10 @@ button {
 
 .week-timeline {
   max-height: calc(24 * var(--hour-height));
-  overflow-y: auto;
+  /* overflow visible (not a scroll container) so the sticky event titles
+     inside track the page scroller; the card clips at its rounded corners.
+     On narrow screens the card itself scrolls horizontally (media query). */
+  overflow: visible;
 }
 
 .time-gutter {
@@ -1141,7 +1146,9 @@ button {
   padding: 3px 7px;
   font-size: 12.5px;
   line-height: 1.25;
-  overflow: hidden;
+  /* clip (not hidden) so the sticky title below tracks the page scroller
+     instead of being trapped in this box */
+  overflow: clip;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -1168,6 +1175,14 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* While the page scrolls the timeline, a tall event's title stays pinned at
+   the top of the viewport so the event name never scrolls out of sight.
+   Compact (single-line) events are too short for this and keep normal flow. */
+.timed-event:not(.compact) .te-title {
+  position: sticky;
+  top: 0;
 }
 
 /* Short events: one line with time + title instead of two clipped lines. */
@@ -1874,24 +1889,25 @@ button {
   font-size: 16px;
 }
 
-/* week-view overflow: second column slot becomes a neutral "Show all" entry
-   (same size as an event, no calendar color) instead of a "+N more" badge */
+/* week/day-view overflow: the freed column slot becomes a neutral "Show all"
+   entry that looks like an event spanning 00:00–24:00 — FULL column height
+   (top:0; bottom:0; left/width set inline from the column layout), same box
+   metrics as .timed-event — so it is visible at every scroll position */
 .more-bar {
   position: absolute;
-  left: calc(50% + 2px);
-  width: calc(50% - 5px);
-  height: 20px;
+  top: 0;
+  bottom: 0;
   z-index: 4;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   border: none;
   background: var(--paper-deep);
   color: var(--ink-soft);
   font-size: 11px;
   font-weight: 700;
-  border-radius: 5px;
-  padding: 0 6px;
+  border-radius: 6px;
+  padding: 3px 7px;
   cursor: pointer;
   overflow: hidden;
   white-space: nowrap;

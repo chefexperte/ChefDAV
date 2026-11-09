@@ -204,6 +204,131 @@ check(
   (await chips()).join(", ")
 );
 
+// ---------- day view: 4 side-by-side columns, overflow at 5+ ----------
+// (most created via CalDAV for speed; all tagged with `run` for cleanupRun)
+const DAY28 = "2026-11-28"; // a Saturday with no seeded timed events
+const davAuth = "Basic " + Buffer.from(`${USER}:${PASS}`).toString("base64");
+async function davPutCol(i) {
+  await fetch(`${DAV}/alice/personal/col${i}-${run}@chef-dav.ics`, {
+    method: "PUT",
+    headers: { Authorization: davAuth, "Content-Type": "text/calendar" },
+    body: `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//e2e//EN\r\nBEGIN:VEVENT\r\nUID:col${i}-${run}@chef-dav\r\nDTSTAMP:20261101T090000Z\r\nDTSTART;TZID=Europe/Berlin:20261128T100000\r\nDTEND;TZID=Europe/Berlin:20261128T120000\r\nSUMMARY:Col${i} ${run}\r\nEND:VEVENT\r\nEND:VCALENDAR`,
+  });
+}
+const colWidthFraction = () =>
+  page.evaluate(() => {
+    const col = document.querySelector(".day-column");
+    const ev = document.querySelector(".day-column .timed-event");
+    if (!col || !ev) return null;
+    return ev.getBoundingClientRect().width / col.getBoundingClientRect().width;
+  });
+
+// start with 2 overlapping events (2 columns -> ~50% wide each)
+await davPutCol(0);
+await davPutCol(1);
+await page.goto(`${APP}/day/${DAY28}`, { waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 30000 });
+await waitFor(() => document.querySelectorAll(".day-column .timed-event").length >= 2, null, 20000);
+const frac2 = await colWidthFraction();
+
+// create a 3rd overlapping event via the UI (no reload): columns must resize
+// from 2x50% to 3x33% immediately — the <For> key must include col/cols
+await page.click("button.new-event");
+await page.waitForSelector(".modal");
+await page.fill('.modal input[type="text"]', `Col2 ${run}`);
+await page.locator('.modal input[type="date"]').nth(0).fill(DAY28);
+await page.locator('.modal input[type="time"]').nth(0).fill("10:00");
+await page.locator('.modal input[type="time"]').nth(1).fill("12:00");
+await page.click('.modal button:has-text("Save")');
+await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
+await waitFor(() => document.querySelectorAll(".day-column .timed-event").length >= 3, null, 20000);
+await page.waitForTimeout(400);
+const frac3 = await colWidthFraction();
+check(
+  "day view: columns resize when an overlapping event is created (no reload)",
+  frac2 !== null && Math.abs(frac2 - 0.5) < 0.03 && frac3 !== null && Math.abs(frac3 - 1 / 3) < 0.03,
+  `2 events: ${frac2?.toFixed(3)}, 3 events: ${frac3?.toFixed(3)}`
+);
+
+// up to 4 side by side, no "Show all"
+await davPutCol(3);
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 30000 });
+await waitFor(() => document.querySelectorAll(".day-column .timed-event").length >= 4, null, 20000);
+check(
+  "day view: 4 overlapping events all shown side by side",
+  (await page.locator(".day-column .timed-event").count()) === 4 &&
+    (await page.locator(".more-bar").count()) === 0,
+  `${await page.locator(".day-column .timed-event").count()} events, ${await page.locator(".more-bar").count()} more-bars`
+);
+
+// 5th overlapping event -> 3 shown + full-height "Show all"
+await davPutCol(4);
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 30000 });
+await waitFor(() => document.querySelectorAll(".day-column .timed-event").length >= 3, null, 20000);
+await page.waitForTimeout(500);
+const dayOverflow = await page.evaluate(() => ({
+  events: document.querySelectorAll(".day-column .timed-event").length,
+  more: document.querySelectorAll(".day-column .more-bar").length,
+  moreH: document.querySelector(".day-column .more-bar")?.getBoundingClientRect().height ?? 0,
+  moreTop: document.querySelector(".day-column .more-bar")?.getBoundingClientRect().top ?? 0,
+  colH: document.querySelector(".day-column")?.getBoundingClientRect().height ?? 0,
+  colTop: document.querySelector(".day-column")?.getBoundingClientRect().top ?? 0,
+}));
+check(
+  "day view: 5 overlapping events show 3 + 'Show all'",
+  dayOverflow.events === 3 && dayOverflow.more === 1,
+  JSON.stringify(dayOverflow)
+);
+check(
+  "day view: 'Show all' bar spans the full column height (top to bottom)",
+  dayOverflow.more === 1 &&
+    Math.abs(dayOverflow.moreTop - dayOverflow.colTop) <= 2 &&
+    Math.abs(dayOverflow.moreH - dayOverflow.colH) <= 2,
+  `bar ${Math.round(dayOverflow.moreH)}px of column ${Math.round(dayOverflow.colH)}px, top offset ${Math.round(dayOverflow.moreTop - dayOverflow.colTop)}px`
+);
+
+// sticky title: add a long event that can scroll past the viewport top, scroll
+// the page to the bottom, and the long event's title must stay pinned at top
+await fetch(`${DAV}/alice/personal/long-${run}@chef-dav.ics`, {
+  method: "PUT",
+  headers: { Authorization: davAuth, "Content-Type": "text/calendar" },
+  body: `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//e2e//EN\r\nBEGIN:VEVENT\r\nUID:long-${run}@chef-dav\r\nDTSTAMP:20261101T090000Z\r\nDTSTART;TZID=Europe/Berlin:20261128T003000\r\nDTEND;TZID=Europe/Berlin:20261128T233000\r\nSUMMARY:Long ${run}\r\nEND:VEVENT\r\nEND:VCALENDAR`,
+});
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 30000 });
+await waitFor(() => document.querySelectorAll(".day-column .timed-event").length >= 3, null, 20000);
+const sticky = await page.evaluate(() => {
+  const pos = getComputedStyle(document.querySelector(".timed-event .te-title")).position;
+  window.scrollTo(0, document.documentElement.scrollHeight); // scroll to the bottom
+  // an event whose top scrolled above the viewport (the long 00:30 event)
+  const ev = [...document.querySelectorAll(".timed-event")].find(
+    (e) => !e.classList.contains("compact") && e.getBoundingClientRect().top < -5
+  );
+  if (!ev) return { pos, stuck: false };
+  const titleTop = ev.querySelector(".te-title").getBoundingClientRect().top;
+  const evTop = ev.getBoundingClientRect().top;
+  window.scrollTo(0, 0);
+  return { pos, stuck: true, evTop, titleTop };
+});
+check(
+  "timed event title sticks to the top while scrolling the timeline",
+  !!sticky && sticky.pos === "sticky" && sticky.stuck && sticky.evTop < 0 && Math.abs(sticky.titleTop) <= 3,
+  JSON.stringify(sticky)
+);
+
+// week view unchanged: same events -> 1 column + "Show all" in that day
+await page.goto(`${APP}/week/2026-11-23`, { waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 30000 });
+await waitFor(() => document.querySelectorAll(".day-column")[5]?.querySelectorAll(".timed-event").length >= 1, null, 20000);
+await page.waitForTimeout(500);
+const wkOverflow = await page.evaluate(() => {
+  const sat = document.querySelectorAll(".day-column")[5]; // Sat 28 Nov
+  return { events: sat.querySelectorAll(".timed-event").length, more: !!sat.querySelector(".more-bar") };
+});
+check("week view still caps at 1 event + 'Show all' on overflow", wkOverflow.events === 1 && wkOverflow.more, JSON.stringify(wkOverflow));
+
 // ---------- calendar create / rename / delete ----------
 const calName = `Cal ${run}`;
 await page.click('.btn-icon-plain[title="New calendar"]');

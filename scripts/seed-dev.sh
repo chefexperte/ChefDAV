@@ -59,7 +59,7 @@ END:VCALENDAR"
 
 # --- the events e2e/audit.mjs rely on (days the suites assert on: 10, 11,
 #     12, 17 must keep these; see e2e/*.mjs) ---
-ev "seed-lunch-sam@chef-dav"   "Lunch with Sam"  "20261110T120000" "20261110T130000" "LOCATION:Caf\\u00e9 Central"
+ev "seed-lunch-sam@chef-dav"   "Lunch with Sam"  "20261110T120000" "20261110T130000" "LOCATION:Café Central"
 ev "seed-standup@chef-dav"     "Standup"         "20261111T090000" "20261111T091500"
 ev "seed-design-review@chef-dav" "Design review" "20261112T140000" "20261112T150000"
 ev "seed-quick-sync@chef-dav"  "Quick sync"      "20261117T090000" "20261117T091500"
@@ -72,9 +72,19 @@ ev "seed-kacken@chef-dav"       "Kacken"                    "20261105T080000" "2
 ev "seed-ram-altman@chef-dav"   "Meeting with Ram Altman"   "20261106T100000" "20261106T110000"
 ev "seed-katerfruehstueck@chef-dav" "Katerfrühstück mit KI"  "20261108T110000" "20261108T130000"
 ev "seed-slopping@chef-dav"     "Slopping with the stars"   "20261113T200000" "20261113T230000"
-ev "seed-bib-date@chef-dav"     "Bib-Date"                  "20261114T190000" "20261114T210000" "LOCATION:Caf\\u00e9 Kn\\u00f6sel, Heidelberg"
+# NB: ICS text escaping has no \uXXXX — non-ASCII goes in as raw UTF-8 (the
+# script file is UTF-8 and curl sends the bytes as-is); only \ ; , and
+# newlines are backslash-escaped. Avoid the comma here to keep it simple.
+ev "seed-bib-date@chef-dav"     "Bib-Date"                  "20261114T190000" "20261114T210000" "LOCATION:Café Knösel Heidelberg"
 ev "seed-ai-slop@chef-dav"      "Seminar über AI Slop"      "20261116T140000" "20261116T160000"
 ev "seed-hausaufgaben@chef-dav" "Hausaufgaben generieren lassen" "20261127T090000" "20261127T100000"
+
+# 5 overlapping events on Fri Nov 13, 10:00-12:00, so the "Show all" overflow
+# entry appears automatically after seeding (day view: 3 + Show all, week:
+# 1 + Show all) — Nov 13 is a day no e2e suite asserts on
+for i in 1 2 3 4 5; do
+  ev "seed-slop-circle-$i@chef-dav" "Slop-Circle #$i" "20261113T100000" "20261113T120000"
+done
 
 # multi-day all-day event (spanning bar in the month view screenshots)
 put "/alice/personal/seed-tacos@chef-dav.ics" "seed-tacos@chef-dav" "BEGIN:VCALENDAR

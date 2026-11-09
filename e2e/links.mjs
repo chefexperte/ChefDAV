@@ -94,10 +94,11 @@ const eventUrl = page.url();
 // ---------- reload: the link re-opens the event (auto-login) ----------
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForSelector(".details-modal", { timeout: 30000 });
+const h3 = (await page.textContent(".details-modal h3")).trim();
 check(
   "deep link reopens the event after reload",
-  page.url() === eventUrl && (await page.textContent(".details-modal h3")).trim() === EVENT,
-  page.url()
+  page.url() === eventUrl && h3 === EVENT,
+  `url=${page.url()} h3=${JSON.stringify(h3)} expected=${EVENT}`
 );
 
 // ---------- back / forward ----------
