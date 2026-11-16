@@ -250,7 +250,7 @@ check(
   `2 events: ${frac2?.toFixed(3)}, 3 events: ${frac3?.toFixed(3)}`
 );
 
-// up to 4 side by side, no "Show all"
+// up to 4 side by side, no "+N more" bar
 await davPutCol(3);
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForSelector(".week-view", { timeout: 30000 });
@@ -262,32 +262,73 @@ check(
   `${await page.locator(".day-column .timed-event").count()} events, ${await page.locator(".more-bar").count()} more-bars`
 );
 
-// 5th overlapping event -> 3 shown + full-height "Show all"
+// 5th overlapping event -> 3 shown + "+N more" bar spanning the hidden range
 await davPutCol(4);
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForSelector(".week-view", { timeout: 30000 });
 await waitFor(() => document.querySelectorAll(".day-column .timed-event").length >= 3, null, 20000);
 await page.waitForTimeout(500);
-const dayOverflow = await page.evaluate(() => ({
-  events: document.querySelectorAll(".day-column .timed-event").length,
-  more: document.querySelectorAll(".day-column .more-bar").length,
-  moreH: document.querySelector(".day-column .more-bar")?.getBoundingClientRect().height ?? 0,
-  moreTop: document.querySelector(".day-column .more-bar")?.getBoundingClientRect().top ?? 0,
-  colH: document.querySelector(".day-column")?.getBoundingClientRect().height ?? 0,
-  colTop: document.querySelector(".day-column")?.getBoundingClientRect().top ?? 0,
-}));
+const dayOverflow = await page.evaluate(() => {
+  const bar = document.querySelector(".day-column .more-bar");
+  const col = document.querySelector(".day-column");
+  const br = bar?.getBoundingClientRect();
+  const cr = col?.getBoundingClientRect();
+  // a shown Col event (the hidden ones are all Col 10:00-12:00 too) — compare
+  // against it so the check is timezone-independent
+  const colEv = [...document.querySelectorAll(".day-column .timed-event")].find((e) => e.textContent.includes("Col"));
+  const er = colEv?.getBoundingClientRect();
+  return {
+    events: document.querySelectorAll(".day-column .timed-event").length,
+    more: document.querySelectorAll(".day-column .more-bar").length,
+    moreText: bar?.textContent.trim() ?? null,
+    moreH: br ? Math.round(br.height) : 0,
+    moreTopOff: br && cr ? Math.round(br.top - cr.top) : -1,
+    evTopOff: er && cr ? Math.round(er.top - cr.top) : -1,
+    evH: er ? Math.round(er.height) : 0,
+    colH: cr ? Math.round(cr.height) : 0,
+  };
+});
 check(
-  "day view: 5 overlapping events show 3 + 'Show all'",
-  dayOverflow.events === 3 && dayOverflow.more === 1,
+  "day view: 5 overlapping events show 3 + '+N more'",
+  dayOverflow.events === 3 && dayOverflow.more === 1 && /^\+\d+ more$/.test(dayOverflow.moreText ?? ""),
   JSON.stringify(dayOverflow)
 );
+// the bar must sit exactly at the hidden events' range: same top/height as a
+// shown Col event (10:00-12:00), NOT the full column height
 check(
-  "day view: 'Show all' bar spans the full column height (top to bottom)",
+  "day view: '+N more' bar spans only the hidden events' time range, count in label",
   dayOverflow.more === 1 &&
-    Math.abs(dayOverflow.moreTop - dayOverflow.colTop) <= 2 &&
-    Math.abs(dayOverflow.moreH - dayOverflow.colH) <= 2,
-  `bar ${Math.round(dayOverflow.moreH)}px of column ${Math.round(dayOverflow.colH)}px, top offset ${Math.round(dayOverflow.moreTop - dayOverflow.colTop)}px`
+    dayOverflow.moreText === "+1 more" &&
+    Math.abs(dayOverflow.moreTopOff - dayOverflow.evTopOff) <= 2 &&
+    Math.abs(dayOverflow.moreH - dayOverflow.evH) <= 2 &&
+    dayOverflow.moreH < dayOverflow.colH,
+  JSON.stringify(dayOverflow)
 );
+
+// many events that DON'T overlap -> all shown, no "+N more" bar at all
+for (let h = 12; h <= 16; h++) {
+  await fetch(`${DAV}/alice/personal/nc${h}-${run}@chef-dav.ics`, {
+    method: "PUT",
+    headers: { Authorization: davAuth, "Content-Type": "text/calendar" },
+    body: `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//e2e//EN\r\nBEGIN:VEVENT\r\nUID:nc${h}-${run}@chef-dav\r\nDTSTAMP:20261101T090000Z\r\nDTSTART;TZID=Europe/Berlin:20261127T${String(h).padStart(2, "0")}0000\r\nDTEND;TZID=Europe/Berlin:20261127T${String(h + 1).padStart(2, "0")}0000\r\nSUMMARY:NonOverlap${h} ${run}\r\nEND:VEVENT\r\nEND:VCALENDAR`,
+  });
+}
+await page.goto(`${APP}/day/2026-11-27`, { waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 30000 });
+await waitFor(() => document.querySelectorAll(".day-column .timed-event").length >= 5, null, 20000);
+await page.waitForTimeout(500);
+const noOverlap = await page.evaluate(() => ({
+  events: document.querySelectorAll(".day-column .timed-event").length,
+  more: document.querySelectorAll(".day-column .more-bar").length,
+}));
+check(
+  "day view: non-overlapping events all shown, no '+N more' bar",
+  noOverlap.events >= 5 && noOverlap.more === 0,
+  JSON.stringify(noOverlap)
+);
+await page.goto(`${APP}/day/${DAY28}`, { waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 30000 });
+await waitFor(() => document.querySelectorAll(".day-column .timed-event").length >= 3, null, 20000);
 
 // sticky title: add a long event that can scroll past the viewport top, scroll
 // the page to the bottom, and the long event's title must stay pinned at top
@@ -318,7 +359,7 @@ check(
   JSON.stringify(sticky)
 );
 
-// week view unchanged: same events -> 1 column + "Show all" in that day
+// week view unchanged: same events -> 1 column + "+N more" in that day
 await page.goto(`${APP}/week/2026-11-23`, { waitUntil: "networkidle" });
 await page.waitForSelector(".week-view", { timeout: 30000 });
 await waitFor(() => document.querySelectorAll(".day-column")[5]?.querySelectorAll(".timed-event").length >= 1, null, 20000);
@@ -327,7 +368,7 @@ const wkOverflow = await page.evaluate(() => {
   const sat = document.querySelectorAll(".day-column")[5]; // Sat 28 Nov
   return { events: sat.querySelectorAll(".timed-event").length, more: !!sat.querySelector(".more-bar") };
 });
-check("week view still caps at 1 event + 'Show all' on overflow", wkOverflow.events === 1 && wkOverflow.more, JSON.stringify(wkOverflow));
+check("week view still caps at 1 event + '+N more' on overflow", wkOverflow.events === 1 && wkOverflow.more, JSON.stringify(wkOverflow));
 
 // ---------- calendar create / rename / delete ----------
 const calName = `Cal ${run}`;

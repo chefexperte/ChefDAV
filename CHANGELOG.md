@@ -5,6 +5,10 @@ latest section of this file (baked into each build).
 
 ## Unreleased
 
+- The week/day overflow entry is now a **"+N more"** button (N = hidden event
+  count) that spans exactly the **time range of the hidden events** (earliest
+  start → latest end) instead of the full column height, and only appears when
+  events truly overlap too much — many non-overlapping events never trigger it.
 - The **event details card is now a popover** anchored at the click position
   (deep links / search results open it centered near the top), and the text
   **"Close" button is now an × button in the top-right corner** (also in the

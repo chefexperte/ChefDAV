@@ -213,6 +213,14 @@ pub fn week_label(lang: Lang, days: &[NaiveDate]) -> String {
     }
 }
 
+/// "+N more" label for the week/day overflow bar (N = hidden event count).
+pub fn more_count(lang: Lang, n: usize) -> String {
+    match lang {
+        Lang::De => format!("+{n} weitere"),
+        _ => format!("+{n} more"),
+    }
+}
+
 pub fn t(lang: Lang, key: &str) -> &'static str {
     match (lang, key) {
         (Lang::De, "new_event") => "Neuer Termin",

@@ -606,26 +606,47 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                 <Show when=move || !hidden.get().is_empty() fallback=|| ()>
                                     {
                                         // The bar occupies the slot freed by the overflow
-                                        // collapse and spans the FULL column height
-                                        // (top:0 bottom:0 in CSS), so "Show all" is visible
-                                        // at every scroll position: week 1/2 = 50%, day 3/4 = 75%.
+                                        // collapse and spans exactly the time range of the
+                                        // HIDDEN events (earliest start -> latest end, clamped
+                                        // to the day), like Google Calendar's "+N more" — not
+                                        // the full column. Left offset: week 1/2 = 50%, day 3/4 = 75%.
                                         let more_left_pct = (max_columns - 1) as f64 / max_columns as f64 * 100.0;
+                                        // (top px, height px, hidden count)
+                                        let more_range = Memo::new(move |_| {
+                                            let h = hidden.get();
+                                            let mut s_min = 1440.0f64;
+                                            let mut e_max = 0.0f64;
+                                            for (_, occ, _, _, _) in &h {
+                                                let sd = occ.start.with_timezone(&tz).date_naive();
+                                                let ed = (occ.end - Duration::seconds(1)).with_timezone(&tz).date_naive();
+                                                let s = if sd < d { 0.0 } else { minutes_of_day(occ.start, &tz) };
+                                                let e = if ed > d { 1440.0 } else { minutes_of_day(occ.end, &tz) };
+                                                s_min = s_min.min(s);
+                                                e_max = e_max.max(e);
+                                            }
+                                            let top = (s_min / 60.0 * HOUR_HEIGHT).round();
+                                            let height = (((e_max - s_min).max(20.0)) / 60.0 * HOUR_HEIGHT).round();
+                                            (top, height, h.len())
+                                        });
                                         view! {
                                             <button
                                                 class="more-bar"
-                                                style=move || format!(
-                                                    "left:{:.4}%;width:calc({:.4}% - 3px)",
-                                                    more_left_pct,
-                                                    100.0 - more_left_pct
-                                                )
+                                                style=move || {
+                                                    let (top, height, _) = more_range.get();
+                                                    format!(
+                                                        "top:{top}px;height:{height}px;left:{:.4}%;width:calc({:.4}% - 3px)",
+                                                        more_left_pct,
+                                                        100.0 - more_left_pct
+                                                    )
+                                                }
                                                 on:click=move |e| {
                                                     e.stop_propagation();
-                                                    // "show all": every timed event of this day
+                                                    // open the list of every timed event of this day
                                                     let indices = laid_out.get().iter().map(|(i, _, _, _, _)| *i).collect::<Vec<_>>();
                                                     state.week_more.set(Some(indices));
                                                 }
                                             >
-                                                {move || crate::i18n::t(state.lang.get(), "show_all")}
+                                                {move || crate::i18n::more_count(state.lang.get(), more_range.get().2)}
                                             </button>
                                         }
                                     }

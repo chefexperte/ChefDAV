@@ -249,8 +249,8 @@ check(
   JSON.stringify(rowInfo.col2)
 );
 check(
-  "week: timed column overflow shows 1 event + 'Show all'",
-  rowInfo.col4.events === 1 && rowInfo.col4.moreBar === "Show all",
+  "week: timed column overflow shows 1 event + '+N more'",
+  rowInfo.col4.events === 1 && /^\+\d+ more$/.test(rowInfo.col4.moreBar ?? ""),
   JSON.stringify(rowInfo.col4)
 );
 
