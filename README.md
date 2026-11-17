@@ -27,10 +27,12 @@ modern look, Rust reliability.
   and a Tasks list — with a shared toolbar (prev / today / next, view switcher,
   search). The current view and date live in the URL (`/month/2026-11`,
   `/week/2026-11-16`, `/day/…`, `/list/…`, `/tasks`), so any screen can be
-  reloaded or shared. In the timelines, overlapping events sit side by side
-  (two columns in week view, four in the full-width day view; overflow
-  collapses to a full-height "Show all"), and event titles stay pinned at the
-  top while you scroll.
+  reloaded or shared. In the timelines, overlapping events are packed in
+  clusters ("Tetris" style): each block gets exactly as many columns as its
+  busiest moment needs — capped at two in week view and four in the
+  full-width day view, with a "+N more" bar per overflowing block that
+  counts every hidden event — and event titles stay pinned at the top while
+  you scroll.
 - **Deep links** — every event and task has its own URL
   (`/event/<calendar>/<uid>`, `/task/<calendar>/<uid>`, with `?occ=…` for a
   single occurrence of a recurring event). Opening a resource updates the

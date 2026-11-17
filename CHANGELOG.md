@@ -5,6 +5,14 @@ latest section of this file (baked into each build).
 
 ## Unreleased
 
+- **Smarter stacking of overlapping events** ("Tetris" layout): events that
+  overlap now form clusters, and each cluster gets exactly as many columns
+  as its busiest moment needs. A quiet morning no longer shrinks because a
+  busy afternoon exists somewhere else in the day (a lone event keeps full
+  width next to a packed block), staggered chains pack tightly, and every
+  overflowing block gets its own "+N more" bar. The bar **counts every
+  hidden event** (one used to be skipped silently) and opens exactly the
+  events it hides.
 - **No more third-party CDNs**: the fonts are now **bundled with the app and
   served from your own origin** — it no longer loads anything from Google
   Fonts (or anyone else). The only network peers left are your calendar

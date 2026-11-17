@@ -1,9 +1,13 @@
 //! Week/day view: Monday-first 7-day (or 1-day) grid with an all-day row and
-//! a 24-hour timeline. Overlapping timed events are laid out side by side:
-//! up to two columns in the week view, up to four in the (full-width) day
-//! view. On overflow one column less is shown and the freed slot becomes a
-//! full-height neutral "Show all" entry. Event titles stick to the top of
-//! the page while scrolling (see .te-title in main.css).
+//! a 24-hour timeline. Overlapping timed events are packed "Tetris"-style:
+//! events that overlap (directly or transitively) form a cluster, a cluster
+//! gets as many columns as its maximum simultaneous overlap, and every event
+//! in it shares the width `1/columns` — so a busy morning never shrinks a
+//! quiet afternoon. Caps: two columns in the week view, four in the
+//! (full-width) day view. When a cluster exceeds the cap, one column less is
+//! shown and the freed slot becomes a "+N more" bar that spans exactly the
+//! hidden events' time range. Event titles stick to the top of the page
+//! while scrolling (see .te-title in main.css).
 
 use std::collections::{HashMap, HashSet};
 
@@ -24,32 +28,148 @@ fn minutes_of_day(t: chrono::DateTime<chrono_tz::Tz>, tz: &chrono_tz::Tz) -> f64
     (l.hour() * 60 + l.minute()) as f64
 }
 
-/// Assign overlapping events to columns (greedy interval partitioning).
-/// Returns `(column, column_count, event_index)`; events with `column >=
-/// max_columns` are hidden and shown behind the "Show all" entry.
-fn layout(events: &[Occurrence], max_columns: usize) -> Vec<(usize, usize, usize)> {
+/// One "+N more" bar: rendered when an overlap cluster needs more columns
+/// than the view allows. It sits in the slot freed by the overflow collapse
+/// and spans exactly the time range of the hidden events (clamped to the
+/// day), like Google Calendar's "+N more".
+#[derive(Clone, PartialEq, Debug)]
+struct ClusterBar {
+    /// px offsets inside the day column (rounded, for stable `<For>` keys)
+    top_px: i64,
+    height_px: i64,
+    /// number of hidden events for the "+N more" label
+    count: usize,
+    /// start of the first hidden occurrence (part of the `<For>` key)
+    first_start: chrono::DateTime<chrono_tz::Tz>,
+    /// event-list indices of the hidden occurrences (the popup lists these)
+    indices: Vec<usize>,
+}
+
+/// Finish an overlap cluster: assign `(column, columns, shown)` to each
+/// member and, when the cluster exceeds `max_columns`, push a `ClusterBar`
+/// covering every hidden member. `members` must be in start order.
+#[allow(clippy::too_many_arguments)]
+fn flush_cluster(
+    members: &[(usize, usize)], // (event index, column)
+    cols_used: usize,
+    max_columns: usize,
+    events: &[Occurrence],
+    d: NaiveDate,
+    tz: &chrono_tz::Tz,
+    result: &mut [(usize, usize, bool)],
+    bars: &mut Vec<ClusterBar>,
+) {
+    if members.is_empty() {
+        return;
+    }
+    if cols_used <= max_columns {
+        // fits: every event in the cluster at width 1/cols_used
+        for &(i, col) in members {
+            result[i] = (col, cols_used, true);
+        }
+        return;
+    }
+    // overflow: the cluster still spans all `max_columns` slots — the first
+    // max-1 columns stay, the last slot becomes the "+N more" bar, and the
+    // bar counts EVERY hidden event (the greedy-global layout silently
+    // dropped the event in the collapse slot: 3 shown + "+1 more" for five
+    // simultaneous events).
+    let mut hidden: Vec<usize> = Vec::new();
+    for &(i, col) in members {
+        let shown = col + 1 < max_columns;
+        result[i] = (col, max_columns, shown);
+        if !shown {
+            hidden.push(i);
+        }
+    }
+    // the bar spans exactly the hidden events' range, clamped to this day
+    let mut s_min = 1440.0f64;
+    let mut e_max = 0.0f64;
+    for &i in &hidden {
+        let occ = &events[i];
+        let sd = occ.start.with_timezone(tz).date_naive();
+        let ed = (occ.end - Duration::seconds(1)).with_timezone(tz).date_naive();
+        let s = if sd < d { 0.0 } else { minutes_of_day(occ.start, tz) };
+        let e = if ed > d { 1440.0 } else { minutes_of_day(occ.end, tz) };
+        s_min = s_min.min(s);
+        e_max = e_max.max(e);
+    }
+    let top = (s_min / 60.0 * HOUR_HEIGHT).round() as i64;
+    let height = (((e_max - s_min).max(20.0)) / 60.0 * HOUR_HEIGHT).round() as i64;
+    bars.push(ClusterBar {
+        top_px: top,
+        height_px: height,
+        count: hidden.len(),
+        first_start: events[*hidden.first().unwrap()].start,
+        indices: hidden,
+    });
+}
+
+/// Cluster-based column layout ("Tetris", Google Calendar / FullCalendar
+/// style): events that overlap directly or transitively form a cluster; the
+/// cluster gets as many columns as its maximum simultaneous overlap (greedy
+/// first-fit achieves exactly that for intervals), and every event in the
+/// cluster shares width `1/cols`. Clusters are independent — the old
+/// day-global width made a lone 09:00 event render next to a busy 14:00
+/// block shrink to the same fraction. When a cluster needs more than
+/// `max_columns` slots it is capped: the first `max_columns - 1` columns are
+/// shown and the freed slot hosts a "+N more" bar (one bar per overflowing
+/// cluster — clusters are disjoint in time, so their bars never collide).
+///
+/// Returns `(per-event (column, columns, shown), bars)` aligned with `events`.
+fn layout(
+    events: &[Occurrence],
+    max_columns: usize,
+    d: NaiveDate,
+    tz: &chrono_tz::Tz,
+) -> (Vec<(usize, usize, bool)>, Vec<ClusterBar>) {
     let mut order: Vec<usize> = (0..events.len()).collect();
-    order.sort_by_key(|&i| events[i].start);
-    let mut result = vec![(0usize, 1usize, 0usize); events.len()];
-    let mut active: Vec<(usize, chrono::DateTime<chrono_tz::Tz>)> = Vec::new();
-    let mut max_col = 0;
+    // start, then longer first (on overflow the longer, more content-rich
+    // events stay visible), then input order for stability
+    order.sort_by(|&a, &b| {
+        events[a]
+            .start
+            .cmp(&events[b].start)
+            .then_with(|| events[b].end.cmp(&events[a].end))
+            .then_with(|| a.cmp(&b))
+    });
+
+    let mut result = vec![(0usize, 1usize, false); events.len()];
+    let mut bars: Vec<ClusterBar> = Vec::new();
+
+    // current cluster state
+    let mut members: Vec<(usize, usize)> = Vec::new(); // (event index, column)
+    let mut cluster_end: Option<chrono::DateTime<chrono_tz::Tz>> = None;
+    let mut cols_used = 0usize;
+    let mut active: Vec<(usize, chrono::DateTime<chrono_tz::Tz>)> = Vec::new(); // (column, end)
+
     for &i in &order {
-        let start = events[i].start;
-        active.retain(|(_, end)| *end > start);
-        let used: Vec<usize> = active.iter().map(|(c, _)| *c).collect();
+        let (s, e) = (events[i].start, events[i].end);
+        // gap: this event starts at/after everything in the current cluster
+        // ends -> the cluster is complete
+        if cluster_end.map_or(false, |ce| s >= ce) {
+            flush_cluster(&members, cols_used, max_columns, events, d, tz, &mut result, &mut bars);
+            members.clear();
+            active.clear();
+            cols_used = 0;
+            cluster_end = None;
+        }
+        // greedy first-fit column within the cluster
+        active.retain(|&(_, end)| end > s);
         let mut col = 0;
-        while used.contains(&col) {
+        while active.iter().any(|&(c, _)| c == col) {
             col += 1;
         }
-        max_col = max_col.max(col);
-        active.push((col, events[i].end));
-        result[i] = (col, 1, i);
+        cols_used = cols_used.max(col + 1);
+        active.push((col, e));
+        members.push((i, col));
+        cluster_end = Some(match cluster_end {
+            Some(ce) if ce > e => ce,
+            _ => e,
+        });
     }
-    let cols = (max_col + 1).min(max_columns);
-    for r in &mut result {
-        r.1 = cols;
-    }
-    result
+    flush_cluster(&members, cols_used, max_columns, events, d, tz, &mut result, &mut bars);
+    (result, bars)
 }
 
 #[component]
@@ -475,34 +595,28 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                         let items = Memo::new(move |_| {
                             data.get().1.get(&d).cloned().unwrap_or_default()
                         });
+                        // "Tetris" layout (per overlap cluster, see `layout`):
+                        // the shown events plus one "+N more" bar per
+                        // overflowing cluster.
                         let laid_out = Memo::new(move |_| {
                             let items = items.get();
                             let occs: Vec<Occurrence> = items.iter().map(|(_, o, _)| o.clone()).collect();
-                            let layout = layout(&occs, max_columns);
-                            items
-                                .into_iter()
-                                .zip(layout)
-                                .map(|((i, o, fp), (col, cols, _))| (i, o, fp, col, cols))
-                                .collect::<Vec<_>>()
+                            let (cols, bars) = layout(&occs, max_columns, d, &tz);
+                            let shown = items
+                                .iter()
+                                .zip(cols.iter())
+                                .filter_map(|(item, (col, n_cols, shown))| {
+                                    if *shown {
+                                        Some((item.0, item.1.clone(), item.2.clone(), *col, *n_cols))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect::<Vec<(usize, Occurrence, String, usize, usize)>>();
+                            (shown, bars)
                         });
-                        let visible = Memo::new(move |_| {
-                            laid_out.get().into_iter().filter(|(_, _, _, col, _)| *col < max_columns).collect::<Vec<_>>()
-                        });
-                        let hidden = Memo::new(move |_| {
-                            laid_out.get().into_iter().filter(|(_, _, _, col, _)| *col >= max_columns).collect::<Vec<_>>()
-                        });
-                        // On overflow: show one column less and put a full-height
-                        // "Show all" entry in the freed slot (no "+N more" badge).
-                        // Week: 2 columns -> show 1 + Show all; day: 4 -> show 3 + Show all.
-                        let overflow = Memo::new(move |_| !hidden.get().is_empty());
-                        let shown = Memo::new(move |_| {
-                            let vis = visible.get();
-                            if overflow.get() {
-                                vis.into_iter().filter(|(_, _, _, col, _)| *col < max_columns - 1).collect::<Vec<_>>()
-                            } else {
-                                vis
-                            }
-                        });
+                        let shown = Memo::new(move |_| laid_out.get().0);
+                        let bars = Memo::new(move |_| laid_out.get().1);
                         let create_at = move |ev: leptos::ev::MouseEvent| {
                             let y = ev.offset_y() as f64;
                             let minutes = ((y / HOUR_HEIGHT) * 60.0 / 30.0).round() as i64 * 30;
@@ -603,59 +717,240 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                         }
                                     }
                                 />
-                                <Show when=move || !hidden.get().is_empty() fallback=|| ()>
-                                    {
-                                        // The bar occupies the slot freed by the overflow
-                                        // collapse and spans exactly the time range of the
-                                        // HIDDEN events (earliest start -> latest end, clamped
-                                        // to the day), like Google Calendar's "+N more" — not
-                                        // the full column. Left offset: week 1/2 = 50%, day 3/4 = 75%.
+                                // One "+N more" bar per overflowing cluster: it occupies
+                                // the slot freed by the overflow collapse and spans
+                                // exactly the hidden events' range (see flush_cluster).
+                                // Clusters are disjoint in time, so their bars never
+                                // collide. Left offset: week 1/2 = 50%, day 3/4 = 75%.
+                                <For
+                                    each=move || bars.get()
+                                    // key includes the bar geometry + count (these are
+                                    // plain values the children read) and the first
+                                    // hidden start, so navigating / data changes can't
+                                    // keep a stale row
+                                    key=|b| (b.first_start, b.top_px, b.height_px, b.count)
+                                    children=move |b| {
                                         let more_left_pct = (max_columns - 1) as f64 / max_columns as f64 * 100.0;
-                                        // (top px, height px, hidden count)
-                                        let more_range = Memo::new(move |_| {
-                                            let h = hidden.get();
-                                            let mut s_min = 1440.0f64;
-                                            let mut e_max = 0.0f64;
-                                            for (_, occ, _, _, _) in &h {
-                                                let sd = occ.start.with_timezone(&tz).date_naive();
-                                                let ed = (occ.end - Duration::seconds(1)).with_timezone(&tz).date_naive();
-                                                let s = if sd < d { 0.0 } else { minutes_of_day(occ.start, &tz) };
-                                                let e = if ed > d { 1440.0 } else { minutes_of_day(occ.end, &tz) };
-                                                s_min = s_min.min(s);
-                                                e_max = e_max.max(e);
-                                            }
-                                            let top = (s_min / 60.0 * HOUR_HEIGHT).round();
-                                            let height = (((e_max - s_min).max(20.0)) / 60.0 * HOUR_HEIGHT).round();
-                                            (top, height, h.len())
-                                        });
+                                        let indices = b.indices.clone();
+                                        let count = b.count;
                                         view! {
                                             <button
                                                 class="more-bar"
-                                                style=move || {
-                                                    let (top, height, _) = more_range.get();
-                                                    format!(
-                                                        "top:{top}px;height:{height}px;left:{:.4}%;width:calc({:.4}% - 3px)",
-                                                        more_left_pct,
-                                                        100.0 - more_left_pct
-                                                    )
-                                                }
+                                                style=format!(
+                                                    "top:{}px;height:{}px;left:{:.4}%;width:calc({:.4}% - 3px)",
+                                                    b.top_px,
+                                                    b.height_px,
+                                                    more_left_pct,
+                                                    100.0 - more_left_pct
+                                                )
                                                 on:click=move |e| {
                                                     e.stop_propagation();
-                                                    // open the list of every timed event of this day
-                                                    let indices = laid_out.get().iter().map(|(i, _, _, _, _)| *i).collect::<Vec<_>>();
-                                                    state.week_more.set(Some(indices));
+                                                    // open exactly the events hidden behind this bar
+                                                    state.week_more.set(Some(indices.clone()));
                                                 }
                                             >
-                                                {move || crate::i18n::more_count(state.lang.get(), more_range.get().2)}
+                                                {move || crate::i18n::more_count(state.lang.get(), count)}
                                             </button>
                                         }
                                     }
-                                </Show>
+                                />
                             </div>
                         }
                     }
                 />
             </div>
         </div>
+    }
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    const TZ: chrono_tz::Tz = chrono_tz::Europe::Berlin;
+    const DAY: NaiveDate = chrono::NaiveDate::from_ymd_opt(2026, 11, 20).unwrap(); // Friday
+    const PX: f64 = HOUR_HEIGHT; // 42 px per hour
+
+    fn occ(start: &str, end: &str) -> Occurrence {
+        let dt = |s: &str| {
+            let n = chrono::NaiveDateTime::parse_from_str(&format!("2026-11-20T{s}"), "%Y-%m-%dT%H:%M")
+                .unwrap();
+            TZ.from_local_datetime(&n).single().unwrap()
+        };
+        Occurrence {
+            start: dt(start),
+            end: dt(end),
+            recurrence_id: None,
+            override_idx: None,
+        }
+    }
+
+    fn lay<'a>(
+        evs: impl IntoIterator<Item = &'a str>,
+        max_columns: usize,
+    ) -> (Vec<Occurrence>, Vec<(usize, usize, bool)>, Vec<ClusterBar>) {
+        let events: Vec<Occurrence> = evs.into_iter().map(|s| s.split_once(' ').unwrap()).map(|(a, b)| occ(a, b)).collect();
+        let (cols, bars) = layout(&events, max_columns, DAY, &TZ);
+        (events, cols, bars)
+    }
+
+    fn px(minutes: f64) -> i64 {
+        (minutes / 60.0 * PX).round() as i64
+    }
+
+    /// A lone event keeps full width even when a busy block exists later in
+    /// the day, and each cluster only narrows to its own overlap: the point
+    /// of the cluster rewrite (the old day-global width shrank everything).
+    /// Staggered chains also pack tighter than their member count — three
+    /// 1-hour events shifted by 30 minutes never overlap three at a time,
+    /// so they share two columns.
+    #[test]
+    fn clusters_get_their_own_widths() {
+        // pair in the morning, true triple (all simultaneous) in the afternoon
+        let (_, cols, bars) = lay(
+            ["09:00 11:00", "10:00 12:00", "13:00 14:00", "13:30 15:00", "13:45 14:15"],
+            4,
+        );
+        assert_eq!(cols[0], (0, 2, true), "first pair event: col 0, half width");
+        assert_eq!(cols[1], (1, 2, true), "second pair event: col 1, half width");
+        assert_eq!(cols[2], (0, 3, true), "triple: col 0, third width");
+        assert_eq!(cols[3], (1, 3, true), "triple: col 1");
+        assert_eq!(cols[4], (2, 3, true), "triple: col 2");
+        assert!(bars.is_empty(), "no overflow, no bar");
+    }
+
+    /// A staggered chain (each event overlaps the next, but no moment has
+    /// all of them) uses only max-simultaneous columns.
+    #[test]
+    fn staggered_chain_packs_two_columns() {
+        let (_, cols, bars) = lay(["13:00 14:00", "13:30 14:30", "14:00 15:00", "14:30 15:30"], 2);
+        assert_eq!(cols[0], (0, 2, true));
+        assert_eq!(cols[1], (1, 2, true));
+        assert_eq!(cols[2], (0, 2, true), "reuses col 0 after the first one ended");
+        assert_eq!(cols[3], (1, 2, true));
+        assert!(bars.is_empty(), "a chain that is never 3-deep must not overflow");
+    }
+
+    /// A single event touching nothing gets the full column.
+    #[test]
+    fn singleton_is_full_width() {
+        let (_, cols, bars) = lay(["09:00 10:00"], 2);
+        assert_eq!(cols[0], (0, 1, true));
+        assert!(bars.is_empty());
+    }
+
+    /// Events that merely touch (end == next start) do not overlap.
+    #[test]
+    fn back_to_back_events_are_separate_clusters() {
+        let (_, cols, bars) = lay(["09:00 10:00", "10:00 11:00"], 2);
+        assert_eq!(cols[0], (0, 1, true), "both must be full width");
+        assert_eq!(cols[1], (0, 1, true));
+        assert!(bars.is_empty());
+    }
+
+    /// Overflow in the day view (cap 4): five simultaneous events show 3 and
+    /// the bar counts BOTH hidden ones — the greedy-global layout reported
+    /// "+1 more" and silently dropped the event in the collapse slot.
+    #[test]
+    fn day_overflow_bar_counts_every_hidden_event() {
+        let (events, cols, bars) =
+            lay(["10:00 12:00", "10:00 12:00", "10:00 12:00", "10:00 12:00", "10:00 12:00"], 4);
+        assert_eq!(cols[0], (0, 4, true));
+        assert_eq!(cols[1], (1, 4, true));
+        assert_eq!(cols[2], (2, 4, true));
+        assert_eq!(cols[3], (3, 4, false), "collapse slot hidden");
+        assert_eq!(cols[4], (4, 4, false), "beyond the cap hidden");
+        assert_eq!(bars.len(), 1);
+        let b = &bars[0];
+        assert_eq!(b.count, 2, "one per column dropped by the collapse + one over cap");
+        assert_eq!(b.top_px, px(600.0));
+        assert_eq!(b.height_px, px(120.0));
+        assert_eq!(b.first_start, events[3].start);
+        assert_eq!(b.indices, vec![3, 4], "hidden events stay in start order");
+    }
+
+    /// Overflow in the week view (cap 2): three simultaneous -> one shown +
+    /// "+2 more" spanning their range.
+    #[test]
+    fn week_overflow_shows_one_plus_bar() {
+        let (_, cols, bars) = lay(["10:00 11:00", "10:00 11:00", "10:00 11:00"], 2);
+        assert_eq!(cols[0], (0, 2, true));
+        assert_eq!(cols[1], (1, 2, false));
+        assert_eq!(cols[2], (2, 2, false));
+        assert_eq!(bars.len(), 1);
+        assert_eq!(bars[0].count, 2);
+        assert_eq!(bars[0].top_px, px(600.0));
+        assert_eq!(bars[0].height_px, px(60.0));
+    }
+
+    /// Overflow only narrows its own cluster: a full-width lone morning event
+    /// next to an overflowing afternoon block.
+    #[test]
+    fn overflow_does_not_shrink_other_clusters() {
+        let (_, cols, bars) = lay(["08:00 09:00", "14:00 16:00", "14:00 16:00", "14:00 16:00", "14:00 16:00", "14:00 16:00"], 4);
+        assert_eq!(cols[0], (0, 1, true), "lone morning event keeps full width");
+        // 5-overlap afternoon cluster: 3 shown + bar
+        assert_eq!(cols[1], (0, 4, true));
+        assert_eq!(cols[2], (1, 4, true));
+        assert_eq!(cols[3], (2, 4, true));
+        assert!(!cols[4].2);
+        assert!(!cols[5].2);
+        assert_eq!(bars.len(), 1);
+        assert_eq!(bars[0].count, 2);
+    }
+
+    /// Equal starts: the longer event takes the earlier (visible) column.
+    #[test]
+    fn longer_events_get_earlier_columns() {
+        let (_, cols, bars) = lay(["10:00 11:00", "10:00 11:30", "10:00 11:15", "10:00 11:00", "10:00 11:00"], 4);
+        // five simultaneous, sorted longer-first: 11:30 at col 0, 11:15 at col 1…
+        assert_eq!(cols[1], (0, 4, true), "longest is in col 0");
+        assert_eq!(cols[2], (1, 4, true), "second-longest in col 1");
+        assert_eq!(bars.len(), 1);
+        assert_eq!(bars[0].count, 2);
+    }
+
+    /// Two separate overflowing blocks produce two bars (time-disjoint).
+    #[test]
+    fn two_overflowing_clusters_get_two_bars() {
+        let (_, cols, bars) = lay(
+            ["09:00 09:30", "09:00 09:30", "09:10 09:20", "15:00 15:30", "15:00 15:30", "15:10 15:20"],
+            2,
+        );
+        assert_eq!(bars.len(), 2);
+        assert_eq!(bars[0].top_px, px(540.0), "morning bar at 09:00");
+        assert_eq!(bars[1].top_px, px(900.0), "afternoon bar at 15:00");
+        assert_eq!(bars[0].count, 2);
+        assert_eq!(bars[1].count, 2);
+        assert!(cols.iter().any(|c| c.2), "some event is shown");
+    }
+
+    /// An overnight continuation (starts the previous day) clamps to the top
+    /// of the day for both its layout slot and the bar range.
+    #[test]
+    fn overnight_continuation_clamps_to_day() {
+        let tz = TZ;
+        let start = tz
+            .from_local_datetime(&chrono::NaiveDateTime::parse_from_str("2026-11-19T23:00", "%Y-%m-%dT%H:%M").unwrap())
+            .single()
+            .unwrap();
+        let end = tz
+            .from_local_datetime(&chrono::NaiveDateTime::parse_from_str("2026-11-20T01:00", "%Y-%m-%dT%H:%M").unwrap())
+            .single()
+            .unwrap();
+        let events = vec![
+            occ("00:30", "01:00"),
+            Occurrence {
+                start,
+                end,
+                recurrence_id: None,
+                override_idx: None,
+            },
+        ];
+        let (cols, bars) = layout(&events, 4, DAY, &TZ);
+        assert_eq!(cols[0], (1, 2, true), "the 00:30 event is in col 1 (overn is earlier)");
+        assert_eq!(cols[1], (0, 2, true), "the overnight continuation takes col 0");
+        assert!(bars.is_empty());
     }
 }

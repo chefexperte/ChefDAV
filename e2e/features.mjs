@@ -320,15 +320,61 @@ check(
   JSON.stringify(dayOverflow)
 );
 // the bar must sit exactly at the hidden events' range: same top/height as a
-// shown Col event (10:00-12:00), NOT the full column height
+// shown Col event (10:00-12:00), NOT the full column height. Since the
+// cluster rewrite the count is honest: 3 shown + 2 hidden = 5 (the old
+// greedy-global layout reported "+1 more" and silently dropped the event
+// in the collapse slot)
 check(
   "day view: '+N more' bar spans only the hidden events' time range, count in label",
   dayOverflow.more === 1 &&
-    dayOverflow.moreText === "+1 more" &&
+    dayOverflow.moreText === "+2 more" &&
     Math.abs(dayOverflow.moreTopOff - dayOverflow.evTopOff) <= 2 &&
     Math.abs(dayOverflow.moreH - dayOverflow.evH) <= 2 &&
     dayOverflow.moreH < dayOverflow.colH,
   JSON.stringify(dayOverflow)
+);
+
+// the point of the cluster rewrite: a lone event must keep FULL width while
+// the overflowing block next to it shrinks — the old day-global layout gave
+// every event the same fraction
+await fetch(`${DAV}/alice/personal/lone-${run}@chef-dav.ics`, {
+  method: "PUT",
+  headers: { Authorization: davAuth, "Content-Type": "text/calendar" },
+  body: `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//e2e//EN\r\nBEGIN:VEVENT\r\nUID:lone-${run}@chef-dav\r\nDTSTAMP:20261101T090000Z\r\nDTSTART;TZID=Europe/Berlin:20261128T080000\r\nDTEND;TZID=Europe/Berlin:20261128T090000\r\nSUMMARY:Lone ${run}\r\nEND:VEVENT\r\nEND:VCALENDAR`,
+});
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 30000 });
+await waitFor(
+  (t) => [...document.querySelectorAll(".day-column .timed-event")].some((e) => e.textContent.includes(t)),
+  `Lone ${run}`,
+  20000
+);
+await page.waitForTimeout(500);
+const mixed = await page.evaluate(() => {
+  const col = document.querySelector(".day-column");
+  const cr = col.getBoundingClientRect();
+  const frac = (el) => Math.round((el.getBoundingClientRect().width / cr.width) * 100) / 100;
+  const lone = [...document.querySelectorAll(".day-column .timed-event")].find((e) =>
+    e.textContent.includes("Lone")
+  );
+  const block = [...document.querySelectorAll(".day-column .timed-event")].find((e) =>
+    e.textContent.includes("Col")
+  );
+  const bar = document.querySelector(".day-column .more-bar");
+  return {
+    events: document.querySelectorAll(".day-column .timed-event").length,
+    loneFrac: lone ? frac(lone) : null,
+    blockFrac: block ? frac(block) : null,
+    barText: bar?.textContent.trim() ?? null,
+  };
+});
+check(
+  "day view: lone event keeps full width beside an overflowing cluster",
+  mixed.events === 4 &&
+    mixed.loneFrac !== null && mixed.loneFrac > 0.9 &&
+    mixed.blockFrac !== null && mixed.blockFrac < 0.3 &&
+    mixed.barText === "+2 more",
+  JSON.stringify(mixed)
 );
 
 // many events that DON'T overlap -> all shown, no "+N more" bar at all
