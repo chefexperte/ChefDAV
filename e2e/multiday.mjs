@@ -5,7 +5,7 @@
 //
 // Run: cd e2e && node multiday.mjs   (dev stack + built app on APP_URL)
 
-import { chromium } from "playwright";
+import { launchPinned } from "./clock.mjs";
 import { cleanupRun } from "./davclean.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
@@ -14,9 +14,9 @@ const USER = process.env.DAV_USER ?? "alice";
 const PASS = process.env.DAV_PASS ?? "secret";
 
 const run = Date.now().toString(36);
-const ALLDAY = `Multi ${run}`; // Wed 11 – Thu 12 Nov (all-day)
-const OVERNIGHT = `Overnight ${run}`; // Wed 11 23:00 – Thu 12 01:00 (timed)
-const SPANWK = `SpanWeek ${run}`; // Fri 13 – Mon 16 Nov (all-day, crosses week boundary)
+const ALLDAY = `Multi ${run}`; // Wed 18 – Thu 19 Nov (all-day)
+const OVERNIGHT = `Overnight ${run}`; // Wed 18 23:00 – Thu 19 01:00 (timed)
+const SPANWK = `SpanWeek ${run}`; // Fri 20 – Mon 23 Nov (all-day, crosses week boundary)
 
 let failures = 0;
 function check(name, ok, detail = "") {
@@ -24,8 +24,7 @@ function check(name, ok, detail = "") {
   if (!ok) failures++;
 }
 
-const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+const { browser, page } = await launchPinned({ viewport: { width: 1280, height: 900 } });
 const consoleErrors = [];
 page.on("console", (m) => {
   if (m.type() === "error") consoleErrors.push(m.text());
@@ -80,7 +79,7 @@ check(
   JSON.stringify(noHScroll)
 );
 
-// ---------- all-day event with end date (11 → 12 Nov) ----------
+// ---------- all-day event with end date (18 → 19 Nov) ----------
 await page.fill('.modal input[type="text"]', ALLDAY);
 await page.locator('.modal input[type="date"]').nth(0).fill("2026-11-18");
 await page.locator('.modal input[type="date"]').nth(1).fill("2026-11-19");
@@ -88,7 +87,7 @@ await page.locator(".modal .switch input").click(); // all-day
 await saveAndClose(ALLDAY);
 check("all-day event created", (await page.locator(".chip, .span-bar", { hasText: ALLDAY }).count()) > 0);
 
-// ---------- timed overnight event (11 Nov 23:00 → 12 Nov 01:00) ----------
+// ---------- timed overnight event (18 Nov 23:00 → 19 Nov 01:00) ----------
 await newEvent();
 await page.fill('.modal input[type="text"]', OVERNIGHT);
 await page.locator('.modal input[type="date"]').nth(0).fill("2026-11-18");
@@ -98,7 +97,7 @@ await page.locator('.modal input[type="time"]').nth(1).fill("01:00");
 await saveAndClose(OVERNIGHT);
 check("overnight event created", (await page.locator(".chip, .span-bar", { hasText: OVERNIGHT }).count()) > 0);
 
-// ---------- all-day event crossing a week boundary (13 → 16 Nov) ----------
+// ---------- all-day event crossing a week boundary (20 → 23 Nov) ----------
 await newEvent();
 await page.fill('.modal input[type="text"]', SPANWK);
 await page.locator('.modal input[type="date"]').nth(0).fill("2026-11-20");

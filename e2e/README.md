@@ -16,6 +16,21 @@ Playwright suites that drive the real app against the real dev stack:
 - `audit.mjs` — screenshots plus layout/translation checks (expects the seeded
   dev data).
 
+## Pinned clock
+
+The suites and the seeded demo data are pinned to November 2026, and the
+nav-based checks assume "today" is in the week of Mon 2026-11-09 – Sun
+2026-11-15 (toolbar "Next" must land on `/week/2026-11-16`, "Today" on
+`/week/2026-11-09`, created events must show up in the current month view).
+To keep that valid forever, every suite pins the browser clock to a fixed
+"now" inside that week via `clock.mjs` (`page.clock.setFixedTime` — the app
+reads the clock only through the JS `Date` object, and timers keep running in
+real time). Use `launchPinned()` (or `pinClock(page)` for your own context)
+in new suites instead of `chromium.launch()`, and create test data on fixed
+November 2026 dates like the existing ones. `node clock-sanity.mjs` is a
+5-second standalone check that the pin is seen by the app and survives a
+reload.
+
 ## Run
 
 ```sh
@@ -42,6 +57,8 @@ node recurrence.mjs
 node visibility.mjs
 node session.mjs
 node location.mjs
+node links.mjs
+node multiday.mjs
 node audit.mjs
 ```
 

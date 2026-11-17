@@ -5,6 +5,7 @@
 // Run: cd e2e && node session.mjs
 
 import { chromium } from "playwright";
+import { pinClock } from "./clock.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
 const DAV = process.env.DAV_URL ?? "http://127.0.0.1:8080";
@@ -20,6 +21,7 @@ function check(name, ok, detail = "") {
 const browser = await chromium.launch();
 const context = await browser.newContext();
 const page = await context.newPage();
+await pinClock(page);
 const errors = [];
 page.on("console", (m) => {
   if (m.type() === "error" && !m.text().includes("401 (Unauthorized)")) errors.push(m.text());

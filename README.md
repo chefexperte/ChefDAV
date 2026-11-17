@@ -36,6 +36,8 @@ modern look, Rust reliability.
 - **Multi-day events** — the editor has an end-date picker for all-day *and*
   overnight timed events; month and week views render them as spanning bars
   with striped continuation fades at week boundaries and day edges.
+- **Timezone-aware** — events render in your browser's timezone, whether they
+  carry a `TZID` from another client or were saved as UTC (DST-correct).
 - **Recurrence** — RRULE/RDATE/EXDATE expanded client-side in the event's own
   timezone (DST-correct), an RRULE editor, and RECURRENCE-ID exceptions
   (*this event* / *this and following* / *all events*).

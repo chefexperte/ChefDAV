@@ -4,7 +4,7 @@
 //
 // Run: cd e2e && node visibility.mjs
 
-import { chromium } from "playwright";
+import { launchPinned } from "./clock.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
 const DAV = process.env.DAV_URL ?? "http://127.0.0.1:8080";
@@ -20,8 +20,7 @@ function check(name, ok, detail = "") {
   if (!ok) failures++;
 }
 
-const browser = await chromium.launch();
-const page = await browser.newPage();
+const { browser, page } = await launchPinned();
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => {

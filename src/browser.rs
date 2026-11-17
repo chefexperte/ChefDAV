@@ -38,9 +38,14 @@ pub fn browser_tz() -> Tz {
     let locales = js_sys::Array::new();
     let options = js_sys::Object::new();
     let dtf = js_sys::Intl::DateTimeFormat::new(&locales, &options);
-    let tz_name = js_sys::Reflect::get(&dtf, &JsValue::from_str("resolvedOptions"))
+    // resolvedOptions is a METHOD: Reflect::get(&dtf, "resolvedOptions") only
+    // fetched the function object and the "timeZone" lookup on it silently
+    // failed, so every build fell back to UTC and TZID events rendered at
+    // their UTC times (12:00 Europe/Berlin showed as 11:00). Found by the
+    // pinned-clock e2e battery on 2026-11-17.
+    let opts = dtf.resolved_options();
+    let tz_name = js_sys::Reflect::get(&opts, &JsValue::from_str("timeZone"))
         .ok()
-        .and_then(|opts| js_sys::Reflect::get(&opts, &JsValue::from_str("timeZone")).ok())
         .and_then(|v| v.as_string())
         .unwrap_or_else(|| "UTC".to_string());
     tz_name.parse().unwrap_or(chrono_tz::UTC)

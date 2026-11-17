@@ -14,7 +14,7 @@
 //   DAV_USER  (default alice)
 //   DAV_PASS  (default secret)
 
-import { chromium } from "playwright";
+import { launchPinned } from "./clock.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
 const DAV = process.env.DAV_URL ?? "http://127.0.0.1:8080";
@@ -33,9 +33,7 @@ function check(name, ok, detail = "") {
   if (!ok) failures++;
 }
 
-const browser = await chromium.launch();
-const page = await browser.newPage();
-
+const { browser, page } = await launchPinned();
 const consoleErrors = [];
 page.on("console", (m) => {
   if (m.type() === "error") consoleErrors.push(m.text());
@@ -103,7 +101,7 @@ await page.waitForSelector(".month-grid", { timeout: 10000 });
 await page.click("button.new-event");
 await page.waitForSelector(".modal");
 await page.fill('.modal input[type="text"]', EVENT);
-  await page.fill('.modal input[type="date"]', "2026-11-22");
+await page.fill('.modal input[type="date"]', "2026-11-22");
 await page.fill('.modal input[type="time"] >> nth=0', "12:30");
 await page.fill('.modal input[type="time"] >> nth=1', "13:30");
 await page.click('.modal button:has-text("Save")');

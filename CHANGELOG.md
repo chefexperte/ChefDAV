@@ -5,6 +5,11 @@ latest section of this file (baked into each build).
 
 ## Unreleased
 
+- Fixed **events created by other clients showing at the wrong local time**:
+  the app silently fell back to UTC instead of using the browser's timezone
+  (a broken `Intl` lookup), so events with a `TZID` — e.g. from AgenDAV,
+  Thunderbird or the demo seed — rendered one hour early in winter (two in
+  summer). Events now show in your actual timezone.
 - The week/day overflow entry is now a **"+N more"** button (N = hidden event
   count) that spans exactly the **time range of the hidden events** (earliest
   start → latest end) instead of the full column height, and only appears when

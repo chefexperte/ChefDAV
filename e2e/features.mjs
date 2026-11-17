@@ -4,7 +4,7 @@
 // Prerequisites: same as smoke.mjs (dev stack + app at APP_URL).
 // Run: cd e2e && node features.mjs
 
-import { chromium } from "playwright";
+import { launchPinned } from "./clock.mjs";
 import { cleanupRun } from "./davclean.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
@@ -20,8 +20,7 @@ function check(name, ok, detail = "") {
   if (!ok) failures++;
 }
 
-const browser = await chromium.launch();
-const page = await browser.newPage();
+const { browser, page } = await launchPinned();
 const consoleErrors = [];
 page.on("console", (m) => {
   if (m.type() === "error") consoleErrors.push(m.text());
@@ -77,6 +76,33 @@ async function waitFor(condFn, arg, timeout = 10000) {
 
 await login();
 check("login", true, await page.textContent(".month-title"));
+
+// ---------- events render in the browser timezone ----------
+// Regression (2026-11-17): browser_tz() silently fell back to UTC, so events
+// with a TZID rendered at their UTC times (the 12:00 Europe/Berlin seed
+// "Lunch with Sam" showed as 11:00). Needs the seeded dev data; the expected
+// chip time is derived from the browser's own zone, so it also holds on a
+// UTC CI runner.
+await waitFor(
+  () => [...document.querySelectorAll(".chip")].some((e) => e.textContent.includes("Lunch with Sam")),
+  null,
+  15000
+);
+const lunch = await page.evaluate(() => {
+  const chip = [...document.querySelectorAll(".chip")].find((e) =>
+    e.textContent.includes("Lunch with Sam")
+  );
+  if (!chip) return null;
+  // Nov 10, 2026 12:00 Europe/Berlin (CET, +1) as an exact instant; the chip
+  // must show that instant in the browser's local time.
+  const localHour = new Date("2026-11-10T12:00:00+01:00").getHours();
+  return { chip: chip.textContent.trim(), expected: `${String(localHour).padStart(2, "0")}:00` };
+});
+check(
+  "events render in the browser timezone (seed: 12:00 Berlin)",
+  lunch !== null && lunch.chip.includes(lunch.expected),
+  lunch ? `${lunch.chip} (expected ${lunch.expected})` : "(seed chip not found)"
+);
 
 // ---------- day click popup ----------
 const dayCells = page.locator(".day");

@@ -5,7 +5,7 @@
 // Prerequisites: same as smoke.mjs (dev stack + app at APP_URL).
 // Run: cd e2e && node location.mjs
 
-import { chromium } from "playwright";
+import { launchPinned } from "./clock.mjs";
 import { cleanupRun } from "./davclean.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
@@ -24,8 +24,7 @@ function check(name, ok, detail = "") {
   if (!ok) failures++;
 }
 
-const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+const { browser, page } = await launchPinned({ viewport: { width: 1280, height: 900 } });
 const errors = [];
 page.on("console", (m) => {
   if (m.type() === "error" && !m.text().includes("401 (Unauthorized)")) errors.push(m.text());

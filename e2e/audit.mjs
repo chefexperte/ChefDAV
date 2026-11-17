@@ -2,7 +2,7 @@
 // Saves screenshots to /tmp/opencode/screenshots and prints layout/translation
 // findings. Run: cd e2e && node audit.mjs
 
-import { chromium } from "playwright";
+import { launchPinned } from "./clock.mjs";
 import fs from "fs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
@@ -43,10 +43,9 @@ async function scanDe(selector, name) {
   check(`German ${name} has no English labels`, found.length === 0, found.join(", "));
 }
 
-const browser = await chromium.launch();
 // 1440 wide so the week-range title ("16 – 22 November 2026") is not truncated
 // in the screenshots that land in docs/screenshots/
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const { browser, page } = await launchPinned({ viewport: { width: 1440, height: 900 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => {

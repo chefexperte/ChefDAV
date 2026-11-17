@@ -9,7 +9,7 @@
 //
 // Environment overrides: APP_URL, DAV_URL, DAV_USER, DAV_PASS
 
-import { chromium } from "playwright";
+import { launchPinned } from "./clock.mjs";
 import { cleanupRun } from "./davclean.mjs";
 
 const APP = process.env.APP_URL ?? "http://127.0.0.1:3100";
@@ -27,8 +27,7 @@ function check(name, ok, detail = "") {
   if (!ok) failures++;
 }
 
-const browser = await chromium.launch();
-const page = await browser.newPage();
+const { browser, page } = await launchPinned();
 const consoleErrors = [];
 page.on("console", (m) => {
   if (m.type() === "error") consoleErrors.push(m.text());
