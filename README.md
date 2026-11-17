@@ -120,7 +120,7 @@ host for the app.
    "Stay logged in" keeps you signed in across reloads on that device.
 
 A single static file server is enough — no Node, no PHP, no app server. The
-release bundle is ~2.7 MB wasm (~853 KB gzipped, mostly the timezone database).
+release bundle is ~3.5 MB wasm (~1.1 MB gzipped, mostly the timezone database).
 
 ## Development setup
 

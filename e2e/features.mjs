@@ -296,22 +296,10 @@ await waitFor(() => document.querySelectorAll(".day-column .timed-event").length
 await page.waitForTimeout(500);
 const dayOverflow = await page.evaluate(() => {
   const bar = document.querySelector(".day-column .more-bar");
-  const col = document.querySelector(".day-column");
-  const br = bar?.getBoundingClientRect();
-  const cr = col?.getBoundingClientRect();
-  // a shown Col event (the hidden ones are all Col 10:00-12:00 too) — compare
-  // against it so the check is timezone-independent
-  const colEv = [...document.querySelectorAll(".day-column .timed-event")].find((e) => e.textContent.includes("Col"));
-  const er = colEv?.getBoundingClientRect();
   return {
     events: document.querySelectorAll(".day-column .timed-event").length,
     more: document.querySelectorAll(".day-column .more-bar").length,
     moreText: bar?.textContent.trim() ?? null,
-    moreH: br ? Math.round(br.height) : 0,
-    moreTopOff: br && cr ? Math.round(br.top - cr.top) : -1,
-    evTopOff: er && cr ? Math.round(er.top - cr.top) : -1,
-    evH: er ? Math.round(er.height) : 0,
-    colH: cr ? Math.round(cr.height) : 0,
   };
 });
 check(
@@ -319,19 +307,46 @@ check(
   dayOverflow.events === 3 && dayOverflow.more === 1 && /^\+\d+ more$/.test(dayOverflow.moreText ?? ""),
   JSON.stringify(dayOverflow)
 );
-// the bar must sit exactly at the hidden events' range: same top/height as a
-// shown Col event (10:00-12:00), NOT the full column height. Since the
-// cluster rewrite the count is honest: 3 shown + 2 hidden = 5 (the old
-// greedy-global layout reported "+1 more" and silently dropped the event
-// in the collapse slot)
+// the bar must sit exactly at the hidden events' range and count them ALL.
+// The expectation is computed *in the page* so it holds on any runner
+// timezone (CI is UTC, the dev box is Europe/Berlin): the two hidden events
+// are one DAV Col event (10:00-12:00 Europe/Berlin) and the UI-created Col2
+// (10:00-12:00 in the runner's local time) — the bar spans their union.
+const barGeom = await page.evaluate(() => {
+  const bar = document.querySelector(".day-column .more-bar");
+  const col = document.querySelector(".day-column");
+  const br = bar?.getBoundingClientRect();
+  const cr = col?.getBoundingClientRect();
+  if (!bar || !br || !cr) return null;
+  const minOfDay = (d) => d.getHours() * 60 + d.getMinutes();
+  // hidden #1: a DAV Col event — 10:00-12:00 Europe/Berlin (CET, +01:00)
+  const bStart = minOfDay(new Date("2026-11-28T10:00:00+01:00"));
+  const bEnd = minOfDay(new Date("2026-11-28T12:00:00+01:00"));
+  // hidden #2: the UI-created Col2 — 10:00-12:00 in the RUNNER's local time
+  const locStart = 10 * 60;
+  const locEnd = 12 * 60;
+  const s = Math.min(bStart, locStart);
+  const e = Math.max(bEnd, locEnd);
+  const hourPx = cr.height / 24;
+  return {
+    text: bar.textContent.trim(),
+    top: Math.round(br.top - cr.top),
+    h: Math.round(br.height),
+    colH: Math.round(cr.height),
+    expTop: Math.round((s / 60) * hourPx),
+    expH: Math.round(((e - s) / 60) * hourPx),
+  };
+});
 check(
   "day view: '+N more' bar spans only the hidden events' time range, count in label",
   dayOverflow.more === 1 &&
     dayOverflow.moreText === "+2 more" &&
-    Math.abs(dayOverflow.moreTopOff - dayOverflow.evTopOff) <= 2 &&
-    Math.abs(dayOverflow.moreH - dayOverflow.evH) <= 2 &&
-    dayOverflow.moreH < dayOverflow.colH,
-  JSON.stringify(dayOverflow)
+    barGeom !== null &&
+    barGeom.text === "+2 more" &&
+    Math.abs(barGeom.top - barGeom.expTop) <= 2 &&
+    Math.abs(barGeom.h - barGeom.expH) <= 2 &&
+    barGeom.h < barGeom.colH,
+  JSON.stringify({ dayOverflow, barGeom })
 );
 
 // the point of the cluster rewrite: a lone event must keep FULL width while

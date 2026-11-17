@@ -73,6 +73,11 @@ jobs:
             --data '<?xml version="1.0"?><D:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:set><D:prop><D:resourcetype><D:collection/><C:calendar/></D:resourcetype><D:displayname>Personal</D:displayname></D:prop></D:set></D:mkcalendar>' \
             http://127.0.0.1:8080/alice/personal/
 
+      - name: Seed the demo calendars + events the suites expect
+        # the features suite asserts on the seeded data (e.g. the browser-
+        # timezone regression check reads the 12:00 Berlin "Lunch with Sam")
+        run: bash scripts/seed-dev.sh
+
       - name: Build and start the app
         run: |
           trunk build
@@ -98,6 +103,8 @@ jobs:
           node visibility.mjs
           node session.mjs
           node location.mjs
+          node links.mjs
+          node multiday.mjs
 
       - name: Upload failure artifacts
         if: failure()

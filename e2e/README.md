@@ -66,3 +66,10 @@ Environment overrides: `APP_URL`, `DAV_URL`, `DAV_USER`, `DAV_PASS`.
 
 The suites create uniquely-named events and delete what they created, so they
 can be re-run against the same server.
+
+**Timezones:** the suites mix Berlin-TZID data (seeds, CalDAV PUTs) with
+UI-created events — expectations that compare both must be computed in-page
+from explicit-offset instants (`new Date("2026-11-28T10:00:00+01:00")`) or
+they break on UTC runners. CI is UTC and runs smoke, features, recurrence,
+visibility, session, location, links, multiday — with the seeds. Verify
+tz-touching suite changes with `TZ=UTC node features.mjs`.

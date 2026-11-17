@@ -5,6 +5,11 @@ latest section of this file (baked into each build).
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-17
+
+Second feature batch: Tetris layout, self-hosted fonts, timezone fix,
+"+N more" everywhere, month-view labels.
+
 - The **"+N more" overflow entries are now clearly visible**, especially in
   dark mode: they get their own neutral surface with a hairline border
   instead of a background that vanished against the timeline (dark mode
