@@ -18,13 +18,20 @@ work for this project and are licensed **MIT** — see `LICENSE` and the
 - **[Runway](https://github.com/liesen/runway)** (MIT) — prior art for a
   Rust/WASM CalDAV frontend; no code copied.
 
-## Fonts (loaded at runtime from Google Fonts, not shipped)
+## Fonts (bundled, self-hosted — no CDN)
 
-- **Fraunces** — SIL Open Font License 1.1 (display type)
-- **Inter** — SIL Open Font License 1.1 (UI)
+The app loads **nothing from third-party CDNs** (project rule, see AGENTS.md).
+The display and UI fonts are shipped in this repository and served same-origin:
 
-OFL-licensed fonts are loaded via `<link>` from fonts.googleapis.com; the font
-files themselves are not part of this repository. The logo is an original
+- `public/fonts/fraunces-*.woff2` — **Fraunces**, SIL Open Font License 1.1
+  (display type), © 2020 The Fraunces Project Authors
+  (https://github.com/googlefonts/fraunces)
+- `public/fonts/inter-*.woff2` — **Inter**, SIL Open Font License 1.1 (UI),
+  © 2014 The Inter Project Authors (https://github.com/rsms/inter)
+
+The OFL expressly permits redistribution and bundling; the woff2 files are
+subsets obtained from Google Fonts solely to download them once — at runtime
+the app only requests them from its own origin. The logo is an original
 abstract SVG (no font outlines).
 
 ## Third-party crates (via Cargo)

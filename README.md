@@ -5,6 +5,11 @@ compiled to WebAssembly**, talking directly to a **CalDAV server (Radicale)**.
 There is no application backend: the only server-side pieces you operate are
 Radicale itself plus a tiny reverse proxy that adds CORS headers.
 
+All static assets — **fonts included** — are bundled and served same-origin:
+nothing is loaded from Google, Facebook or any other third-party CDN. The app
+only talks to your calendar server (plus OpenStreetMap for the optional
+location map preview).
+
 Inspired by [AgenDAV](https://github.com/agendav/agendav) (PHP) — same idea,
 modern look, Rust reliability.
 
@@ -194,4 +199,4 @@ before relying on it. AgenDAV is AGPL-3.0 — we take inspiration from it
 only, no code copied; if any of its code is ever ported verbatim, this project
 must be relicensed AGPL-3.0 accordingly. Dependencies are permissive crates
 (MIT/Apache-2.0/BSD/CC0/Zlib/Unicode-3.0 — see NOTICE.md); fonts (Fraunces,
-Inter) are OFL and loaded at runtime from Google Fonts.
+Inter) are OFL and **bundled** — nothing is loaded from third-party CDNs.

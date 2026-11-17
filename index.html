@@ -12,12 +12,11 @@
     <link data-trunk rel="copy-file" href="public/favicon.svg" />
     <!-- design tokens are imported by main.css; copy them so /tokens.css exists -->
     <link data-trunk rel="copy-file" href="style/tokens.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Self-hosted fonts (project rule: no third-party CDNs — see AGENTS.md).
+         fonts.css is imported by main.css (/fonts.css at runtime), the woff2
+         files are served same-origin from /fonts/. -->
+    <link data-trunk rel="copy-file" href="style/fonts.css" />
+    <link data-trunk rel="copy-dir" href="public/fonts" />
     <!-- build the bin target: on wasm32 its main() mounts the app, natively it
          is the optional static file server for dist/ -->
     <link data-trunk rel="rust" data-target-name="chef-dav" data-cargo-no-default-features="true" />

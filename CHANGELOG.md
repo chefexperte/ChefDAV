@@ -5,6 +5,10 @@ latest section of this file (baked into each build).
 
 ## Unreleased
 
+- **No more third-party CDNs**: the fonts are now **bundled with the app and
+  served from your own origin** — it no longer loads anything from Google
+  Fonts (or anyone else). The only network peers left are your calendar
+  server and OpenStreetMap (optional map preview).
 - Fixed **events created by other clients showing at the wrong local time**:
   the app silently fell back to UTC instead of using the browser's timezone
   (a broken `Intl` lookup), so events with a `TZID` — e.g. from AgenDAV,

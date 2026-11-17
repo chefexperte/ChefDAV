@@ -2,6 +2,9 @@
    Fraunces for display type, Inter for UI. Soft cards, playful details. */
 
 @import "tokens.css";
+/* Self-hosted Fraunces + Inter (no CDN — fonts are bundled in public/fonts/,
+   see style/fonts.css and AGENTS.md). */
+@import "fonts.css";
 
 * {
   box-sizing: border-box;
