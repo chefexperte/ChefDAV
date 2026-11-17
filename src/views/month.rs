@@ -357,8 +357,8 @@ pub fn MonthView() -> impl IntoView {
                                             .unwrap_or(0)
                                             * BAR_SLOT_H
                                     });
-                                    // max 3 entries per cell TOTAL (bars + chips + show-all);
-                                    // on overflow show one less + a neutral "Show all" entry
+                                    // max 3 entries per cell TOTAL (bars + chips + "+N more");
+                                    // on overflow show one less + a "+N more" entry
                                     let chip_slots = Memo::new(move |_| 3usize.saturating_sub(bar_pad.get() / BAR_SLOT_H));
                                     let shown_items = Memo::new(move |_| {
                                         let all = chip_items.get();
@@ -372,7 +372,7 @@ pub fn MonthView() -> impl IntoView {
                                     let more_count = Memo::new(move |_| {
                                         chip_items.get().len().saturating_sub(shown_items.get().len())
                                     });
-                                    // no "Show all" when the bars already fill all 3 slots
+                                    // no "+N more" when the bars already fill all 3 slots
                                     let show_more = Memo::new(move |_| more_count.get() > 0 && chip_slots.get() >= 1);
                                     view! {
                                         <div
@@ -410,7 +410,7 @@ pub fn MonthView() -> impl IntoView {
                                                             }));
                                                         }
                                                     >
-                                                        {move || crate::i18n::t(state.lang.get(), "show_all")}
+                                                        {move || crate::i18n::more_count(state.lang.get(), more_count.get())}
                                                     </button>
                                                 </Show>
                                             </div>

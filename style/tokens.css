@@ -7,6 +7,9 @@
   /* surfaces */
   --paper: #f4f2ea;
   --paper-deep: #eae7db;
+  /* neutral overflow entries ("+N more" bar/chip) — distinct from card
+     + paper-deep so they stay visible where they float */
+  --more-chip: #e3dfcd;
   --card: #fffdf8;
   --line: #dde2d5;
 
@@ -49,6 +52,9 @@
 [data-theme="dark"] {
   --paper: #171a16;
   --paper-deep: #22261f;
+  /* visibly lighter than the card it floats on (dark paper-deep vanished
+     against --card in dark mode) */
+  --more-chip: #2b3227;
   --card: #1f231c;
   --line: #343a2f;
 

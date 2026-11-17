@@ -796,13 +796,14 @@ button {
   outline: 2px solid var(--ink);
 }
 
-/* "+N more" entry: looks like an event, but neutral (no calendar color) */
+/* "+N more" entry: looks like an event, but neutral (no calendar color) —
+   its own surface + hairline so it stays visible in both themes */
 .more-chip {
   display: flex;
   align-items: center;
   width: 100%;
-  border: none;
-  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  background: var(--more-chip);
   color: var(--ink-soft);
   border-radius: 7px;
   padding: 4px 9px;
@@ -1930,15 +1931,17 @@ button {
 
 /* week/day-view overflow: the freed column slot gets a neutral "+N more" entry
    spanning exactly the hidden events' time range (top/height/left/width are
-   set inline from the layout) — like Google Calendar's "+N more" chip */
+   set inline from the layout) — like Google Calendar's "+N more" chip. Own
+   surface + hairline: in dark mode the old --paper-deep vanished against the
+   timeline card. */
 .more-bar {
   position: absolute;
   z-index: 4;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  background: var(--more-chip);
   color: var(--ink-soft);
   font-size: 11px;
   font-weight: 700;

@@ -5,6 +5,12 @@ latest section of this file (baked into each build).
 
 ## Unreleased
 
+- The **"+N more" overflow entries are now clearly visible**, especially in
+  dark mode: they get their own neutral surface with a hairline border
+  instead of a background that vanished against the timeline (dark mode
+  especially). The **month view** overflow chip now also says **"+N more"**
+  (counting the hidden events) like the week/day bars, instead of
+  "Show all".
 - **Smarter stacking of overlapping events** ("Tetris" layout): events that
   overlap now form clusters, and each cluster gets exactly as many columns
   as its busiest moment needs. A quiet morning no longer shrinks because a
