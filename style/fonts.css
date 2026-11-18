@@ -1,15 +1,12 @@
 /* ChefDAV self-hosted fonts (project rule: no third-party CDNs — every
    static resource is bundled in public/fonts/ and served same-origin).
 
-   Art Deco pairing (see DESIGN.md §1):
-   - Baskervville (Regular + Italic, SIL OFL 1.1) — the ballroom "menu book"
-     body/UI face. © 2018 Claus Eggers Søgård, https://github.com/clauseggers/Baskervville
-   - Klarissa (Regular) — the marquee/poster accent face used for the
-     wordmark, titles and headlines only. Bundled under the 1001Fonts
-     "Free For Commercial Use" license (EULA in public/fonts/ and NOTICE.md);
-     © 2003 Dieter Steffmann / Typographer Mediengestaltung. */
+   Font pairing (user decision, kept across the 2026-11-18 Adwaita
+   re-skin): **Klarissa** is the accent/display face (wordmark, titles,
+   headings), **Baskervville** is the body/UI face. Bundled under their
+   licenses — see NOTICE.md. */
 
-/* Baskervville — normal */
+/* Baskervville — normal (SIL OFL 1.1, © 2018 Claus Eggers Søgård) */
 @font-face {
   font-family: 'Baskervville';
   font-style: normal;
@@ -27,7 +24,7 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* Baskervville — italic (event notes, quotes) */
+/* Baskervville — italic */
 @font-face {
   font-family: 'Baskervville';
   font-style: italic;
@@ -45,7 +42,8 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* Klarissa — the marquee accent face (short strings only, never body text) */
+/* Klarissa — the accent face (1001Fonts FFC license, EULA in public/fonts/);
+   short strings only, never body text */
 @font-face {
   font-family: 'Klarissa';
   font-style: normal;

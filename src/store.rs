@@ -168,7 +168,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            theme: "dark".into(),
+            theme: "light".into(),
             lang: "en".into(),
             stay_logged_in: true,
         }

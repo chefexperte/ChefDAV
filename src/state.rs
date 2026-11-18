@@ -173,13 +173,13 @@ impl Lang {
     }
 }
 
-/// Brand accent — keep in sync with `--accent` in `style/tokens.css`.
-pub const ACCENT: &str = "#e6b93d";
+/// Brand accent — keep in sync with `--accent-bg` in `style/tokens.css`.
+pub const ACCENT: &str = "#3584e4";
 
 /// Fallback palette when a calendar has no color configured server-side.
-/// Mirrors `--cal-1` … `--cal-8` in `style/tokens.css` (gem tones).
+/// Mirrors `--cal-1` … `--cal-8` in `style/tokens.css` (Adwaita accent hues).
 pub const PALETTE: [&str; 8] = [
-    "#e0338a", "#d93a30", "#d97e06", "#149a54", "#0d9488", "#2f6fd0", "#8a4fd3", "#9c6b30",
+    "#3584e4", "#e62d42", "#ed5b00", "#3a944a", "#2190a4", "#9141ac", "#d56199", "#6f8396",
 ];
 
 pub fn color_for(href: &str, server_color: &Option<String>, index: usize) -> String {
@@ -276,7 +276,7 @@ impl AppState {
             searching: RwSignal::new(false),
             pending: RwSignal::new(0),
             online: RwSignal::new(true),
-            theme: RwSignal::new(Theme::Dark),
+            theme: RwSignal::new(Theme::Light),
             lang: RwSignal::new(Lang::En),
             restoring: RwSignal::new(true),
             login_error: RwSignal::new(None),

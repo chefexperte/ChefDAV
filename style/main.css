@@ -1,11 +1,8 @@
-/* ChefDAV design system — "Roli Glitzer Glitzer / Goldkette klimper klimper".
-   Black-lacquer Art Deco: gilded hairlines, a glitter field, chrome and
-   rhinestones. Klarissa sets the accents, Baskervville sets the text.
-   Tokens live in style/tokens.css; the design constitution is DESIGN.md. */
+/* ChefDAV design system — GTK4/libadwaita (GNOME Adwaita) components and
+   colors (tokens from GNOME libadwaita's stylesheet in style/tokens.css);
+   type stays Klarissa (display) + Baskervville (body), self-hosted. */
 
 @import "tokens.css";
-/* Self-hosted Klarissa + Baskervville (no CDN — fonts are bundled in
-   public/fonts/, see style/fonts.css and AGENTS.md). */
 @import "fonts.css";
 
 * {
@@ -20,33 +17,21 @@ body {
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: 15px;
-  line-height: 1.5;
-}
-
-/* Glitter field: sparse 1px gold/white specks on the page ground. Static,
-   two interleaved grids so the sparkle never looks like a wallpaper repeat. */
-body {
-  background-image:
-    radial-gradient(var(--glitter-1) 1px, transparent 1.4px),
-    radial-gradient(var(--glitter-2) 1px, transparent 1.4px);
-  background-size: 26px 26px, 41px 41px;
-  background-position: 0 0, 13px 19px;
-  background-repeat: repeat;
+  line-height: 1.45;
 }
 
 h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: 0.01em;
+  font-weight: 700;
 }
 
 button {
   font-family: var(--font-ui);
 }
 
-/* visible keyboard focus in both themes (DESIGN.md §3) */
+/* Adwaita focus ring: accent color at 50% */
 :focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
@@ -54,21 +39,21 @@ button {
 
 /* ---------- buttons ---------- */
 
+/* raised button: currentColor 10% background, 1px border, 9px radius */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
   border: 1px solid var(--line);
-  background: var(--card);
+  background: var(--btn-bg);
   color: var(--ink);
   border-radius: var(--radius-sm);
   padding: 8px 14px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-  box-shadow: var(--shadow-sm);
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
 .btn svg {
@@ -78,68 +63,57 @@ button {
 }
 
 .btn:hover {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--accent-soft);
+  background: var(--btn-bg-hover);
 }
 
 .btn:active {
-  transform: translateY(1px);
+  background: var(--btn-bg-active);
 }
 
 .btn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: default;
-  transform: none;
 }
 
-/* the metallic gold primary — the one place the loud gradient is allowed */
+/* suggested-action: accent background, accent foreground */
 .btn-primary {
-  background: linear-gradient(180deg, var(--metal-1), var(--metal-2) 45%, var(--metal-3));
-  border-color: var(--accent-deep);
-  color: var(--metal-ink);
-  border-radius: var(--radius-pill);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.18),
-    var(--shadow-sm);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
-  letter-spacing: 0.01em;
+  background: var(--accent-bg);
+  border-color: var(--accent-bg);
+  color: var(--accent-fg);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(180deg, #fff0ad, var(--metal-1) 40%, var(--metal-2));
-  border-color: var(--metal-3);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.16),
-    0 0 0 3px var(--accent-soft);
+  background: var(--accent-bg-hover);
+  border-color: var(--accent-bg-hover);
 }
 
+.btn-primary:active {
+  background: var(--accent-bg-hover);
+  opacity: 0.85;
+}
+
+/* flat button */
 .btn-ghost {
   background: transparent;
   border-color: transparent;
-  box-shadow: none;
-  color: var(--ink-soft);
+  color: var(--ink);
 }
 
 .btn-ghost:hover {
   background: var(--paper-deep);
   border-color: transparent;
-  color: var(--ink);
-  box-shadow: none;
 }
 
+/* destructive-action: danger text, tinted hover */
 .btn-danger {
   background: transparent;
-  border-color: var(--danger-line);
+  border-color: transparent;
   color: var(--danger);
-  box-shadow: none;
 }
 
 .btn-danger:hover {
   background: var(--danger-soft);
-  border-color: var(--danger);
-  box-shadow: none;
+  border-color: var(--danger-line);
 }
 
 .btn-icon {
@@ -179,55 +153,17 @@ button {
   max-width: 400px;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
-  background: var(--card);
+  background: var(--dialog-bg);
   border: 1px solid var(--line);
-  border-radius: 4px;
-  /* Deco double frame: a second gold hairline set 4px inside the edge */
-  box-shadow:
-    var(--shadow),
-    inset 0 0 0 4px var(--card),
-    inset 0 0 0 5px var(--line);
-  padding: 34px 30px 24px;
-}
-
-/* gold-chain divider, used instead of dashed rules (DESIGN.md §1 motif 1) */
-.changelog,
-.login-prefs,
-.recurrence,
-.sharing-info,
-.popover-actions {
-  border-top: 0;
-  position: relative;
-}
-
-.changelog::before,
-.login-prefs::before,
-.recurrence::before,
-.sharing-info::before,
-.popover-actions::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 7px;
-  background-image: radial-gradient(
-    circle at 50% 50%,
-    transparent 2px,
-    var(--chain) 2.4px,
-    var(--chain) 3.1px,
-    transparent 3.5px
-  );
-  background-size: 13px 7px;
-  background-repeat: repeat-x;
-  opacity: 0.55;
-  pointer-events: none;
+  border-radius: 15px; /* libadwaita dialog radius */
+  box-shadow: var(--shadow);
+  padding: 28px 28px 22px;
 }
 
 .changelog {
   margin-top: 14px;
-  border-top: 0;
-  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
   font-size: 12px;
   color: var(--ink-soft);
 }
@@ -282,44 +218,19 @@ button {
   margin: 0 auto 8px;
 }
 
-/* wordmark: Klarissa set in the metallic gold ramp — the only permitted
-   gradient text in the app (DESIGN.md §1 motif 6) */
+/* wordmark in the Klarissa accent face; plain ink, no gradient */
 .login-brand h1,
 .brand-name {
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: 0.06em;
-  background: linear-gradient(180deg, var(--wordmark-1), var(--wordmark-2) 55%, var(--wordmark-3));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45));
+  letter-spacing: 0.04em;
+  color: var(--ink);
 }
 
 .login-brand h1 {
   margin: 0;
-  font-size: 40px;
+  font-size: 34px;
   line-height: 1.05;
-}
-
-/* the rhinestone after the wordmark */
-.login-brand h1::after,
-.brand-name::after {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-left: 3px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 30% 30%,
-    #fff,
-    var(--metal-1) 40%,
-    var(--metal-2) 70%,
-    var(--metal-3)
-  );
-  vertical-align: 0.45em;
 }
 
 .tagline {
@@ -340,11 +251,8 @@ button {
 }
 
 .field > span {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--ink-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 13px;
+  color: var(--ink-soft);
 }
 
 .field input[type="text"],
@@ -357,9 +265,9 @@ button {
 .field textarea {
   font: inherit;
   color: var(--ink);
-  background: var(--paper);
+  background: var(--view-bg);
   border: 1px solid var(--line);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   padding: 9px 11px;
   outline: none;
   width: 100%;
@@ -383,8 +291,8 @@ button {
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  border-color: var(--accent-bg);
+  box-shadow: 0 0 0 1px var(--accent-bg);
 }
 
 .field-row {
@@ -420,11 +328,8 @@ button {
 }
 
 .field-check > span:first-child {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--ink-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 13px;
+  color: var(--ink-soft);
 }
 
 .switch {
@@ -440,6 +345,7 @@ button {
   height: 24px;
   border-radius: var(--radius-pill);
   background: var(--line);
+  border: none;
   position: relative;
   cursor: pointer;
   margin: 0;
@@ -455,13 +361,13 @@ button {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--gem-ink);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   transition: transform 0.15s ease;
 }
 
 .switch input:checked {
-  background: var(--accent);
+  background: var(--accent-bg);
 }
 
 .switch input:checked::after {
@@ -469,7 +375,7 @@ button {
 }
 
 .switch input:focus-visible {
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .hidden {
@@ -501,7 +407,7 @@ button {
   width: 16px;
   height: 16px;
   margin: 0;
-  accent-color: var(--accent);
+  accent-color: var(--accent-bg);
   cursor: pointer;
 }
 
@@ -514,8 +420,8 @@ button {
 
 .login-prefs {
   margin-top: 16px;
-  padding-top: 20px;
-  border-top: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
 }
 
 .login-prefs .prefs-row {
@@ -543,7 +449,7 @@ button {
 }
 
 .sidebar {
-  background: var(--paper-deep);
+  background: var(--sidebar-bg);
   border-right: 1px solid var(--line);
   padding: 20px 16px;
   display: flex;
@@ -555,27 +461,6 @@ button {
   min-width: 0;
 }
 
-/* gold chain running down the sidebar edge (DESIGN.md §1 motif 1) */
-.sidebar::after {
-  content: "";
-  position: absolute;
-  top: 18px;
-  bottom: 18px;
-  right: 2px;
-  width: 7px;
-  background-image: radial-gradient(
-    circle at 50% 50%,
-    transparent 1.7px,
-    var(--chain) 2.1px,
-    var(--chain) 2.9px,
-    transparent 3.3px
-  );
-  background-size: 7px 13px;
-  background-repeat: repeat-y;
-  opacity: 0.5;
-  pointer-events: none;
-}
-
 .brand {
   display: flex;
   align-items: center;
@@ -584,12 +469,11 @@ button {
 }
 
 .brand-name {
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1.1;
 }
 
 .new-event {
-  border-radius: var(--radius-pill);
   padding: 10px;
 }
 
@@ -624,7 +508,7 @@ button {
 
 .btn-icon-plain:hover {
   background: var(--paper-deep);
-  color: var(--accent);
+  color: var(--ink);
 }
 
 .cal-list {
@@ -648,11 +532,11 @@ button {
 }
 
 .cal-item label:hover {
-  background: var(--paper);
+  background: var(--paper-deep);
 }
 
 .cal-item input {
-  accent-color: var(--accent);
+  accent-color: var(--accent-bg);
   margin: 0;
 }
 
@@ -711,7 +595,7 @@ button {
 
 .month-title {
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 400;
   margin: 0;
   flex: 1;
@@ -728,42 +612,37 @@ button {
   justify-content: flex-end;
 }
 
-/* chrome track for the view switcher (DESIGN.md §1 motif 5) */
+/* AdwViewSwitcher-style segmented control: shade-colored track, the active
+   segment is a raised card */
 .segmented {
   display: inline-flex;
-  background: var(--chrome);
-  border: 1px solid var(--line-strong);
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 3px;
   gap: 2px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.25);
 }
 
 .segmented-btn {
   border: none;
   background: transparent;
-  color: var(--chrome-ink);
+  color: var(--ink-soft);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 5px 13px;
-  border-radius: 3px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
 }
 
 .segmented-btn:hover {
-  color: var(--chrome-ink);
-  background: var(--accent-soft);
+  color: var(--ink);
 }
 
 .segmented-btn.active {
   background: var(--card);
   color: var(--ink);
-  box-shadow:
-    inset 0 0 0 1px var(--line),
-    0 1px 2px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--line);
 }
 
 .loading {
@@ -776,7 +655,7 @@ button {
   background: var(--danger-soft);
   border: 1px solid var(--danger-line);
   color: var(--danger);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   padding: 8px 12px;
   font-size: 13px;
 }
@@ -833,7 +712,7 @@ button {
 }
 
 .day:hover {
-  border-color: var(--accent);
+  border-color: var(--ink-faint);
   box-shadow: var(--shadow-sm);
 }
 
@@ -843,16 +722,14 @@ button {
   opacity: 0.62;
 }
 
-/* today's cell: gold hairline + a whisper of gold, no gradient (banned) */
 .day.today {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  border-color: var(--accent-bg);
 }
 
 .day-num {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 17px;
+  font-size: 16px;
   width: 26px;
   height: 26px;
   display: inline-flex;
@@ -861,20 +738,10 @@ button {
   border-radius: 50%;
 }
 
-/* rhinestone "today": a gem, not a disc (DESIGN.md §1 motif 3) */
+/* GNOME Calendar style: today's number is an accent-filled circle */
 .day.today .day-num {
-  width: 27px;
-  height: 27px;
-  background: radial-gradient(
-    circle at 30% 30%,
-    #fff,
-    var(--metal-1) 40%,
-    var(--metal-2) 70%,
-    var(--metal-3)
-  );
-  color: var(--metal-ink);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  background: var(--accent-bg);
+  color: var(--accent-fg);
 }
 
 .day-events {
@@ -898,20 +765,17 @@ button {
   padding: 0 8px;
   font-size: 12.5px;
   font-weight: 600;
-  background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
+  background: var(--chip, var(--accent-bg));
   color: var(--gem-ink);
   border-radius: var(--radius-xs);
   cursor: pointer;
   overflow: hidden;
   white-space: nowrap;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.22);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
 
 .span-bar:hover {
-  background: var(--chip, var(--accent));
+  background: color-mix(in srgb, var(--chip, var(--accent-bg)) 85%, black);
 }
 
 /* continuation segments keep the rounded corners — the striped fade zone
@@ -930,7 +794,7 @@ button {
 }
 
 .span-bar.selected {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--accent-bg);
 }
 
 /* "+N more" entry: looks like an event, but neutral (no calendar color) —
@@ -962,7 +826,7 @@ button {
   gap: 6px;
   min-width: 0;
   max-width: 100%;
-  background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
+  background: var(--chip, var(--accent-bg));
   color: var(--gem-ink);
   border-radius: var(--radius-xs);
   padding: 3px 8px;
@@ -970,14 +834,11 @@ button {
   line-height: 1.3;
   cursor: pointer;
   overflow: hidden;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.22);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
 
 .chip:hover {
-  background: var(--chip, var(--accent));
+  background: color-mix(in srgb, var(--chip, var(--accent-bg)) 85%, black);
 }
 
 .chip-time {
@@ -1150,18 +1011,11 @@ button {
   font-weight: 400;
 }
 
-/* today's number in the week head is the same rhinestone as the month */
+/* today's number in the week head is the same accent circle as the month */
 .week-day-head.today .wd-num {
-  background: radial-gradient(
-    circle at 30% 30%,
-    #fff,
-    var(--metal-1) 40%,
-    var(--metal-2) 70%,
-    var(--metal-3)
-  );
-  color: var(--metal-ink);
+  background: var(--accent-bg);
+  color: var(--accent-fg);
   border-radius: 50%;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
   width: 32px;
   height: 32px;
   display: inline-flex;
@@ -1204,20 +1058,17 @@ button {
   padding: 0 8px;
   font-size: 12px;
   font-weight: 600;
-  background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
+  background: var(--chip, var(--accent-bg));
   color: var(--gem-ink);
   border-radius: var(--radius-xs);
   cursor: pointer;
   overflow: hidden;
   white-space: nowrap;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.22);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
 
 .allday-bar:hover {
-  background: var(--chip, var(--accent));
+  background: color-mix(in srgb, var(--chip, var(--accent-bg)) 85%, black);
 }
 
 .allday-bar .bar-title {
@@ -1229,12 +1080,12 @@ button {
 }
 
 .allday-bar.selected {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--accent-bg);
 }
 
 .allday-chip {
   position: relative;
-  background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
+  background: var(--chip, var(--accent-bg));
   color: var(--gem-ink);
   border-radius: var(--radius-xs);
   padding: 3px 8px;
@@ -1251,7 +1102,7 @@ button {
 }
 
 .allday-chip:hover {
-  background: var(--chip, var(--accent));
+  background: color-mix(in srgb, var(--chip, var(--accent-bg)) 85%, black);
 }
 
 /* continuation at a week boundary: horizontal striped fade (see .cont-left/
@@ -1294,12 +1145,12 @@ button {
 }
 
 .day-column.today {
-  background-color: color-mix(in srgb, var(--accent) 4%, transparent);
+  background-color: var(--accent-soft);
 }
 
 .timed-event {
   position: absolute;
-  background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
+  background: var(--chip, var(--accent-bg));
   color: var(--gem-ink);
   border-radius: var(--radius-xs);
   padding: 3px 7px;
@@ -1319,7 +1170,7 @@ button {
 }
 
 .timed-event:hover {
-  background: var(--chip, var(--accent));
+  background: color-mix(in srgb, var(--chip, var(--accent-bg)) 85%, black);
 }
 
 /* continuation: event starts before / ends after this day — vertical striped
@@ -1398,14 +1249,10 @@ button {
 }
 
 .today-pill {
-  font-family: var(--font-ui);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   background: var(--accent-soft);
   color: var(--accent);
-  border: 1px solid var(--accent);
   border-radius: var(--radius-pill);
   padding: 1px 8px;
 }
@@ -1436,16 +1283,16 @@ button {
 }
 
 .agenda-item:hover {
-  border-color: var(--chip, var(--accent));
+  border-color: var(--ink-faint);
   box-shadow: var(--shadow-sm);
 }
 
 .agenda-time {
   font-size: 12px;
   font-weight: 700;
-  /* the gem color tinted toward ink so small time labels stay ≥5:1 in both
-     themes (raw gem colors fall below 4.5 on the card) */
-  color: color-mix(in srgb, var(--chip, var(--accent)) 60%, var(--ink));
+  /* the gem color tinted toward ink so small time labels stay ≥4.5:1 in both
+     themes (raw accent hues fall below 4.5 on the card) */
+  color: color-mix(in srgb, var(--chip, var(--accent-bg)) 60%, var(--ink));
   font-variant-numeric: tabular-nums;
   min-width: 96px;
   white-space: nowrap;
@@ -1461,7 +1308,7 @@ button {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--chip, var(--accent));
+  background: var(--chip, var(--accent-bg));
   flex: none;
 }
 
@@ -1488,7 +1335,6 @@ button {
   border-radius: var(--radius);
   padding: 40px 20px;
   text-align: center;
-  box-shadow: inset 0 0 0 4px var(--card), inset 0 0 0 5px var(--line);
 }
 
 .empty-title {
@@ -1520,13 +1366,10 @@ button {
 
 .modal {
   position: relative;
-  background: var(--card);
+  background: var(--dialog-bg);
   border: 1px solid var(--line);
-  border-radius: 4px;
-  box-shadow:
-    var(--shadow),
-    inset 0 0 0 4px var(--card),
-    inset 0 0 0 5px var(--line);
+  border-radius: 15px;
+  box-shadow: var(--shadow);
   width: 100%;
   max-width: 460px;
   max-height: calc(100vh - 12vh);
@@ -1559,8 +1402,8 @@ button {
 }
 
 .modal-close:hover {
-  background: var(--chrome);
-  color: var(--chrome-ink);
+  background: var(--paper-deep);
+  color: var(--ink);
 }
 
 .modal-small {
@@ -1581,7 +1424,7 @@ button {
 .modal h3 {
   margin: 0 0 16px;
   font-family: var(--font-display);
-  font-size: 25px;
+  font-size: 24px;
   font-weight: 400;
 }
 
@@ -1618,7 +1461,7 @@ button {
 .details-head h3 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 25px;
+  font-size: 24px;
   font-weight: 400;
   overflow-wrap: anywhere;
 }
@@ -1644,7 +1487,7 @@ button {
   background: var(--accent-soft);
   border-radius: var(--radius-pill);
   padding: 1px 8px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .details-days {
@@ -1722,8 +1565,8 @@ button {
 }
 
 .details-map-overlay:hover .details-map-open {
-  border-color: var(--accent);
-  color: var(--accent-deep);
+  border-color: var(--accent-bg);
+  color: var(--accent);
 }
 
 .details-map-label {
@@ -1742,7 +1585,7 @@ button {
   display: inline-block;
   margin: 2px 0 8px;
   font-size: 12px;
-  color: var(--accent-deep);
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -1764,13 +1607,10 @@ button {
   width: min(340px, calc(100vw - 16px));
   max-height: 70vh;
   overflow-y: auto;
-  background: var(--card);
+  background: var(--popover-bg);
   border: 1px solid var(--line);
-  border-radius: 4px;
-  box-shadow:
-    var(--shadow),
-    inset 0 0 0 3px var(--card),
-    inset 0 0 0 4px var(--line);
+  border-radius: 15px;
+  box-shadow: var(--shadow);
   padding: 16px;
 }
 
@@ -1808,7 +1648,7 @@ button {
 }
 
 .popover-event:hover {
-  background: var(--paper);
+  background: var(--paper-deep);
 }
 
 .popover-time {
@@ -1838,8 +1678,8 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  border-top: 0;
-  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
 }
 
 .popover-actions .popup-action {
@@ -1860,9 +1700,9 @@ button {
   font: inherit;
   font-size: 13px;
   color: var(--ink);
-  background: var(--card);
+  background: var(--view-bg);
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   padding: 7px 30px 7px 13px;
   width: 170px;
   outline: none;
@@ -1870,7 +1710,8 @@ button {
 }
 
 .search-box input:focus {
-  border-color: var(--accent);
+  border-color: var(--accent-bg);
+  box-shadow: 0 0 0 1px var(--accent-bg);
   width: 220px;
 }
 
@@ -1894,9 +1735,9 @@ button {
   width: min(460px, calc(100vw - 40px));
   max-height: 60vh;
   overflow-y: auto;
-  background: var(--card);
+  background: var(--popover-bg);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 15px;
   box-shadow: var(--shadow);
   padding: 6px;
 }
@@ -1921,7 +1762,7 @@ button {
 }
 
 .search-hit:hover {
-  background: var(--paper);
+  background: var(--paper-deep);
 }
 
 .search-summary {
@@ -1962,7 +1803,7 @@ button {
   align-items: center;
   gap: 10px;
   background: var(--accent-soft);
-  border: 1px solid var(--accent);
+  border: 1px solid var(--focus-ring);
   border-radius: var(--radius-sm);
   padding: 8px 12px;
   margin: 0 0 12px;
@@ -1979,7 +1820,7 @@ button {
 .timed-event.selected,
 .span-bar.selected,
 .agenda-item.selected {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--accent-bg);
   outline-offset: 1px;
 }
 
@@ -2000,7 +1841,9 @@ button {
 
 .tasks-title {
   margin: 0;
-  font-size: 27px;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
 }
 
 .task-group {
@@ -2029,7 +1872,7 @@ button {
 }
 
 .task-item input[type="checkbox"] {
-  accent-color: var(--accent);
+  accent-color: var(--accent-bg);
   width: 16px;
   height: 16px;
 }
@@ -2095,7 +1938,7 @@ button {
 }
 
 .popup-action:hover {
-  background: var(--paper);
+  background: var(--paper-deep);
 }
 
 .popup-icon {
@@ -2241,15 +2084,15 @@ button {
 }
 
 .recurrence {
-  border-top: 0;
-  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
   margin-top: 4px;
 }
 
 .sharing-info {
-  border-top: 0;
+  border-top: 1px solid var(--line);
   margin-top: 12px;
-  padding-top: 20px;
+  padding-top: 14px;
 }
 
 .sharing-title {
@@ -2293,7 +2136,7 @@ button {
 }
 
 .color-swatch.active {
-  border-color: var(--ink);
+  border-color: var(--accent-bg);
   transform: scale(1.08);
 }
 
@@ -2326,9 +2169,9 @@ button {
 }
 
 .weekday-btn.active {
-  background: var(--accent);
-  border-color: var(--accent-deep);
-  color: var(--accent-ink);
+  background: var(--accent-bg);
+  border-color: var(--accent-bg);
+  color: var(--accent-fg);
 }
 
 /* ---------- responsive ---------- */

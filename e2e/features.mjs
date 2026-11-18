@@ -477,7 +477,7 @@ check(
   (await page.locator(".sharing-info").count()) === 1 && sharingUrl.includes("/alice/"),
   sharingUrl
 );
-await page.click('.color-swatch[data-color="#d93a30"]');
+await page.click('.color-swatch[data-color="#e62d42"]');
 await page.click('.modal-small button:has-text("Save")');
 await page.waitForSelector(".modal-small", { state: "detached", timeout: 15000 });
 await page.waitForTimeout(1200);
@@ -487,7 +487,7 @@ const dotStyle = await page
   .getAttribute("style");
 check(
   "calendar color changed",
-  dotStyle.includes("#d93a30") || dotStyle.includes("217, 58, 48"),
+  dotStyle.includes("#e62d42") || dotStyle.includes("230, 45, 66"),
   dotStyle
 );
 

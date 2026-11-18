@@ -2,155 +2,120 @@
    radii and shadows. Imported by style/main.css; also copied to /tokens.css
    at build time so the runtime @import resolves.
 
-   Direction: "Roli Glitzer Glitzer / Goldkette klimper klimper" —
-   1920s/30s black-and-gold Art Deco (DESIGN.md §1). Default theme is black
-   lacquer; the light theme is a champagne ballroom. Every value below was
-   contrast-audited (WCAG AA for text, ≥3:1 white labels on gem chips, ≥1.2
-   for hairlines) in both themes. */
+   Direction: GTK4 / libadwaita (GNOME Adwaita) look for colors, components
+   and radii, per user decision 2026-11-18. Values are the real named colors
+   from GNOME libadwaita's stylesheet (src/stylesheet/_colors.scss,
+   _palette.scss, _common.scss); light = Adwaita light (the default),
+   dark = Adwaita dark. Type stays the user-requested pairing:
+   Klarissa (display/accent) + Baskervville (body/UI), self-hosted.
+   Semantic tokens keep their names so existing class rules keep working. */
 
 :root {
-  /* surfaces — black lacquer */
-  --paper: #14100b;
-  --paper-deep: #0c0906;
-  --card: #241b0e;
-  --card-deep: #1b140a;
-  --line: #52411f;
-  --line-strong: #6d5728;
+  /* surfaces — window / view / sidebar / card / dialog / popover */
+  --paper: #fafafb;                 /* window_bg_color   */
+  --paper-deep: rgba(0, 0, 6, 0.07);/* shade_color       */
+  --view-bg: #ffffff;               /* view_bg_color (entries, timelines) */
+  --sidebar-bg: #ebebed;            /* sidebar_bg_color  */
+  --card: #ffffff;                  /* card_bg_color     */
+  --card-soft: rgba(0, 0, 6, 0.05); /* inset tint on white cards */
+  --dialog-bg: #fafafb;              /* dialog_bg_color   */
+  --popover-bg: #ffffff;            /* popover_bg_color  */
+  --line: rgba(0, 0, 6, 0.15);      /* borders: currentColor 15% */
 
-  /* neutral overflow entries ("+N more" bar/chip) — its own surface so it
-     stays visible against the timeline card in both themes */
-  --more-chip: #3a3020;
+  /* neutral overflow entries ("+N more") — Adwaita button/trough grey */
+  --more-chip: rgba(0, 0, 6, 0.08);
 
-  /* text — champagne */
-  --ink: #f6ead0;
-  --ink-soft: #c9b78f;
-  --ink-faint: #97855e;
+  /* text — window_fg_color rgba(0,0,6,80%) + dim-label variants */
+  --ink: rgba(0, 0, 6, 0.8);
+  --ink-soft: rgba(0, 0, 6, 0.65);
+  --ink-faint: rgba(0, 0, 6, 0.55);
 
-  /* brand — gold. --accent is the text/decor gold; the metallic button uses
-     the --metal-* ramp (same bright gold in both themes, cognac label). */
-  --accent: #e6b93d;
-  --accent-light: #f8dc7d;
-  --accent-deep: #a87e14;
-  --accent-soft: rgba(230, 185, 61, 0.14);
-  --accent-ink: #241a05;
-
-  /* hot-pink secondary (focus rings, danger-adjacent highlights) */
-  --pink: #ff4d94;
-  --pink-deep: #d12c72;
-  --pink-soft: rgba(255, 77, 148, 0.16);
-  --focus-ring: #ff4d94;
+  /* accent — blue_3 #3584e4 as bg; standalone accent text is the darker
+     blue_5 #1a5fb4 in light mode */
+  --accent-bg: #3584e4;
+  --accent-bg-hover: #1c71d8;
+  --accent-fg: #ffffff;
+  --accent: #1a5fb4;
+  --accent-soft: rgba(53, 132, 228, 0.16);
+  --focus-ring: rgba(53, 132, 228, 0.5);
 
   /* semantic */
-  --danger: #ff6a55;
-  --danger-soft: rgba(255, 106, 85, 0.13);
-  --danger-line: rgba(255, 106, 85, 0.38);
-  --info: #6fc3ff;
+  --danger: #c01c28;                 /* red_4 as text on light */
+  --danger-bg: #e01b24;              /* red_3, destructive bg   */
+  --danger-soft: rgba(224, 27, 36, 0.1);
+  --danger-line: rgba(224, 27, 36, 0.4);
+  --info: #1a5fb4;
 
-  /* metallic gold ramp — deliberately identical in both themes; a gold pill
-     reads as gold wherever it sits. --metal-ink passes ≥9:1 on all stops. */
-  --metal-1: #f8dc7d;
-  --metal-2: #e6b93d;
-  --metal-3: #a87e14;
-  --metal-ink: #241a05;
+  /* buttons — libadwaita raised button: currentColor 10% bg, 1px border */
+  --btn-bg: color-mix(in srgb, var(--ink) 10%, transparent);
+  --btn-bg-hover: color-mix(in srgb, var(--ink) 15%, transparent);
+  --btn-bg-active: color-mix(in srgb, var(--ink) 30%, transparent);
 
-  /* wordmark ramp — same gold family, tuned per surface so the name stays
-     legible (large decorative text still wants ≥3:1) */
-  --wordmark-1: #f8dc7d;
-  --wordmark-2: #e6b93d;
-  --wordmark-3: #a87e14;
+  /* overlay behind modals/popovers — the Adwaita "dimmer" */
+  --overlay: rgba(0, 0, 6, 0.3);
 
-  /* chrome — silver metallic, reserved for the view switcher + icon hovers */
-  --chrome: linear-gradient(180deg, #efe9dc, #c9c0ae 48%, #948b79);
-  --chrome-ink: #2b2418;
+  /* calendar palette — Adwaita accent hues, white labels ≥3:1 */
+  --cal-1: #3584e4; /* blue   */
+  --cal-2: #e62d42; /* red    */
+  --cal-3: #ed5b00; /* orange */
+  --cal-4: #3a944a; /* green  */
+  --cal-5: #2190a4; /* teal   */
+  --cal-6: #9141ac; /* purple */
+  --cal-7: #d56199; /* pink   */
+  --cal-8: #6f8396; /* slate  */
 
-  /* glitter field specks (1px dots on the page background) */
-  --glitter-1: rgba(248, 220, 125, 0.1);
-  --glitter-2: rgba(255, 255, 255, 0.07);
+  /* label inks for event chips/bars */
+  --gem-ink: #ffffff;
+  --gem-ink-soft: rgba(255, 255, 255, 0.85);
 
-  /* gold chain ornaments — a slightly muted gold so links don't vibrate */
-  --chain: #a87e14;
-
-  /* overlay behind modals/popovers: solid translucent lacquer, no blur */
-  --overlay: rgba(8, 6, 3, 0.74);
-
-  /* calendar palette = eight gem tones (white labels ≥3:1) */
-  --cal-1: #e0338a; /* pink sapphire */
-  --cal-2: #d93a30; /* ruby */
-  --cal-3: #d97e06; /* citrine */
-  --cal-4: #149a54; /* emerald */
-  --cal-5: #0d9488; /* turquoise */
-  --cal-6: #2f6fd0; /* sapphire */
-  --cal-7: #8a4fd3; /* amethyst */
-  --cal-8: #9c6b30; /* bronze */
-
-  /* label inks for event chips/bars (ivory on the gem color, both themes) */
-  --gem-ink: #fff9ea;
-  --gem-ink-soft: rgba(255, 249, 234, 0.82);
-
-  /* shape + type — Deco plates have near-square corners; pills are reserved
-     for buttons and status chips so they visibly outrank the plates. */
+  /* shape — libadwaita radii: window 15, card 12, button/entry 9 */
   --radius: 12px;
-  --radius-sm: 6px;
-  --radius-xs: 4px;
+  --radius-sm: 9px;
+  --radius-xs: 6px;
   --radius-pill: 999px;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 14px 34px rgba(0, 0, 0, 0.45);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow: 0 1px 3px rgba(0, 0, 6, 0.1), 0 8px 24px rgba(0, 0, 6, 0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 6, 0.07);
   --font-display: "Klarissa", "Baskervville", Georgia, "Times New Roman", serif;
   --font-ui: "Baskervville", Georgia, "Times New Roman", serif;
 }
 
-[data-theme="light"] {
-  /* surfaces — champagne ballroom */
-  --paper: #f7ecd2;
-  --paper-deep: #efdfb8;
-  --card: #fff9ea;
-  --card-deep: #f3e7cd;
-  --line: #d9bf80;
-  --line-strong: #c3a262;
+[data-theme="dark"] {
+  --paper: #222226;                  /* window_bg_color (dark) */
+  --paper-deep: rgba(255, 255, 255, 0.07); /* hover_color    */
+  --view-bg: #1d1d20;                /* view_bg_color (dark)   */
+  --sidebar-bg: #2e2e32;             /* sidebar_bg_color       */
+  --card: #38383c;                   /* card_bg_color (dark) rendered over window */
+  --card-soft: rgba(255, 255, 255, 0.08); /* official card_bg_color (dark) */
+  --dialog-bg: #36363a;              /* dialog_bg_color        */
+  --popover-bg: #36363a;             /* popover_bg_color       */
+  --line: rgba(255, 255, 255, 0.15);
 
-  --more-chip: #f1e2bd;
+  --more-chip: rgba(255, 255, 255, 0.12);
 
-  /* text — espresso */
-  --ink: #2b1d0c;
-  --ink-soft: #6d5a35;
-  --ink-faint: #7d6743;
+  --ink: #ffffff;
+  --ink-soft: rgba(255, 255, 255, 0.7);
+  --ink-faint: rgba(255, 255, 255, 0.55);
 
-  /* brand — deep gold for text (5.4:1 on paper); #9a7410 is decor-only */
-  --accent: #7a5a08;
-  --accent-light: #c9930a;
-  --accent-deep: #5d4506;
-  --accent-soft: #f3e2ac;
-  --accent-ink: #fff9ea;
+  /* standalone accent text in dark mode is the LIGHTER blue (#78aeed) */
+  --accent-bg: #3584e4;
+  --accent-bg-hover: #62a0ea;
+  --accent-fg: #ffffff;
+  --accent: #78aeed;
+  --accent-soft: rgba(53, 132, 228, 0.25);
+  --focus-ring: rgba(120, 174, 237, 0.5);
 
-  --pink: #d12c72;
-  --pink-deep: #a81e58;
-  --pink-soft: #fadbe9;
-  --focus-ring: #a81e58;
+  --danger: #f66151;                 /* red_1 as text on dark */
+  --danger-bg: #c01c28;
+  --danger-soft: rgba(246, 97, 81, 0.15);
+  --danger-line: rgba(246, 97, 81, 0.4);
+  --info: #78aeed;
 
-  --danger: #c0392b;
-  --danger-soft: #fbe9e6;
-  --danger-line: #ecc7c0;
-  --info: #2e6fb0;
+  --btn-bg: color-mix(in srgb, var(--ink) 10%, transparent);
+  --btn-bg-hover: color-mix(in srgb, var(--ink) 15%, transparent);
+  --btn-bg-active: color-mix(in srgb, var(--ink) 30%, transparent);
 
-  /* the metallic ramp stays gold; only the label ink adapts */
-  --metal-ink: #2b1d0c;
+  --overlay: rgba(0, 0, 0, 0.5);
 
-  /* antique-gold wordmark on champagne: the bright ramp washes out here,
-     so it steps down to a deep gold that still reads as metal (≥3:1) */
-  --wordmark-1: #9a7410;
-  --wordmark-2: #8a6408;
-  --wordmark-3: #6b4e06;
-
-  --chrome: linear-gradient(180deg, #fffdf6, #e2d8c2 48%, #bcb098);
-  --chrome-ink: #2b1d0c;
-
-  --glitter-1: rgba(154, 116, 16, 0.09);
-  --glitter-2: rgba(255, 255, 255, 0.5);
-
-  --chain: #b8912a;
-
-  --overlay: rgba(43, 29, 12, 0.46);
-
-  --shadow: 0 1px 2px rgba(70, 48, 14, 0.08), 0 14px 34px rgba(70, 48, 14, 0.14);
-  --shadow-sm: 0 1px 2px rgba(70, 48, 14, 0.1);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
 }

@@ -27,8 +27,8 @@ The display and UI fonts are shipped in this repository and served same-origin:
   License 1.1 (body/UI face, Regular + Italic), © 2018 Claus Eggers Søgård
   (https://github.com/clauseggers/Baskervville). The OFL expressly permits
   redistribution and bundling; the woff2 subsets were obtained from Google
-  Fonts once at build/download time — at runtime the app only requests them
-  from its own origin.
+  Fonts once at download time — at runtime the app only requests them from
+  its own origin.
 - `public/fonts/Klarissa-Regular.ttf` — **Klarissa**, accent/display face,
   © 2003 Dieter Steffmann / Typographer Mediengestaltung. Bundled under the
   **1001Fonts Free For Commercial Use (FFC) license**; the complete EULA as
@@ -38,7 +38,16 @@ The display and UI fonts are shipped in this repository and served same-origin:
   the 1001Fonts FFC grant, per the project owner's decision, 2026-11-18.)
 
 The logo (`public/logo.svg`, `public/favicon.svg`) is an original SVG drawing
-(chain-link ring + rhinestone, no font outlines).
+(flat accent-blue tile with a calendar glyph, no font outlines).
+
+## Design reference
+
+The UI follows the **GTK4/libadwaita (GNOME Adwaita)** design: color values,
+radii and shadows in `style/tokens.css` are taken from libadwaita's public
+stylesheet (`src/stylesheet/_colors.scss`, `_palette.scss`, `_common.scss`).
+libadwaita is LGPL-2.1-only; no code is copied — only design values (color
+constants, corner radii), which are facts, not copyrightable expression.
+Reference: https://gitlab.gnome.org/GNOME/libadwaita
 
 ## Third-party crates (via Cargo)
 
