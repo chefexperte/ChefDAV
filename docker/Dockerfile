@@ -15,7 +15,7 @@
 
 # ---------------------------------------------------------------- build ------
 # Rust → WebAssembly with trunk. rust:1-alpine is rustup + musl and much
-# smaller than the Debian image; both work (RUST_IMAGE build arg).
+# smaller than the Debian image; both work (override with --build-arg).
 ARG RUST_IMAGE=rust:1-alpine
 FROM ${RUST_IMAGE} AS builder
 
