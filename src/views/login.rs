@@ -17,10 +17,15 @@ const CHANGELOG: &str = include_str!("../../CHANGELOG.md");
 
 /// Latest changelog section: (title, bullet items).
 fn latest_changelog() -> (String, Vec<String>) {
+    parse_latest_changelog(CHANGELOG)
+}
+
+fn parse_latest_changelog(text: &str) -> (String, Vec<String>) {
     let mut title = String::new();
     let mut items = Vec::new();
+    let mut current: Option<String> = None;
     let mut in_section = false;
-    for line in CHANGELOG.lines() {
+    for line in text.lines() {
         let line = line.trim_end();
         if line.starts_with("## ") {
             if in_section {
@@ -30,13 +35,49 @@ fn latest_changelog() -> (String, Vec<String>) {
             title = line.trim_start_matches("## ").to_string();
             continue;
         }
-        if in_section {
-            if let Some(item) = line.strip_prefix("- ").or_else(|| line.strip_prefix("* ")) {
-                items.push(item.to_string());
+        if !in_section {
+            continue;
+        }
+        if let Some(item) = line.strip_prefix("- ").or_else(|| line.strip_prefix("* ")) {
+            if let Some(prev) = current.take() {
+                items.push(prev);
             }
+            current = Some(item.trim().to_string());
+        } else if line.starts_with('#') {
+            // subheadings (### …) are not list items; close the current one
+            if let Some(prev) = current.take() {
+                items.push(prev);
+            }
+        } else if line.trim().is_empty() {
+            if let Some(prev) = current.take() {
+                items.push(prev);
+            }
+        } else if let Some(cur) = current.as_mut() {
+            // wrapped continuation of the current bullet
+            cur.push(' ');
+            cur.push_str(line.trim());
         }
     }
+    if let Some(prev) = current {
+        items.push(prev);
+    }
     (title, items)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_latest_changelog;
+
+    #[test]
+    fn latest_section_joins_wrapped_bullets_and_skips_subheadings() {
+        let text = "# Changelog\n\n## Unreleased\n\n### Redesign\n\n- First bullet\n  continues here.\n\n- Second *bullet*\n\n## 0.1.0 — yesterday\n\n- Old item\n";
+        let (title, items) = parse_latest_changelog(text);
+        assert_eq!(title, "Unreleased");
+        assert_eq!(
+            items,
+            vec!["First bullet continues here.", "Second *bullet*"]
+        );
+    }
 }
 
 #[component]

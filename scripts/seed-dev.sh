@@ -38,8 +38,8 @@ put() { # put HREF UID ICS_BODY
   echo "PUT $1 -> $code"
 }
 
-mkcal "/alice/personal/" "Personal" "#2f9e7f"
-mkcal "/alice/Arbeit/" "Arbeit" "#c2703d"
+mkcal "/alice/personal/" "Personal" "#e0338a"
+mkcal "/alice/Arbeit/" "Arbeit" "#2f6fd0"
 
 ev() { # ev UID SUMMARY START END [EXTRA_LINES]
   local uid="$1" summary="$2" start="$3" end="$4" extra="${5:-}"

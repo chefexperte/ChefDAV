@@ -477,7 +477,7 @@ check(
   (await page.locator(".sharing-info").count()) === 1 && sharingUrl.includes("/alice/"),
   sharingUrl
 );
-await page.click('.color-swatch[data-color="#d1495b"]');
+await page.click('.color-swatch[data-color="#d93a30"]');
 await page.click('.modal-small button:has-text("Save")');
 await page.waitForSelector(".modal-small", { state: "detached", timeout: 15000 });
 await page.waitForTimeout(1200);
@@ -487,7 +487,7 @@ const dotStyle = await page
   .getAttribute("style");
 check(
   "calendar color changed",
-  dotStyle.includes("#d1495b") || dotStyle.includes("209, 73, 91"),
+  dotStyle.includes("#d93a30") || dotStyle.includes("217, 58, 48"),
   dotStyle
 );
 
@@ -510,8 +510,13 @@ await page.waitForTimeout(1500);
 check("calendar deleted", (await page.locator(".cal-name", { hasText: renamed }).count()) === 0);
 
 // ---------- theme + language ----------
-await page.click('.prefs-row button:has-text("Dark")');
-await page.waitForTimeout(300);
+// the app now defaults to the dark lacquer theme; force dark if a previous
+// step left another theme, then verify both directions
+const themeNow = await page.getAttribute("html", "data-theme");
+if (themeNow !== "dark") {
+  await page.click('.prefs-row button:has-text("Dark")');
+  await page.waitForTimeout(300);
+}
 check("dark theme applied", (await page.getAttribute("html", "data-theme")) === "dark");
 await page.click('.prefs-row button:has-text("Light")');
 await page.waitForTimeout(300);

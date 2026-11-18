@@ -23,16 +23,22 @@ work for this project and are licensed **MIT** — see `LICENSE` and the
 The app loads **nothing from third-party CDNs** (project rule, see AGENTS.md).
 The display and UI fonts are shipped in this repository and served same-origin:
 
-- `public/fonts/fraunces-*.woff2` — **Fraunces**, SIL Open Font License 1.1
-  (display type), © 2020 The Fraunces Project Authors
-  (https://github.com/googlefonts/fraunces)
-- `public/fonts/inter-*.woff2` — **Inter**, SIL Open Font License 1.1 (UI),
-  © 2014 The Inter Project Authors (https://github.com/rsms/inter)
+- `public/fonts/baskervville-*.woff2` — **Baskervville**, SIL Open Font
+  License 1.1 (body/UI face, Regular + Italic), © 2018 Claus Eggers Søgård
+  (https://github.com/clauseggers/Baskervville). The OFL expressly permits
+  redistribution and bundling; the woff2 subsets were obtained from Google
+  Fonts once at build/download time — at runtime the app only requests them
+  from its own origin.
+- `public/fonts/Klarissa-Regular.ttf` — **Klarissa**, accent/display face,
+  © 2003 Dieter Steffmann / Typographer Mediengestaltung. Bundled under the
+  **1001Fonts Free For Commercial Use (FFC) license**; the complete EULA as
+  distributed with the font is committed verbatim as
+  `public/fonts/1001fonts-klarissa-eula.txt`. (Font sites disagree about the
+  status of this 2003 freeware release; the project ships it on the basis of
+  the 1001Fonts FFC grant, per the project owner's decision, 2026-11-18.)
 
-The OFL expressly permits redistribution and bundling; the woff2 files are
-subsets obtained from Google Fonts solely to download them once — at runtime
-the app only requests them from its own origin. The logo is an original
-abstract SVG (no font outlines).
+The logo (`public/logo.svg`, `public/favicon.svg`) is an original SVG drawing
+(chain-link ring + rhinestone, no font outlines).
 
 ## Third-party crates (via Cargo)
 

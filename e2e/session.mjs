@@ -53,7 +53,10 @@ check(
   await page.isChecked('.check-row input[type="checkbox"]')
 );
 
-await page.click('.login-prefs .prefs-row button:has-text("Dark")');
+const initialTheme = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+if (initialTheme !== "dark") {
+  await page.click('.login-prefs .prefs-row button:has-text("Dark")');
+}
 const dark = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
 check("login page dark theme applies", dark === "dark", dark ?? "(none)");
 await page.click('.login-prefs .prefs-row button:has-text("Light")');

@@ -101,6 +101,12 @@ async function shortestEvent() {
 
 await page.goto(APP, { waitUntil: "networkidle" });
 await page.waitForSelector(".login-card form", { timeout: 20000 });
+// the app defaults to dark; take the light "login-en" shot first, then dark
+const loginTheme0 = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+if (loginTheme0 !== "light") {
+  await page.click('.login-prefs .prefs-row button:has-text("Light")');
+  await page.waitForTimeout(300);
+}
 await shot("login-en");
 
 // login page: theme + language controls
@@ -294,6 +300,18 @@ await page.waitForSelector(".month-grid", { timeout: 10000 });
 await page.click('.prefs-row button:has-text("Dark")');
 await page.waitForTimeout(500);
 await shot("month-dark");
+// dark week + list shots for the README (the default theme is dark now)
+await page.click('.segmented-btn:has-text("Week")');
+await page.waitForSelector(".week-view", { timeout: 10000 });
+await page.waitForTimeout(700);
+await shot("week-dark");
+await page.click('.segmented-btn:has-text("List")');
+await page.waitForSelector(".agenda", { timeout: 10000 });
+await page.waitForTimeout(600);
+await shot("agenda-dark");
+await page.click('.segmented-btn:has-text("Month")');
+await page.waitForSelector(".month-grid", { timeout: 10000 });
+await page.waitForTimeout(400);
 await page.click('.prefs-row button:has-text("Light")');
 await page.waitForTimeout(300);
 

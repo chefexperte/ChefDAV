@@ -1,9 +1,11 @@
-/* ChefDAV design system — warm paper, ink text, one mint accent.
-   Fraunces for display type, Inter for UI. Soft cards, playful details. */
+/* ChefDAV design system — "Roli Glitzer Glitzer / Goldkette klimper klimper".
+   Black-lacquer Art Deco: gilded hairlines, a glitter field, chrome and
+   rhinestones. Klarissa sets the accents, Baskervville sets the text.
+   Tokens live in style/tokens.css; the design constitution is DESIGN.md. */
 
 @import "tokens.css";
-/* Self-hosted Fraunces + Inter (no CDN — fonts are bundled in public/fonts/,
-   see style/fonts.css and AGENTS.md). */
+/* Self-hosted Klarissa + Baskervville (no CDN — fonts are bundled in
+   public/fonts/, see style/fonts.css and AGENTS.md). */
 @import "fonts.css";
 
 * {
@@ -18,25 +20,36 @@ body {
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: 15px;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
-/* subtle paper grain via radial dots */
+/* Glitter field: sparse 1px gold/white specks on the page ground. Static,
+   two interleaved grids so the sparkle never looks like a wallpaper repeat. */
 body {
-  background-image: radial-gradient(rgba(38, 34, 28, 0.045) 1px, transparent 1px);
-  background-size: 22px 22px;
+  background-image:
+    radial-gradient(var(--glitter-1) 1px, transparent 1.4px),
+    radial-gradient(var(--glitter-2) 1px, transparent 1.4px);
+  background-size: 26px 26px, 41px 41px;
+  background-position: 0 0, 13px 19px;
+  background-repeat: repeat;
 }
 
 h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 400;
+  letter-spacing: 0.01em;
 }
 
 button {
   font-family: var(--font-ui);
+}
+
+/* visible keyboard focus in both themes (DESIGN.md §3) */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* ---------- buttons ---------- */
@@ -54,7 +67,7 @@ button {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
   box-shadow: var(--shadow-sm);
 }
 
@@ -65,12 +78,12 @@ button {
 }
 
 .btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--accent-soft);
 }
 
 .btn:active {
-  transform: translateY(0);
+  transform: translateY(1px);
 }
 
 .btn:disabled {
@@ -79,14 +92,27 @@ button {
   transform: none;
 }
 
+/* the metallic gold primary — the one place the loud gradient is allowed */
 .btn-primary {
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--metal-1), var(--metal-2) 45%, var(--metal-3));
   border-color: var(--accent-deep);
-  color: #fff8f3;
+  color: var(--metal-ink);
+  border-radius: var(--radius-pill);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.18),
+    var(--shadow-sm);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.01em;
 }
 
 .btn-primary:hover {
-  background: var(--accent-deep);
+  background: linear-gradient(180deg, #fff0ad, var(--metal-1) 40%, var(--metal-2));
+  border-color: var(--metal-3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.16),
+    0 0 0 3px var(--accent-soft);
 }
 
 .btn-ghost {
@@ -98,18 +124,22 @@ button {
 
 .btn-ghost:hover {
   background: var(--paper-deep);
+  border-color: transparent;
   color: var(--ink);
+  box-shadow: none;
 }
 
 .btn-danger {
   background: transparent;
-  border-color: #ecc7c0;
+  border-color: var(--danger-line);
   color: var(--danger);
   box-shadow: none;
 }
 
 .btn-danger:hover {
-  background: #fbe9e6;
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  box-shadow: none;
 }
 
 .btn-icon {
@@ -151,15 +181,53 @@ button {
   overflow-y: auto;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 20px;
-  box-shadow: var(--shadow);
-  padding: 30px 30px 24px;
+  border-radius: 4px;
+  /* Deco double frame: a second gold hairline set 4px inside the edge */
+  box-shadow:
+    var(--shadow),
+    inset 0 0 0 4px var(--card),
+    inset 0 0 0 5px var(--line);
+  padding: 34px 30px 24px;
+}
+
+/* gold-chain divider, used instead of dashed rules (DESIGN.md §1 motif 1) */
+.changelog,
+.login-prefs,
+.recurrence,
+.sharing-info,
+.popover-actions {
+  border-top: 0;
+  position: relative;
+}
+
+.changelog::before,
+.login-prefs::before,
+.recurrence::before,
+.sharing-info::before,
+.popover-actions::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 7px;
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    transparent 2px,
+    var(--chain) 2.4px,
+    var(--chain) 3.1px,
+    transparent 3.5px
+  );
+  background-size: 13px 7px;
+  background-repeat: repeat-x;
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .changelog {
   margin-top: 14px;
-  border-top: 1px dashed var(--line);
-  padding-top: 10px;
+  border-top: 0;
+  padding-top: 18px;
   font-size: 12px;
   color: var(--ink-soft);
 }
@@ -214,21 +282,51 @@ button {
   margin: 0 auto 8px;
 }
 
-.login-brand h1 {
-  margin: 0;
-  font-size: 30px;
-  font-weight: 700;
+/* wordmark: Klarissa set in the metallic gold ramp — the only permitted
+   gradient text in the app (DESIGN.md §1 motif 6) */
+.login-brand h1,
+.brand-name {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  background: linear-gradient(180deg, var(--wordmark-1), var(--wordmark-2) 55%, var(--wordmark-3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45));
 }
 
-.login-brand h1::after {
-  content: ".";
-  color: var(--accent);
+.login-brand h1 {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.05;
+}
+
+/* the rhinestone after the wordmark */
+.login-brand h1::after,
+.brand-name::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 3px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #fff,
+    var(--metal-1) 40%,
+    var(--metal-2) 70%,
+    var(--metal-3)
+  );
+  vertical-align: 0.45em;
 }
 
 .tagline {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   color: var(--ink-soft);
   font-size: 13.5px;
+  font-style: italic;
 }
 
 .field {
@@ -242,11 +340,11 @@ button {
 }
 
 .field > span {
-  font-size: 12.5px;
+  font-size: 11.5px;
   font-weight: 600;
-  color: var(--ink-soft);
+  color: var(--ink-faint);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 
 .field input[type="text"],
@@ -261,7 +359,7 @@ button {
   color: var(--ink);
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   padding: 9px 11px;
   outline: none;
   width: 100%;
@@ -322,11 +420,11 @@ button {
 }
 
 .field-check > span:first-child {
-  font-size: 12.5px;
+  font-size: 11.5px;
   font-weight: 600;
-  color: var(--ink-soft);
+  color: var(--ink-faint);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 
 .switch {
@@ -340,7 +438,7 @@ button {
   -webkit-appearance: none;
   width: 44px;
   height: 24px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--line);
   position: relative;
   cursor: pointer;
@@ -357,8 +455,8 @@ button {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fffdf8;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  background: var(--gem-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   transition: transform 0.15s ease;
 }
 
@@ -379,10 +477,10 @@ button {
 }
 
 .form-error {
-  background: #fbe9e6;
-  border: 1px solid #ecc7c0;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
   color: var(--danger);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   padding: 8px 11px;
   font-size: 13px;
   margin: 4px 0 12px;
@@ -416,8 +514,8 @@ button {
 
 .login-prefs {
   margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
+  padding-top: 20px;
+  border-top: 0;
 }
 
 .login-prefs .prefs-row {
@@ -445,7 +543,7 @@ button {
 }
 
 .sidebar {
-  background: var(--card);
+  background: var(--paper-deep);
   border-right: 1px solid var(--line);
   padding: 20px 16px;
   display: flex;
@@ -457,6 +555,27 @@ button {
   min-width: 0;
 }
 
+/* gold chain running down the sidebar edge (DESIGN.md §1 motif 1) */
+.sidebar::after {
+  content: "";
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  right: 2px;
+  width: 7px;
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    transparent 1.7px,
+    var(--chain) 2.1px,
+    var(--chain) 2.9px,
+    transparent 3.3px
+  );
+  background-size: 7px 13px;
+  background-repeat: repeat-y;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -465,18 +584,12 @@ button {
 }
 
 .brand-name {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.brand-name::after {
-  content: ".";
-  color: var(--accent);
+  font-size: 24px;
+  line-height: 1.1;
 }
 
 .new-event {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 10px;
 }
 
@@ -597,7 +710,9 @@ button {
 }
 
 .month-title {
-  font-size: 27px;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 400;
   margin: 0;
   flex: 1;
   min-width: 0;
@@ -613,35 +728,42 @@ button {
   justify-content: flex-end;
 }
 
+/* chrome track for the view switcher (DESIGN.md §1 motif 5) */
 .segmented {
   display: inline-flex;
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  background: var(--chrome);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
   padding: 3px;
   gap: 2px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25);
 }
 
 .segmented-btn {
   border: none;
   background: transparent;
-  color: var(--ink-soft);
+  color: var(--chrome-ink);
   font-size: 13px;
   font-weight: 600;
   padding: 5px 13px;
-  border-radius: 999px;
+  border-radius: 3px;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
 }
 
 .segmented-btn:hover {
-  color: var(--ink);
+  color: var(--chrome-ink);
+  background: var(--accent-soft);
 }
 
 .segmented-btn.active {
   background: var(--card);
   color: var(--ink);
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .loading {
@@ -651,10 +773,10 @@ button {
 }
 
 .banner-error {
-  background: #fbe9e6;
-  border: 1px solid #ecc7c0;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
   color: var(--danger);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   padding: 8px 12px;
   font-size: 13px;
 }
@@ -721,15 +843,16 @@ button {
   opacity: 0.62;
 }
 
+/* today's cell: gold hairline + a whisper of gold, no gradient (banned) */
 .day.today {
   border-color: var(--accent);
-  background: linear-gradient(180deg, var(--accent-soft), var(--card) 55%);
+  background: var(--accent-soft);
 }
 
 .day-num {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: 400;
+  font-size: 17px;
   width: 26px;
   height: 26px;
   display: inline-flex;
@@ -738,9 +861,20 @@ button {
   border-radius: 50%;
 }
 
+/* rhinestone "today": a gem, not a disc (DESIGN.md §1 motif 3) */
 .day.today .day-num {
-  background: var(--accent);
-  color: #fff8f3;
+  width: 27px;
+  height: 27px;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #fff,
+    var(--metal-1) 40%,
+    var(--metal-2) 70%,
+    var(--metal-3)
+  );
+  color: var(--metal-ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .day-events {
@@ -765,12 +899,15 @@ button {
   font-size: 12.5px;
   font-weight: 600;
   background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
-  color: #fff8f3;
-  border-radius: 6px;
+  color: var(--gem-ink);
+  border-radius: var(--radius-xs);
   cursor: pointer;
   overflow: hidden;
   white-space: nowrap;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22);
 }
 
 .span-bar:hover {
@@ -789,7 +926,7 @@ button {
 }
 
 .span-bar .chip-time {
-  color: rgba(255, 248, 243, 0.85);
+  color: var(--gem-ink-soft);
 }
 
 .span-bar.selected {
@@ -805,7 +942,7 @@ button {
   border: 1px solid var(--line);
   background: var(--more-chip);
   color: var(--ink-soft);
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   padding: 4px 9px;
   font-size: 12.5px;
   font-weight: 600;
@@ -817,7 +954,7 @@ button {
   background: var(--line);
 }
 
-/* events are solid calendar color */
+/* events are solid calendar color, with a gem inset so they look set, not flat */
 .chip {
   position: relative;
   display: flex;
@@ -826,14 +963,17 @@ button {
   min-width: 0;
   max-width: 100%;
   background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
-  color: #fff8f3;
-  border-radius: 7px;
+  color: var(--gem-ink);
+  border-radius: var(--radius-xs);
   padding: 3px 8px;
   font-size: 13px;
   line-height: 1.3;
   cursor: pointer;
   overflow: hidden;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22);
 }
 
 .chip:hover {
@@ -843,7 +983,7 @@ button {
 .chip-time {
   font-weight: 700;
   font-size: 11px;
-  color: rgba(255, 248, 243, 0.85);
+  color: var(--gem-ink-soft);
   flex: none;
   font-variant-numeric: tabular-nums;
 }
@@ -1006,20 +1146,29 @@ button {
 
 .wd-num {
   font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 400;
 }
 
+/* today's number in the week head is the same rhinestone as the month */
 .week-day-head.today .wd-num {
-  background: var(--accent);
-  color: #fff8f3;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #fff,
+    var(--metal-1) 40%,
+    var(--metal-2) 70%,
+    var(--metal-3)
+  );
+  color: var(--metal-ink);
   border-radius: 50%;
-  width: 30px;
-  height: 30px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .week-allday {
@@ -1056,12 +1205,15 @@ button {
   font-size: 12px;
   font-weight: 600;
   background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
-  color: #fff8f3;
-  border-radius: 5px;
+  color: var(--gem-ink);
+  border-radius: var(--radius-xs);
   cursor: pointer;
   overflow: hidden;
   white-space: nowrap;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22);
 }
 
 .allday-bar:hover {
@@ -1083,8 +1235,8 @@ button {
 .allday-chip {
   position: relative;
   background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
-  color: #fff8f3;
-  border-radius: 5px;
+  color: var(--gem-ink);
+  border-radius: var(--radius-xs);
   padding: 3px 8px;
   font-size: 12px;
   font-weight: 600;
@@ -1093,6 +1245,9 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22);
 }
 
 .allday-chip:hover {
@@ -1145,8 +1300,8 @@ button {
 .timed-event {
   position: absolute;
   background: color-mix(in srgb, var(--chip, var(--accent)) 86%, black);
-  color: #fff8f3;
-  border-radius: 6px;
+  color: var(--gem-ink);
+  border-radius: var(--radius-xs);
   padding: 3px 7px;
   font-size: 12.5px;
   line-height: 1.25;
@@ -1158,6 +1313,9 @@ button {
   flex-direction: column;
   gap: 1px;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22);
 }
 
 .timed-event:hover {
@@ -1170,7 +1328,7 @@ button {
 .te-time {
   font-size: 10.5px;
   font-weight: 700;
-  color: rgba(255, 248, 243, 0.85);
+  color: var(--gem-ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1226,7 +1384,9 @@ button {
 }
 
 .agenda-date {
-  font-size: 17px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
   margin: 0;
   display: flex;
   align-items: center;
@@ -1234,7 +1394,7 @@ button {
 }
 
 .agenda-day.today .agenda-date {
-  color: var(--accent-deep);
+  color: var(--accent);
 }
 
 .today-pill {
@@ -1243,10 +1403,11 @@ button {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  background: var(--accent);
-  color: #fff8f3;
-  border-radius: 999px;
-  padding: 2px 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
 }
 
 .agenda-list {
@@ -1282,7 +1443,9 @@ button {
 .agenda-time {
   font-size: 12px;
   font-weight: 700;
-  color: var(--chip, var(--accent-deep));
+  /* the gem color tinted toward ink so small time labels stay ≥5:1 in both
+     themes (raw gem colors fall below 4.5 on the card) */
+  color: color-mix(in srgb, var(--chip, var(--accent)) 60%, var(--ink));
   font-variant-numeric: tabular-nums;
   min-width: 96px;
   white-space: nowrap;
@@ -1321,15 +1484,17 @@ button {
 
 .empty-state {
   background: var(--card);
-  border: 1px dashed var(--line);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 40px 20px;
   text-align: center;
+  box-shadow: inset 0 0 0 4px var(--card), inset 0 0 0 5px var(--line);
 }
 
 .empty-title {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 24px;
+  font-weight: 400;
   margin: 0 0 4px;
 }
 
@@ -1344,8 +1509,7 @@ button {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(38, 34, 28, 0.38);
-  backdrop-filter: blur(2px);
+  background: var(--overlay);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -1358,28 +1522,31 @@ button {
   position: relative;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 18px;
-  box-shadow: var(--shadow);
+  border-radius: 4px;
+  box-shadow:
+    var(--shadow),
+    inset 0 0 0 4px var(--card),
+    inset 0 0 0 5px var(--line);
   width: 100%;
   max-width: 460px;
   max-height: calc(100vh - 12vh);
   overflow-y: auto;
-  padding: 22px 24px;
+  padding: 24px 26px 22px;
   animation: pop 0.14s ease;
 }
 
 /* × close button in the top-right corner (replaces the old text "Close") */
 .modal-close {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   width: 30px;
   height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--ink-soft);
   cursor: pointer;
@@ -1392,8 +1559,8 @@ button {
 }
 
 .modal-close:hover {
-  background: var(--paper-deep);
-  color: var(--ink);
+  background: var(--chrome);
+  color: var(--chrome-ink);
 }
 
 .modal-small {
@@ -1413,7 +1580,9 @@ button {
 
 .modal h3 {
   margin: 0 0 16px;
-  font-size: 22px;
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 400;
 }
 
 .modal-actions {
@@ -1448,7 +1617,9 @@ button {
 
 .details-head h3 {
   margin: 0;
-  font-size: 22px;
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 400;
   overflow-wrap: anywhere;
 }
 
@@ -1469,16 +1640,16 @@ button {
 }
 
 .details-readonly {
-  color: var(--accent-deep);
+  color: var(--accent);
   background: var(--accent-soft);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 1px 8px;
   font-weight: 600;
 }
 
 .details-days {
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 1px 8px;
 }
 
@@ -1515,7 +1686,7 @@ button {
   height: 170px;
   margin: 2px 0 8px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   overflow: hidden;
   background: var(--paper-deep);
 }
@@ -1543,7 +1714,7 @@ button {
   background: var(--card);
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 4px 9px;
   font-size: 11px;
   font-weight: 600;
@@ -1595,16 +1766,19 @@ button {
   overflow-y: auto;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  padding: 14px;
+  border-radius: 4px;
+  box-shadow:
+    var(--shadow),
+    inset 0 0 0 3px var(--card),
+    inset 0 0 0 4px var(--line);
+  padding: 16px;
 }
 
 .popover-title {
   margin: 0 0 10px;
   font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 400;
 }
 
 .popover-events {
@@ -1629,7 +1803,7 @@ button {
   font: inherit;
   text-align: left;
   padding: 6px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
 }
 
@@ -1664,8 +1838,8 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  border-top: 1px dashed var(--line);
-  padding-top: 10px;
+  border-top: 0;
+  padding-top: 18px;
 }
 
 .popover-actions .popup-action {
@@ -1688,7 +1862,7 @@ button {
   color: var(--ink);
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 7px 30px 7px 13px;
   width: 170px;
   outline: none;
@@ -1796,7 +1970,7 @@ button {
 
 .selection-count {
   font-weight: 700;
-  color: var(--accent-deep);
+  color: var(--accent);
   font-size: 13px;
 }
 
@@ -1880,9 +2054,9 @@ button {
 .task-prio {
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent-deep);
+  color: var(--accent);
   background: var(--accent-soft);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 1px 7px;
 }
 
@@ -1894,7 +2068,9 @@ button {
 
 .popup-title {
   margin: 0 0 12px;
-  font-size: 18px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
 }
 
 .popup-actions {
@@ -1945,7 +2121,7 @@ button {
   color: var(--ink-soft);
   font-size: 11px;
   font-weight: 700;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   padding: 0 6px;
   cursor: pointer;
   overflow: hidden;
@@ -2017,16 +2193,16 @@ button {
 }
 
 .btn.active-pref {
-  color: var(--accent-deep);
+  color: var(--accent);
   background: var(--accent-soft);
 }
 
 .pending-badge {
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent-deep);
+  color: var(--accent);
   background: var(--accent-soft);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 2px 9px;
   white-space: nowrap;
 }
@@ -2034,7 +2210,7 @@ button {
 .banner-info {
   background: var(--accent-soft);
   border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
-  color: var(--accent-deep);
+  color: var(--accent);
   border-radius: var(--radius-sm);
   padding: 8px 11px;
   font-size: 13px;
@@ -2065,15 +2241,15 @@ button {
 }
 
 .recurrence {
-  border-top: 1px dashed var(--line);
-  padding-top: 12px;
+  border-top: 0;
+  padding-top: 20px;
   margin-top: 4px;
 }
 
 .sharing-info {
-  border-top: 1px dashed var(--line);
+  border-top: 0;
   margin-top: 12px;
-  padding-top: 12px;
+  padding-top: 20px;
 }
 
 .sharing-title {
@@ -2126,7 +2302,7 @@ button {
   height: 28px;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   background: var(--card);
   cursor: pointer;
 }
@@ -2152,32 +2328,22 @@ button {
 .weekday-btn.active {
   background: var(--accent);
   border-color: var(--accent-deep);
-  color: #fff8f3;
-}
-
-/* ---------- dark theme ---------- */
-
-
-
-[data-theme="dark"] body {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-}
-
-[data-theme="dark"] .btn-primary {
-  color: #1b1916;
-}
-
-[data-theme="dark"] .day.today {
-  background: linear-gradient(180deg, rgba(255, 107, 61, 0.16), var(--card) 55%);
-}
-
-[data-theme="dark"] .form-error,
-[data-theme="dark"] .banner-error {
-  background: #3a1f1b;
-  border-color: #5c2e26;
+  color: var(--accent-ink);
 }
 
 /* ---------- responsive ---------- */
+
+/* Motion is short and stateful; honour reduced-motion globally (DESIGN.md). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 @media (max-width: 900px) {
   .toolbar {
@@ -2246,7 +2412,7 @@ button {
 
   .cal-item {
     border: 1px solid var(--line);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 2px 4px 2px 8px;
   }
 

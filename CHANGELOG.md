@@ -5,6 +5,31 @@ latest section of this file (baked into each build).
 
 ## Unreleased
 
+### The black-lacquer redesign — "Roli Glitzer Glitzer / Goldkette klimper klimper"
+
+- **The whole app now wears 1920s/30s black-and-gold Art Deco**: black-lacquer
+  surfaces, gilded hairlines, a gold-chain edge on the sidebar and chain
+  dividers inside cards, a glitter field on the page ground, a chrome view
+  switcher, a rhinestone gem on "today", and a metallic gold primary button.
+- **New type pairing**: **Klarissa** (marquee/showcard serif) sets the wordmark,
+  view titles and headings; **Baskervville** (Baskerville revival) sets all
+  body and UI text. Both are downloaded and bundled — nothing is loaded from a
+  third-party CDN. Klarissa ships with its 1001Fonts FFC license (see
+  `NOTICE.md`).
+- **Dark is the default theme** (black lacquer). The light theme is a
+  *champagne ballroom*: ivory paper, espresso text and deep gold. Both themes
+  were contrast-audited (WCAG AA) and the calendar's gem palette keeps white
+  labels above 3:1.
+- **Eight gem calendar colors** (pink sapphire, ruby, citrine, emerald,
+  turquoise, sapphire, amethyst, bronze) replace the old mixed palette; the
+  month/week/day stacks keep solid gem chips with a subtle inset and text
+  shadow.
+- **New logo**: a gold chain-link ring with a rhinestone on its south-east
+  edge, on a black lacquer tile (sidebar, login and favicon).
+- Details popovers, the event editor and the empty states got the same
+  treatment: double gold frames, solid lacquer overlays (no glass blur), and
+  Klarissa headlines.
+
 ## 0.2.0 — 2026-11-17
 
 Second feature batch: Tetris layout, self-hosted fonts, timezone fix,

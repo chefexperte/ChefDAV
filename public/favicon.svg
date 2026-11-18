@@ -1,7 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="ChefDAV">
-  <!-- True pastel mint parallelogram with rounded corners. -->
-  <path d="M 21,4 L 57,4 Q 62,4 60.79,8.85 L 49.21,55.15 Q 48,60 43,60 L 7,60 Q 2,60 3.21,55.15 L 14.79,8.85 Q 16,4 21,4 Z" fill="#a9e2cc"/>
-  <!-- Abstract mark: a ring with a dot on its south-east edge. -->
-  <circle cx="31.5" cy="31.5" r="12.5" fill="none" stroke="#0f5c48" stroke-width="5.5"/>
-  <circle cx="40.34" cy="40.34" r="6.5" fill="#0f5c48"/>
+  <!-- Black-lacquer jewel tile with a gold chain-link ring and a rhinestone
+       on its south-east edge (Art Deco "Goldkette klimper klimper"). -->
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f8dc7d"/>
+      <stop offset="0.55" stop-color="#e6b93d"/>
+      <stop offset="1" stop-color="#a87e14"/>
+    </linearGradient>
+    <radialGradient id="gem" cx="32%" cy="30%" r="72%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.38" stop-color="#f8dc7d"/>
+      <stop offset="0.72" stop-color="#e6b93d"/>
+      <stop offset="1" stop-color="#a87e14"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="1" y="1" width="62" height="62" rx="11" fill="#14100b" stroke="#52411f" stroke-width="1"/>
+
+  <g fill="none" stroke="url(#gold)" stroke-width="2.5">
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(0 32 32)"/>
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(30 32 32)"/>
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(60 32 32)"/>
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(90 32 32)"/>
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(120 32 32)"/>
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(150 32 32)"/>
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(180 32 32)"/>
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(210 32 32)"/>
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(240 32 32)"/>
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(270 32 32)"/>
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(300 32 32)"/>
+    <ellipse cx="32" cy="10.5" rx="5.4" ry="2.7" transform="rotate(330 32 32)"/>
+  </g>
+
+  <!-- rhinestone on the south-east edge -->
+  <circle cx="46.8" cy="46.8" r="7" fill="#14100b" stroke="#52411f" stroke-width="1"/>
+  <circle cx="46.8" cy="46.8" r="5.8" fill="url(#gem)"/>
+  <circle cx="44.9" cy="44.9" r="1.25" fill="#ffffff" opacity="0.9"/>
 </svg>
