@@ -23,12 +23,12 @@ work for this project and are licensed **MIT** — see `LICENSE` and the
 The app loads **nothing from third-party CDNs** (project rule, see AGENTS.md).
 The display and UI fonts are shipped in this repository and served same-origin:
 
-- `public/fonts/baskervville-*.woff2` — **Baskervville**, SIL Open Font
-  License 1.1 (body/UI face, Regular + Italic), © 2018 Claus Eggers Søgård
-  (https://github.com/clauseggers/Baskervville). The OFL expressly permits
-  redistribution and bundling; the woff2 subsets were obtained from Google
-  Fonts once at download time — at runtime the app only requests them from
-  its own origin.
+- `public/fonts/montserrat-*.woff2` — **Montserrat**, SIL Open Font License
+  1.1 (body/UI face, 400/500/600/700 + italic), © 2011 The Montserrat Project
+  Authors (Julieta Ulanovsky et al., https://github.com/googlefonts/montserrat).
+  The OFL expressly permits redistribution and bundling; the woff2 subsets
+  were obtained from Google Fonts once at download time — at runtime the app
+  only requests them from its own origin.
 - `public/fonts/Klarissa-Regular.ttf` — **Klarissa**, accent/display face,
   © 2003 Dieter Steffmann / Typographer Mediengestaltung. Bundled under the
   **1001Fonts Free For Commercial Use (FFC) license**; the complete EULA as
@@ -38,7 +38,7 @@ The display and UI fonts are shipped in this repository and served same-origin:
   the 1001Fonts FFC grant, per the project owner's decision, 2026-11-18.)
 
 The logo (`public/logo.svg`, `public/favicon.svg`) is an original SVG drawing
-(flat accent-blue tile with a calendar glyph, no font outlines).
+(pastel-mint parallelogram with a ring-and-dot mark, no font outlines).
 
 ## Design reference
 

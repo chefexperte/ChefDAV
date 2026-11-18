@@ -62,9 +62,10 @@ GNOME Adwaita looks, Rust reliability.
 - **Look & feel** — the **GTK4/libadwaita (GNOME Adwaita) design**: real
   Adwaita colors/radii from GNOME's stylesheet, accent blue `#3584e4`, flat
   raised buttons with a blue suggested-action primary, segmented view
-  switcher, accent "today" circle. Light is the default, dark is Adwaita
-  dark. **Klarissa** sets the wordmark and headings, **Baskervville** the body
-  text (both self-hosted). Full **English/German** UI (labels, dates,
+  switcher, accent "today" circle, GTK-style checkbuttons and a pill search
+  entry. Light is the default, dark is Adwaita dark. **Klarissa** sets the
+  wordmark and headings, **Montserrat** the body text (both self-hosted).
+  Full **English/German** UI (labels, dates,
   recurrence descriptions), keyboard shortcuts (`n t m w d a k / arrows
   Esc`), responsive down to phone widths.
 
@@ -205,6 +206,6 @@ before relying on it. AgenDAV is AGPL-3.0 — we take inspiration from it
 only, no code copied; if any of its code is ever ported verbatim, this project
 must be relicensed AGPL-3.0 accordingly. Dependencies are permissive crates
 (MIT/Apache-2.0/BSD/CC0/Zlib/Unicode-3.0 — see NOTICE.md); fonts are
-**bundled** — Baskervville under the SIL OFL, Klarissa under the 1001Fonts
+**bundled** — Montserrat under the SIL OFL, Klarissa under the 1001Fonts
 FFC license (EULA in `public/fonts/`) — and nothing is loaded from
 third-party CDNs.

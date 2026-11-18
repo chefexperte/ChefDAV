@@ -25,8 +25,14 @@ this re-skin.
   AdwViewSwitcher-style segmented control; "today" is an accent-filled
   circle like in GNOME Calendar; modals/popovers are dialog-styled cards with
   a dimmed overlay (no blur). The logo is a flat accent-blue calendar tile.
-- **Fonts stay as requested**: Klarissa for the wordmark/headings, Baskervville
-  for body text — both still self-hosted in `public/fonts/` (no CDN).
+- **Fonts stay as requested, then refined**: Klarissa keeps the
+  wordmark/headings; the body face is now **Montserrat** (self-hosted, OFL) —
+  both bundled in `public/fonts/`, no CDN. The logo is back to the original
+  pastel-mint mark from before the first redesign.
+- More Adwaita widgets transferred: GTK-style checkbuttons (6px radius, accent
+  fill + white check), a pill search entry with magnifier icon, boxed-list
+  rows (agenda/tasks) with hairline separators, flat circular icon buttons,
+  and a real Adwaita switch.
 
 ## 0.2.0 — 2026-11-17
 

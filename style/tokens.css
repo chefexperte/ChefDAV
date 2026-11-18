@@ -6,8 +6,8 @@
    and radii, per user decision 2026-11-18. Values are the real named colors
    from GNOME libadwaita's stylesheet (src/stylesheet/_colors.scss,
    _palette.scss, _common.scss); light = Adwaita light (the default),
-   dark = Adwaita dark. Type stays the user-requested pairing:
-   Klarissa (display/accent) + Baskervville (body/UI), self-hosted.
+   dark = Adwaita dark. Type: Klarissa (display/accent) + Montserrat
+   (body/UI), both self-hosted.
    Semantic tokens keep their names so existing class rules keep working. */
 
 :root {
@@ -75,8 +75,8 @@
   --radius-pill: 999px;
   --shadow: 0 1px 3px rgba(0, 0, 6, 0.1), 0 8px 24px rgba(0, 0, 6, 0.1);
   --shadow-sm: 0 1px 2px rgba(0, 0, 6, 0.07);
-  --font-display: "Klarissa", "Baskervville", Georgia, "Times New Roman", serif;
-  --font-ui: "Baskervville", Georgia, "Times New Roman", serif;
+  --font-display: "Klarissa", "Montserrat", "Segoe UI", sans-serif;
+  --font-ui: "Montserrat", "Segoe UI", -apple-system, sans-serif;
 }
 
 [data-theme="dark"] {
