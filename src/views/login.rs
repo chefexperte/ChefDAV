@@ -85,10 +85,11 @@ pub fn LoginPage() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let navigate = use_navigate();
 
-    // A build with a locked backend (BACKEND_URL) never takes a server from
-    // the user or from previously stored logins.
-    let locked = crate::config::is_locked();
-    let server = RwSignal::new(crate::config::initial_server().to_string());
+    // A deployment with a locked backend (BACKEND_URL / config.json) never
+    // takes a server from the user or from previously stored logins. The value
+    // is a signal because it is only final after `/config.json` was loaded.
+    let locked = RwSignal::new(crate::config::is_locked());
+    let server = RwSignal::new(crate::config::initial_server());
     let username = RwSignal::new(String::new());
     let password = RwSignal::new(String::new());
     let stay = RwSignal::new(true);
@@ -105,15 +106,22 @@ pub fn LoginPage() -> impl IntoView {
     spawn_local(async move {
         let settings = store::settings_load().await;
         stay.set(settings.stay_logged_in);
+        // Read the configuration now that `/config.json` is loaded (App only
+        // renders this page afterwards); keep the signal in sync with it.
+        let is_locked = crate::config::is_locked();
+        locked.set(is_locked);
+        if !is_locked {
+            server.set(crate::config::initial_server());
+        }
         if let Ok(Some(last)) = store::kv_get::<LastLogin>("last_login").await {
-            if !locked {
+            if !is_locked {
                 server.set(last.server);
             }
             username.set(last.username);
         }
         if settings.stay_logged_in {
             if let Ok(Some(creds)) = store::kv_get::<StoredCreds>("creds").await {
-                if !locked {
+                if !is_locked {
                     server.set(creds.server);
                 }
                 username.set(creds.username);
@@ -205,11 +213,11 @@ pub fn LoginPage() -> impl IntoView {
                             </svg>
                         </span>
                         <input type="url" required placeholder="http://127.0.0.1:8080"
-                            // Locked build (BACKEND_URL): read-only, no editing.
-                            readonly=locked
-                            class:locked=locked
+                            // Locked deployment (BACKEND_URL): read-only.
+                            prop:readonly=move || locked.get()
+                            class:locked=move || locked.get()
                             title=move || {
-                                if locked {
+                                if locked.get() {
                                     crate::i18n::t(state.lang.get(), "server_locked").to_string()
                                 } else {
                                     String::new()
@@ -217,7 +225,7 @@ pub fn LoginPage() -> impl IntoView {
                             }
                             prop:value=move || server.get()
                             on:input=move |ev| {
-                                if !locked {
+                                if !locked.get_untracked() {
                                     server.set(event_target_value(&ev));
                                 }
                             } />

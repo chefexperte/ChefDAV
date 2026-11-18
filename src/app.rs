@@ -18,11 +18,16 @@ pub fn App() -> impl IntoView {
     let state = AppState::new(tz);
     provide_context(state);
 
-    // Restore persisted preferences once, then try to restore the saved
-    // session (auto-login). The shell stays on a small splash until this
-    // settles so the login form never flashes for a returning user.
+    // Load runtime configuration, then restore preferences and try the saved
+    // session (auto-login). The splash stays up until all of this settles, so
+    // the login form never flashes — and never briefly shows a server field
+    // that a locked deployment (`/config.json`) would make read-only.
     Effect::new(move |_| {
         spawn_local(async move {
+            crate::config::set_runtime(crate::config::parse_runtime(
+                &crate::api::fetch_runtime_config().await,
+            ));
+
             let settings = store::settings_load().await;
             state.theme.set(if settings.theme == "dark" {
                 Theme::Dark

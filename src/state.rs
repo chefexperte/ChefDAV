@@ -218,9 +218,10 @@ pub struct AppState {
     pub new_event_end_time: RwSignal<Option<(u32, u32)>>,
     /// True when the new event was started from the all-day row.
     pub new_event_all_day: RwSignal<bool>,
-    /// Events hidden behind a "+N more" badge in the week view, plus the click
-    /// position the popover is anchored at.
-    pub week_more: RwSignal<Option<(Vec<usize>, f64, f64)>>,
+    /// Events hidden behind a "+N more" badge in the week/day view — as
+    /// `(index into `events`, occurrence start)` so the popover can open the
+    /// right occurrence — plus the click position it is anchored at.
+    pub week_more: RwSignal<Option<(Vec<(usize, chrono::DateTime<chrono_tz::Tz>)>, f64, f64)>>,
     /// Title menu: None = closed, "year" / "month" = which picker is open
     /// (opened by clicking the year / month in the toolbar title).
     pub jump_open: RwSignal<Option<&'static str>>,

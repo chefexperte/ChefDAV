@@ -21,6 +21,20 @@ use crate::state::{
 };
 use crate::store::{self, CachedEvent, CachedTodo, CalendarCache, OutboxOp};
 
+/// Fetch the deployment's runtime configuration (`/config.json`).
+///
+/// The container image writes this file from its environment variables on every
+/// start, so one image works for any backend (see `crate::config`). Plain
+/// static hosting has no such file — a 404 or any error means "no runtime
+/// configuration", never a failure: the app then falls back to its build-time
+/// default and an editable server field.
+pub async fn fetch_runtime_config() -> String {
+    match reqwest::Client::new().get("/config.json").send().await {
+        Ok(resp) if resp.status().is_success() => resp.text().await.unwrap_or_default(),
+        _ => String::new(),
+    }
+}
+
 /// reqwest on wasm32 is backed by `fetch`, which supports arbitrary methods
 /// (PROPFIND/REPORT/MKCALENDAR) and custom headers — everything CalDAV needs.
 pub struct FetchTransport;

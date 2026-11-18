@@ -363,6 +363,49 @@ check(
   JSON.stringify({ dayOverflow, barGeom })
 );
 
+// Regression (2026-11-18, user report): the "+N more" popup listed unrelated
+// events (one already visible, one never hidden, and events from other days)
+// because the bar stored per-day occurrence indices that were looked up in the
+// global event list, and the bar's <For> key omitted the hidden set.
+await page.locator(".day-column .more-bar").first().click();
+await page.waitForSelector(".more-popover", { timeout: 8000 });
+await page.waitForTimeout(400);
+const popupList = await page.evaluate(() => {
+  const norm = (s) => s.replace(/\s+/g, " ").trim();
+  const col = document.querySelector(".day-column");
+  const visible = [...col.querySelectorAll(".timed-event")].map((e) => norm(e.textContent));
+  const rows = [...document.querySelectorAll(".more-popover .popover-event")].map((r) => norm(r.textContent));
+  // a row is "already visible" when its title is one of the visible events'
+  const titleOf = (s) => s.replace(/^\d{1,2}:\d{2}/, "").trim();
+  return {
+    rows,
+    count: rows.length,
+    overlapsVisible: rows.filter((r) => visible.some((v) => titleOf(v) === titleOf(r))),
+    barCount: (document.querySelector(".day-column .more-bar")?.textContent.trim() ?? "").match(/\d+/)?.[0],
+  };
+});
+check(
+  "'+N more' popup lists exactly the hidden events (none already visible)",
+  popupList.count > 0 &&
+    popupList.overlapsVisible.length === 0 &&
+    Number(popupList.barCount) === popupList.count,
+  JSON.stringify(popupList)
+);
+// clicking a listed event must open THAT event, not the one at its index in
+// some other list
+const firstRowTitle = popupList.rows[0].replace(/^\d{1,2}:\d{2}/, "").trim();
+await page.locator(".more-popover .popover-event").first().click();
+await page.waitForSelector(".details-modal", { timeout: 8000 });
+await page.waitForTimeout(400);
+const openedTitle = (await page.textContent(".details-modal")).replace(/\s+/g, " ");
+check(
+  "'+N more' popup opens the event it listed",
+  openedTitle.includes(firstRowTitle),
+  `listed "${firstRowTitle}" but opened "${openedTitle.slice(0, 60)}"`
+);
+await page.keyboard.press("Escape");
+await page.waitForTimeout(400);
+
 // Regression (2026-11-18, user report): the "+N more" popup used to be a
 // dialog containing a bordered list — a card inside a card. It is now one
 // plain popover: the popover carries the surface, the rows are flat.

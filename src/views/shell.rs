@@ -29,6 +29,7 @@ use crate::store;
 pub fn Shell() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let navigate = use_navigate();
+    let go_home_nav = navigate.clone();
 
     // Give AppState access to the router so any view can push a resource URL
     // into the address bar (see `AppState::open_details` / `open_todo`).
@@ -377,10 +378,34 @@ pub fn Shell() -> impl IntoView {
     view! {
         <div class="app-shell">
             <aside class="sidebar">
-                <div class="brand">
+                // The brand is a link home: month view, current month, nothing
+                // selected. A real <a> keeps middle-click / open-in-new-tab.
+                <a
+                    class="brand"
+                    href="/"
+                    title=move || crate::i18n::t(state.lang.get(), "go_home")
+                    aria-label=move || crate::i18n::t(state.lang.get(), "go_home")
+                    on:click=move |ev| {
+                        // Keep it an in-app navigation for plain left clicks
+                        // (modified clicks still open a new tab / window).
+                        if ev.ctrl_key() || ev.meta_key() || ev.shift_key() || ev.button() != 0 {
+                            return;
+                        }
+                        ev.prevent_default();
+                        state.modal.set(None);
+                        state.day_popup.set(None);
+                        state.slot_popup.set(None);
+                        state.week_more.set(None);
+                        state.selected.set(Vec::new());
+                        state.search_query.set(String::new());
+                        state.search_open.set(false);
+                        state.jump_open.set(None);
+                        go_home_nav("/", Default::default());
+                    }
+                >
                     <img src="/logo.svg" width="34" height="34" alt="ChefDAV logo" />
                     <span class="brand-name">"ChefDAV"</span>
-                </div>
+                </a>
                 <button
                     class="btn btn-primary btn-block new-event"
                     on:click=move |_| {

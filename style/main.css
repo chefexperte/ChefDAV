@@ -590,6 +590,25 @@ input[type="checkbox"]:focus-visible {
   align-items: center;
   gap: 9px;
   padding: 0 4px;
+  /* a home link: inherits the brand colours, shows it is interactive */
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.12s ease;
+}
+
+.brand:hover {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+
+.brand:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.brand img {
+  display: block;
+  flex: none;
 }
 
 .brand-name {

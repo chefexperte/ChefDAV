@@ -466,17 +466,29 @@ pub fn MonthView() -> impl IntoView {
                                     };
                                     let has_time = !time.is_empty();
                                     let n = b.c1 - b.c0 + 1;
-                                    // same inset from the day borders as normal chips
-                                    // (8px cell padding) at the true start/end
-                                    // a segment that ends inside the week row stops at
-                                    // the day's right padding (was 4px → the bar ran
-                                    // into the next day cell); a continuation keeps a
-                                    // small overhang past the cell edge so the fade
-                                    // reads as "goes on"
+                                    // The bar must sit inside the day cells' padding, like a
+                                    // chip: 8px at a true start/end, and a small overhang
+                                    // (2px) where the event continues into the neighbouring
+                                    // day so the fade reads as "goes on".
+                                    //
+                                    // cell = (100% - 6 * 6px) / 7  (six 6px gaps between
+                                    // seven columns); `left` starts at the c0-th cell and
+                                    // `width` spans n cells including the gaps between them.
+                                    // BOTH insets must come off the width, otherwise the bar
+                                    // ends `left_inset` px past the cell's right padding
+                                    // (it used to sit flush on the cell edge).
                                     let left_inset = if b.true_start { 8 } else { 2 };
                                     let right_inset = if b.true_end { 8 } else { 2 };
-                                    let left = format!("calc(6px * {} + (100% - 36px) / 7 * {} + {}px)", b.c0, b.c0, left_inset);
-                                    let width = format!("calc((100% - 36px) / 7 * {} + 6px * {} - {}px)", n, n.saturating_sub(1), right_inset);
+                                    let left = format!(
+                                        "calc((100% - 36px) / 7 * {} + 6px * {} + {}px)",
+                                        b.c0, b.c0, left_inset
+                                    );
+                                    let width = format!(
+                                        "calc((100% - 36px) / 7 * {} + 6px * {} - {}px)",
+                                        n,
+                                        n.saturating_sub(1),
+                                        left_inset + right_inset
+                                    );
                                     let top = 38 + b.slot * BAR_SLOT_H;
                                     view! {
                                         <div

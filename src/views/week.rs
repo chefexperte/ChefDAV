@@ -41,8 +41,14 @@ struct ClusterBar {
     count: usize,
     /// start of the first hidden occurrence (part of the `<For>` key)
     first_start: chrono::DateTime<chrono_tz::Tz>,
-    /// event-list indices of the hidden occurrences (the popup lists these)
-    indices: Vec<usize>,
+    /// hidden occurrences as indices into the **per-day** list that `layout`
+    /// was given. The caller must translate them to `state.events` indices
+    /// (they used to be fed to the popup raw, which looked them up in the
+    /// global event list and showed unrelated events from other days).
+    local_indices: Vec<usize>,
+    /// the same hidden occurrences as `(global event index, occurrence start)`
+    /// — what the "+N more" popup needs to open the right events.
+    indices: Vec<(usize, chrono::DateTime<chrono_tz::Tz>)>,
 }
 
 /// Finish an overlap cluster: assign `(column, columns, shown)` to each
@@ -101,7 +107,8 @@ fn flush_cluster(
         height_px: height,
         count: hidden.len(),
         first_start: events[*hidden.first().unwrap()].start,
-        indices: hidden,
+        local_indices: hidden,
+        indices: Vec::new(),
     });
 }
 
@@ -607,7 +614,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                         let laid_out = Memo::new(move |_| {
                             let items = items.get();
                             let occs: Vec<Occurrence> = items.iter().map(|(_, o, _)| o.clone()).collect();
-                            let (cols, bars) = layout(&occs, max_columns, d, &tz);
+                            let (cols, bars_raw) = layout(&occs, max_columns, d, &tz);
                             let shown = items
                                 .iter()
                                 .zip(cols.iter())
@@ -619,6 +626,22 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                     }
                                 })
                                 .collect::<Vec<(usize, Occurrence, String, usize, usize)>>();
+                            // Translate the bar's per-day indices into global
+                            // event indices + occurrences, so the popup lists
+                            // exactly the events this bar hides.
+                            let bars = bars_raw
+                                .into_iter()
+                                .map(|b| {
+                                    let indices = b
+                                        .local_indices
+                                        .iter()
+                                        .filter_map(|&li| {
+                                            items.get(li).map(|(gi, o, _)| (*gi, o.start))
+                                        })
+                                        .collect::<Vec<_>>();
+                                    ClusterBar { local_indices: Vec::new(), indices, ..b }
+                                })
+                                .collect::<Vec<_>>();
                             (shown, bars)
                         });
                         let shown = Memo::new(move |_| laid_out.get().0);
@@ -731,13 +754,22 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                 <For
                                     each=move || bars.get()
                                     // key includes the bar geometry + count (these are
-                                    // plain values the children read) and the first
-                                    // hidden start, so navigating / data changes can't
-                                    // keep a stale row
-                                    key=|b| (b.first_start, b.top_px, b.height_px, b.count)
+                                    // plain values the children read), the first hidden
+                                    // start, AND the hidden events themselves: a refresh
+                                    // can produce a bar with identical geometry/count
+                                    // whose hidden set differs, and the old closure then
+                                    // kept the previous indices (the popup listed events
+                                    // from other days).
+                                    key=|b| (
+                                        b.first_start,
+                                        b.top_px,
+                                        b.height_px,
+                                        b.count,
+                                        b.indices.clone(),
+                                    )
                                     children=move |b| {
                                         let more_left_pct = (max_columns - 1) as f64 / max_columns as f64 * 100.0;
-                                        let indices = b.indices.clone();
+                                        let indices: Vec<(usize, chrono::DateTime<chrono_tz::Tz>)> = b.indices.clone();
                                         let count = b.count;
                                         view! {
                                             <button
@@ -877,7 +909,11 @@ mod layout_tests {
         assert_eq!(b.top_px, px(600.0));
         assert_eq!(b.height_px, px(120.0));
         assert_eq!(b.first_start, events[3].start);
-        assert_eq!(b.indices, vec![3, 4], "hidden events stay in start order");
+        assert_eq!(
+            b.local_indices,
+            vec![3, 4],
+            "hidden events stay in start order (per-day indices)"
+        );
     }
 
     /// Overflow in the week view (cap 2): three simultaneous -> one shown +

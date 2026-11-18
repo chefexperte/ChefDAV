@@ -107,13 +107,16 @@ served by Caddy's file server. It contains no CalDAV server — the browser talk
 straight to *your* Radicale / CalDAV server, exactly like a locally hosted build.
 
 ```sh
-docker run -d --name chefdav -p 8080:80 ghcr.io/chefexperte/chefdav:latest
+docker run -d --name chefdav -p 8080:80 \
+  -e BACKEND_URL=https://dav.example.org \
+  ghcr.io/chefexperte/chefdav:latest
 ```
 
-Open <http://localhost:8080> and log in with your CalDAV server URL and
-credentials. Or use compose:
+Open <http://localhost:8080> and log in with your credentials. Or use compose
+(reads the same variables from a `.env` file):
 
 ```sh
+cp .env.example .env          # set BACKEND_URL, or leave it empty
 docker compose -f docker/docker-compose.prod.yml up -d     # → :8080
 ```
 
@@ -122,43 +125,40 @@ app: a few minutes on a desktop, ~10 min on a 2-core CI runner):
 
 ```sh
 docker build -f docker/Dockerfile -t chefdav .
-docker run -d -p 8080:80 chefdav
+docker run -d -p 8080:80 -e BACKEND_URL=https://dav.example.org chefdav
 ```
 
 What the image does:
 
 - **Serves the app** (`/srv`) with an SPA fallback, so deep links and reloads
   (`/month/2026-11`, `/week/2026-11-16`, `/event/<calendar>/<uid>`) work.
-  Content-hashed bundle files are cached immutably; `index.html` is not.
+  Content-hashed bundle files are cached immutably; `index.html` and the runtime
+  config are not.
 - **No state** — no volumes; calendars live in your CalDAV server and the
   browser cache. Safe to run read-only.
 - **Plain HTTP on port 80** — put it behind your own TLS proxy/frontend
   (Caddy, nginx, Traefik …), which then also handles your domain.
 - **`/healthz`** — for container healthchecks / load balancers.
 
-### Locking it to your server (`BACKEND_URL`)
+### Choosing the server at start-up (`BACKEND_URL`)
 
-By default the login screen asks for the CalDAV server URL. To ship a build that
-is **hard-wired to one server** — the field is read-only and a previously saved
-login cannot point it anywhere else — set `BACKEND_URL` when building:
+One image works for every deployment — the backend is a **runtime** environment
+variable, not something baked in at build time:
 
-```sh
-# locally: copy .env.example to .env, set BACKEND_URL, then
-trunk build --release                # or: trunk serve
+| Variable | Effect |
+| --- | --- |
+| `BACKEND_URL=https://dav.example.org` | the app uses that CalDAV server |
+| *(unset or empty)* | the login screen asks for the server URL |
+| `BACKEND_LOCK=true` | server field is read-only (default when `BACKEND_URL` is set) |
+| `BACKEND_LOCK=false` | pre-filled but the user may change it |
 
-# or as an image build argument
-docker build -f docker/Dockerfile \
-  --build-arg BACKEND_URL=https://dav.example.org -t chefdav .
-```
+Change the value and restart the container (`docker compose up -d` recreates it)
+— no rebuild needed.
 
-For the published image, set the repository **variable** `BACKEND_URL`
-(Settings → Secrets and variables → Actions → Variables); the workflow passes it
-to the build. It is a *build-time* value because the app is a static bundle with
-no backend that could read configuration at runtime.
-
-Either way, your CalDAV server must send **CORS headers for the app's origin**
-(see the next section) — unless you serve the app and the CalDAV server from the
-same origin.
+> **How it works:** a static app cannot read environment variables, so on every
+> start the entrypoint writes `/srv/config.json` from these variables and the app
+> fetches that file before it renders (see `src/config.rs`). Removing
+> `BACKEND_URL` on a later start returns the app to an editable server field.
 
 ### Image tags
 

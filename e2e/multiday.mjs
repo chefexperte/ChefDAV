@@ -157,6 +157,30 @@ check(
 );
 const overnightBar = barInfo.find((b) => b.text.includes(OVERNIGHT));
 check("month: overnight timed event renders as a bar with its start time", !!overnightBar && overnightBar.text.includes("23:00"), overnightBar?.text ?? "(none)");
+
+// Regression (2026-11-18, user report): a spanning bar ran flush to the day
+// column's edge; it must stop at the same right padding a chip keeps.
+const barInset = await page.evaluate(() => {
+  const bar = [...document.querySelectorAll(".span-bar")][0];
+  if (!bar) return null;
+  const br = bar.getBoundingClientRect();
+  const cell = [...document.querySelectorAll(".day")].find((d) => {
+    const q = d.getBoundingClientRect();
+    return br.right <= q.right + 1 && br.right >= q.left;
+  });
+  if (!cell) return null;
+  const cr = cell.getBoundingClientRect();
+  const cs = getComputedStyle(cell);
+  return {
+    inset: +(cr.right - br.right).toFixed(1),
+    cellPadRight: parseFloat(cs.paddingRight),
+  };
+});
+check(
+  "month: spanning bar keeps the day cell's right padding",
+  !!barInset && Math.abs(barInset.inset - barInset.cellPadRight) <= 1.5,
+  JSON.stringify(barInset)
+);
 const spanBars = barInfo.filter((b) => b.text.includes(SPANWK));
 check(
   "month: week-crossing event is split into continuation segments with arrows",

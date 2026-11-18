@@ -30,12 +30,19 @@ your CalDAV server is deliberately not part of it.
 - **Site config**: `docker/frontend/Caddyfile` (SPA fallback, cache headers,
   `/healthz`). Keep the hashed-file patterns in sync with `filehash = true` in
   `Trunk.release.toml`.
-- **Server URL**: the `BACKEND_URL` build argument (repository *variable* of the
-  same name feeds the published image) locks the app to one CalDAV server — the
-  login field becomes read-only. It is compile-time because the app is static
-  and has no backend to read runtime configuration. `CHEFDAV_DAV_URL` remains
-  an older name that only pre-fills an editable field.
+- **Server URL**: **runtime**, not build time. `docker/container-entrypoint.sh`
+  writes `/srv/config.json` from the `BACKEND_URL` / `BACKEND_LOCK` environment
+  variables on every start; the app fetches that file before it renders
+  (`src/config.rs`). The published image is therefore deployment-agnostic — do
+  **not** bake a server in. Keep in sync:
+  - the entrypoint's JSON shape ↔ `config::parse_runtime` (and its tests),
+  - `/srv` ownership in the Dockerfile (the entrypoint rewrites the file even
+    with a read-only root filesystem),
+  - `/config.json` staying `no-cache` in `docker/frontend/Caddyfile`.
+- **Local builds without Docker** still support build-time values:
+  `CHEFDAV_DAV_URL` (pre-filled, editable) and `BACKEND_URL` (locked).
 
 The staging steps for the image are the same as for any other change: the
 workflow builds it from the tag and its smoke tests (app served, SPA fallback,
-cache headers, no `/caldav` backend) must pass before the push.
+cache headers, `/config.json` for each `BACKEND_URL` variant, read-only root)
+must pass before the push.

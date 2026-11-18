@@ -231,6 +231,31 @@ check(
   page.url()
 );
 
+// ---------- brand (logo + ChefDAV) links home ----------
+// From a resource link in another view: click the wordmark -> month view of
+// the current month, nothing selected, no modal open.
+await page.goto(`${APP}/week/2026-11-16`, { waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 30000 });
+await page.waitForTimeout(800);
+await page.locator(".timed-event, .chip, .allday-chip").first().click();
+await page.waitForSelector(".details-modal", { timeout: 10000 });
+await page.keyboard.press("Escape");
+await page.waitForTimeout(500);
+await page.click(".brand");
+await page.waitForTimeout(1200);
+const homeState = {
+  url: new URL(page.url()).pathname,
+  monthGrid: await page.locator(".month-grid").count(),
+  open: await page.locator(".details-modal, .modal, .more-popover, .day-popup, .slot-popup").count(),
+};
+// pinned clock = Mon 9 Nov 2026, so "current month" is November 2026
+check(
+  "brand links home to the current month",
+  homeState.url === "/month/2026-11" && homeState.monthGrid === 1 && homeState.open === 0,
+  JSON.stringify(homeState)
+);
+check("brand is a real link (href=/)", (await page.getAttribute(".brand", "href")) === "/");
+
 // ---------- unknown resource link -> error + back to / ----------
 await page.goto(`${APP}/event/${encodeURIComponent(calNames[0] ?? "x")}/no-such-uid-12345`, {
   waitUntil: "networkidle",

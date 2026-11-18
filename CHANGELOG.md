@@ -35,8 +35,21 @@ libadwaita stylesheet values.
   keeping the current day where the month allows it.
 - **New: "New event" in the details popup** creates an event in the same slot
   as the one you are looking at (same date, start and end time).
+- **The "+N more" popup lists the right events.** It used to show an event
+  that was already visible, one that was never hidden, and events from a
+  completely different day: the bar stored indices into *that day's* occurrence
+  list, which the popup then looked up in the global event list, and a refresh
+  could keep a stale bar whose hidden set had changed. Both the day and the
+  week view now list exactly the events the bar hides, and clicking one opens
+  that event.
 - **The "+N more" popup is a plain popover** (one surface, flat rows) instead
   of a dialog containing a bordered card, and it is anchored at the click.
+- **Multi-day bars keep the day cell's padding** on the right in the month
+  view — they no longer run flush to the day's edge (the width calculation
+  ignored the bar's own left inset).
+- **The logo and "ChefDAV" wordmark are a link home**: one click returns to the
+  month view of the current month with nothing open or selected (a real link,
+  so middle-click still opens it in a new tab).
 - **Search asks you to keep typing**: one character now shows "Type at least
   2 characters to search." instead of "No matching events".
 - **Dialogs follow AdwDialog**: a padded header, scrollable content and a
@@ -76,8 +89,11 @@ this re-skin.
 - ChefDAV now ships as a **container image**, `ghcr.io/chefexperte/chefdav`:
   the calendar frontend (static WASM app) on a small Caddy file server, with an
   SPA fallback for deep links, immutable caching for the hashed bundle and a
-  `/healthz` probe. `docker run -d -p 8080:80 ghcr.io/chefexperte/chefdav:latest`
-  and log in with your CalDAV server.
+  `/healthz` probe.
+- The CalDAV server is chosen **when the container starts** — set
+  `BACKEND_URL` (and optionally `BACKEND_LOCK=true|false`) in the environment or
+  a `.env` file next to the compose file. One image serves every deployment;
+  with no `BACKEND_URL` the login screen asks for the server as before.
 - Login failures are now explained better: if the browser blocked the request
   because the CalDAV server sent no CORS headers, the login page says so and
   points at the fix instead of only "server unreachable".

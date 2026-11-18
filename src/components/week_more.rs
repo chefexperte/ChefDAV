@@ -17,9 +17,13 @@ pub fn WeekMoreModal() -> impl IntoView {
     let close = move |_| state.week_more.set(None);
     let (left, top) = clamp_position(px, py, 340.0, 420.0);
 
+    // `indices` are (global event index, occurrence start) pairs, resolved by
+    // the view from the day's own occurrence list.
     let items = indices
         .into_iter()
-        .filter_map(|i| state.events.get().get(i).cloned().map(|e| (i, e)))
+        .filter_map(|(i, occ_start)| {
+            state.events.get().get(i).cloned().map(|e| (i, occ_start, e))
+        })
         .collect::<Vec<_>>();
 
     view! {
@@ -37,8 +41,8 @@ pub fn WeekMoreModal() -> impl IntoView {
                 <ul class="more-list agenda-list popover-events">
                     <For
                         each=move || items.clone()
-                        key=|(i, e)| (*i, e.href.clone())
-                        children=move |(idx, ev)| {
+                        key=|(i, occ, e)| (*i, *occ, e.href.clone())
+                        children=move |(idx, occ_start, ev)| {
                             let time = match &ev.event.dtstart {
                                 Some(caldav::ics::DtValue::Date(_)) => {
                                     crate::i18n::t(state.lang.get(), "all_day").to_string()
@@ -59,8 +63,8 @@ pub fn WeekMoreModal() -> impl IntoView {
                                             state.week_more.set(None);
                                             state.open_details(
                                                 idx,
-                                                None,
-                                                None,
+                                                Some(occ_start),
+                                                Some(occ_start),
                                                 Some((e.client_x() as i32, e.client_y() as i32)),
                                             );
                                         }

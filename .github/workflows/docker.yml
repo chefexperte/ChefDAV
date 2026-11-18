@@ -13,9 +13,8 @@ name: Docker image
 # server. Every run is smoke-tested (app served, SPA fallback, health) before
 # anything is pushed, and PRs build and test without publishing.
 #
-# Backend URL: the app is static, so `BACKEND_URL` is a *build* argument. Set
-# the repository variable BACKEND_URL (Settings → Variables) to bake in and lock
-# the CalDAV server for the published image. Unset = users enter it themselves.
+# The backend is chosen at *runtime* (`-e BACKEND_URL=…`), so one published
+# image serves any deployment — nothing about the server is baked in here.
 
 on:
   push:
@@ -64,8 +63,6 @@ jobs:
         with:
           context: .
           file: docker/Dockerfile
-          build-args: |
-            BACKEND_URL=${{ vars.BACKEND_URL || '' }}
           load: true
           tags: chefdav:ci
           labels: ${{ steps.meta.outputs.labels }}
@@ -101,6 +98,49 @@ jobs:
           # is just the SPA, never a proxy response
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/caldav/)" = "200"
 
+      # The backend is a runtime setting: same image, new env var, new config.
+      - name: Smoke test — BACKEND_URL at start-up
+        run: |
+          docker rm -f chefdav-ci >/dev/null
+          start_with() {
+            docker run -d --name chefdav-ci -p 18080:80 "$@" chefdav:ci >/dev/null
+            for i in $(seq 1 30); do
+              curl -sf -o /dev/null http://127.0.0.1:18080/healthz && return 0
+              sleep 1
+            done
+            echo "container did not come up"; docker logs chefdav-ci; return 1
+          }
+          config() { curl -sf http://127.0.0.1:18080/config.json; }
+
+          # a URL locks the server field by default and is never cached
+          start_with -e BACKEND_URL=https://dav.example.org
+          config | grep -q '"backend_url": "https://dav.example.org"'
+          config | grep -q '"lock": true'
+          curl -sfI http://127.0.0.1:18080/config.json | grep -qi 'cache-control: no-cache'
+
+          # …the same image can start unlocked
+          docker rm -f chefdav-ci >/dev/null
+          start_with -e BACKEND_URL=https://other.example -e BACKEND_LOCK=false
+          config | grep -q '"backend_url": "https://other.example"'
+          config | grep -q '"lock": false'
+
+          # …and with no backend at all: the login screen asks for one
+          docker rm -f chefdav-ci >/dev/null
+          start_with
+          config | grep -q '"backend_url": ""'
+          config | grep -q '"lock": false'
+
+      - name: Smoke test — read-only root filesystem
+        run: |
+          docker rm -f chefdav-ci >/dev/null
+          docker run -d --name chefdav-ci -p 18080:80 --read-only \
+            --tmpfs /tmp -e BACKEND_URL=https://dav.example.org chefdav:ci >/dev/null
+          for i in $(seq 1 30); do
+            curl -sf -o /dev/null http://127.0.0.1:18080/healthz && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:18080/config.json | grep -q '"backend_url": "https://dav.example.org"'
+
       - name: Container logs
         if: always()
         run: docker logs chefdav-ci || true
@@ -119,8 +159,6 @@ jobs:
         with:
           context: .
           file: docker/Dockerfile
-          build-args: |
-            BACKEND_URL=${{ vars.BACKEND_URL || '' }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
