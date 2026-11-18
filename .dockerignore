@@ -1,0 +1,27 @@
+# Build context for docker/Dockerfile — keep it small and reproducible.
+# Everything here is either huge, local-only, or regenerated in the image.
+target/
+target-stable/
+dist/
+.stable-worktree/
+.git/
+.github/
+
+# e2e suites (Playwright) and their artifacts
+e2e/node_modules/
+e2e/login-failure.png
+
+# docs (only the README is cited in comments; screenshots are not built in)
+docs/
+
+# agent/dev notes
+AGENTS.md
+TODO.md
+DESIGN.md
+
+# Deployment configuration: in an image build BACKEND_URL comes in as a build
+# arg (docker/Dockerfile), which takes precedence over a file — but a stray
+# local .env should never be baked into a published image by accident.
+.env
+.env.*
+!.env.example

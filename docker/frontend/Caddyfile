@@ -1,0 +1,40 @@
+# ChefDAV image site config (docker/Dockerfile).
+#
+# Serves the static WASM app and nothing else. The browser talks to your CalDAV
+# server directly, so this container is not a proxy — your CalDAV server (or a
+# small CORS proxy in front of it) handles the API traffic.
+
+# No admin API: the container has nothing to manage at runtime, and it would
+# only open another port.
+{
+	admin off
+}
+
+:80 {
+	# Liveness for the container healthcheck; never touches /srv.
+	respond /healthz 200
+
+	root * /srv
+
+	# SPA fallback: any path that is not a file is the app's entry document, so
+	# deep links and reloads (/month/2026-11, /event/<cal>/<uid>, …) work.
+	try_files {path} /index.html
+	file_server
+
+	# Trunk emits content-hashed names for the bundle (Trunk.release.toml), so
+	# those can never go stale — cache them for a year. The entry document and
+	# the small unhashed assets must always be revalidated.
+	@hashed path /chef-dav*.js /chef-dav*.wasm /main-*.css
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+	# Everything that is not a hashed bundle file must be revalidated: the
+	# entry document for `/` and for every SPA route, plus the small unhashed
+	# assets next to it.
+	@revalidate {
+		not path /chef-dav*.js /chef-dav*.wasm /main-*.css
+	}
+	header @revalidate Cache-Control "no-cache"
+
+	# Fonts and the wasm bundle compress well; everything is same-origin.
+	encode zstd gzip
+}

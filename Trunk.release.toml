@@ -1,0 +1,15 @@
+# Release build settings for the container image (docker/Dockerfile).
+# Copied over Trunk.toml inside the build stage; the repo keeps the dev one.
+# Inherits [profile.release] from Cargo.toml (opt-level "z", LTO, 1 codegen
+# unit — small bundle, slow cold build; the image cache absorbs that).
+[build]
+target = "index.html"
+dist = "dist"
+release = true
+# Content-hashed file names (chef-dav-<hash>.js/.wasm, main-<hash>.css), which
+# docker/frontend/Caddyfile caches immutably.
+filehash = true
+
+[serve]
+address = "127.0.0.1"
+port = 3100

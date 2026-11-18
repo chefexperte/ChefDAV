@@ -1,0 +1,55 @@
+name: chefdav
+
+# ChefDAV from the published image (ghcr.io/chefexperte/chefdav) — the static
+# calendar app only. Users log in with their CalDAV server URL, unless the image
+# was built with BACKEND_URL locked in (see .env.example / Dockerfile).
+#
+#   docker run -d --name chefdav -p 8080:80 ghcr.io/chefexperte/chefdav:latest
+#
+# With compose:
+#
+#   docker compose -f docker/docker-compose.prod.yml up -d
+#   → http://localhost:8080
+#
+# Settings (shell environment or a .env file next to this compose file):
+#   CHEFDAV_PORT    host port for the app            (default 8080)
+#   CHEFDAV_IMAGE   image[:tag]  (default ghcr.io/chefexperte/chefdav:latest)
+#
+# Your CalDAV server must send CORS headers for this origin (see README →
+# "Setup"), unless you serve the app from the same host as the CalDAV server.
+#
+# A backend you want locked in is a *build* setting (BACKEND_URL), not an
+# environment variable — the app is static. Building this checkout locally:
+#
+#   docker build -f docker/Dockerfile --build-arg BACKEND_URL=https://dav.example.org -t chefdav .
+#   docker compose -f docker/docker-compose.prod.yml up -d
+#
+# The published image is built with the BACKEND_URL repository variable (see
+# .github/workflows/docker.yml); left empty, users enter their server URL.
+#
+# Behind your own TLS proxy (recommended): point it at this container's port 80
+# and skip the published port here (delete `ports:` below).
+
+services:
+  chefdav:
+    image: ${CHEFDAV_IMAGE:-ghcr.io/chefexperte/chefdav:latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        # only used with `up --build`
+        BACKEND_URL: ${BACKEND_URL:-}
+      # Cache the build by image name, not as an extra local tag.
+      tags:
+        - ${CHEFDAV_IMAGE:-ghcr.io/chefexperte/chefdav:latest}
+    restart: unless-stopped
+    ports:
+      - "${CHEFDAV_PORT:-8080}:80"
+    # No volumes, no state: the calendar data lives in your CalDAV server and
+    # the browser cache. Read-only root plus a tmpfs is enough.
+    read_only: true
+    tmpfs:
+      - /config
+      - /data
+    security_opt:
+      - "no-new-privileges:true"
