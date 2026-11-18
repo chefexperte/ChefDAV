@@ -111,7 +111,7 @@ fn chip(
             <span class="chip-time">{time}</span>
             <span class="chip-title">{summary}</span>
             <Show when=move || read_only fallback=|| ()>
-                <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
+                <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.4" /><rect x="3.4" y="7" width="9.2" height="6.6" rx="1.4" fill="currentColor" /></svg></span>
             </Show>
         </div>
     }
@@ -291,6 +291,17 @@ pub fn MonthView() -> impl IntoView {
         });
     };
 
+    // Each week row is keyed by its Monday — but the boundary week is SHARED
+    // between two month grids (Dec's first row starts 30 Nov, like Nov's last
+    // row). Keying on the date alone made Leptos reuse that row when paging
+    // Nov → Dec, so its bar memo kept the old `week` index and the bars for the
+    // overlapping days never appeared in the new month. Include the shown month
+    // in the key so a boundary row is rebuilt with the right indices.
+    let month_key = Memo::new(move |_| {
+        let d = state.anchor.get();
+        (d.year(), d.month())
+    });
+
     view! {
         <Show when=move || state.error.get().is_some() fallback=|| ()>
             <p class="banner-error">{move || state.error.get().unwrap_or_default()}</p>
@@ -305,9 +316,12 @@ pub fn MonthView() -> impl IntoView {
         </div>
         <div class="month-grid">
             <For
-                each=move || weeks_enum.get()
-                key=|(_, w)| w[0]
-                children=move |(wi, week)| {
+                each=move || {
+                    let m = month_key.get();
+                    weeks_enum.get().into_iter().map(|(wi, w)| (wi, w, m)).collect::<Vec<_>>()
+                }
+                key=|(_, w, m)| (w[0], *m)
+                children=move |(wi, week, _)| {
                     let week_bars = Memo::new(move |_| {
                         bars.get()
                             .0
@@ -454,8 +468,13 @@ pub fn MonthView() -> impl IntoView {
                                     let n = b.c1 - b.c0 + 1;
                                     // same inset from the day borders as normal chips
                                     // (8px cell padding) at the true start/end
+                                    // a segment that ends inside the week row stops at
+                                    // the day's right padding (was 4px → the bar ran
+                                    // into the next day cell); a continuation keeps a
+                                    // small overhang past the cell edge so the fade
+                                    // reads as "goes on"
                                     let left_inset = if b.true_start { 8 } else { 2 };
-                                    let right_inset = if b.true_end { 8 } else { 4 };
+                                    let right_inset = if b.true_end { 8 } else { 2 };
                                     let left = format!("calc(6px * {} + (100% - 36px) / 7 * {} + {}px)", b.c0, b.c0, left_inset);
                                     let width = format!("calc((100% - 36px) / 7 * {} + 6px * {} - {}px)", n, n.saturating_sub(1), right_inset);
                                     let top = 38 + b.slot * BAR_SLOT_H;
@@ -487,7 +506,7 @@ pub fn MonthView() -> impl IntoView {
                                             </Show>
                                             <span class="bar-title">{summary.clone()}</span>
                                             <Show when=move || read_only fallback=|| ()>
-                                                <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
+                                                <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.4" /><rect x="3.4" y="7" width="9.2" height="6.6" rx="1.4" fill="currentColor" /></svg></span>
                                             </Show>
                                         </div>
                                     }

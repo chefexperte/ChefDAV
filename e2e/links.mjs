@@ -210,7 +210,7 @@ await page.waitForSelector(".month-grid", { timeout: 30000 });
 // ---------- task link ----------
 await page.click('.segmented-btn:has-text("Tasks")');
 await page.waitForSelector(".tasks-view", { timeout: 10000 });
-await page.click('button:has-text("+ New task")');
+await page.click(".tasks-head .btn-primary");
 await page.waitForSelector(".modal-small");
 await page.fill('.modal-small input[type="text"]', TASK);
 await page.click('.modal-small button:has-text("Save")');

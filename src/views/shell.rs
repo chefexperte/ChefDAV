@@ -14,6 +14,7 @@ use crate::components::calendar_action::CalendarActionModal;
 use crate::components::day_popup::DayPopup;
 use crate::components::event_details::EventDetails;
 use crate::components::event_modal::EventModal;
+use crate::components::jump::{MonthMenu, YearMenu};
 use crate::components::new_calendar::NewCalendarModal;
 use crate::components::prefs::PrefsRow;
 use crate::components::slot_popup::SlotPopup;
@@ -302,6 +303,7 @@ pub fn Shell() -> impl IntoView {
                             ev.prevent_default();
                             let date = caldav::time::today(&st.tz, crate::browser::now_utc());
                             st.new_event_time.set(None);
+                            st.new_event_end_time.set(None);
                             st.new_event_all_day.set(false);
                             st.modal.set(Some(ModalState::New { date }));
                         }
@@ -343,6 +345,7 @@ pub fn Shell() -> impl IntoView {
                             st.new_calendar.set(false);
                             st.week_more.set(None);
                             st.search_open.set(false);
+                            st.jump_open.set(None);
                         }
                         _ => {}
                     }
@@ -383,14 +386,20 @@ pub fn Shell() -> impl IntoView {
                     on:click=move |_| {
                         let date = caldav::time::today(&state.tz, crate::browser::now_utc());
                         state.new_event_time.set(None);
+                        state.new_event_end_time.set(None);
                         state.new_event_all_day.set(false);
                         state.modal.set(Some(ModalState::New { date }));
                     }
                 >
-                    {move || format!("+ {}", crate::i18n::t(state.lang.get(), "new_event"))}
+                    <svg class="btn-add-icon" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                    {move || crate::i18n::t(state.lang.get(), "new_event")}
                 </button>
                 <div class="sidebar-heading-row">
-                    <h3 class="sidebar-heading">{move || crate::i18n::t(state.lang.get(), "calendars")}</h3>
+                    <span class="sidebar-heading-label">
+                        <h3 class="sidebar-heading">{move || crate::i18n::t(state.lang.get(), "calendars")}</h3>
+                    </span>
                     <button
                         class="btn-icon-plain"
                         title=move || crate::i18n::t(state.lang.get(), "new_calendar")
@@ -430,7 +439,7 @@ pub fn Shell() -> impl IntoView {
                                         <span class="cal-dot" style=format!("background: {color}")></span>
                                         <span class="cal-name">{name}</span>
                                         <Show when=move || read_only fallback=|| ()>
-                                            <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
+                                            <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.4" /><rect x="3.4" y="7" width="9.2" height="6.6" rx="1.4" fill="currentColor" /></svg></span>
                                         </Show>
                                     </label>
                                     <button
@@ -451,7 +460,12 @@ pub fn Shell() -> impl IntoView {
                                             }));
                                         }
                                     >
-                                        "⋯"
+                                        // flat "open menu" icon (three dots)
+                                        <svg viewBox="0 0 16 16" aria-hidden="true">
+                                            <circle cx="3" cy="8" r="1.35" fill="currentColor" />
+                                            <circle cx="8" cy="8" r="1.35" fill="currentColor" />
+                                            <circle cx="13" cy="8" r="1.35" fill="currentColor" />
+                                        </svg>
                                     </button>
                                 </li>
                             }
@@ -476,7 +490,7 @@ pub fn Shell() -> impl IntoView {
                         </span>
                     </Show>
                     <PrefsRow />
-                    <button class="btn btn-ghost btn-block" on:click=logout>
+                    <button class="btn btn-danger btn-block" on:click=logout>
                         {move || crate::i18n::t(state.lang.get(), "log_out")}
                     </button>
                 </div>
@@ -507,6 +521,12 @@ pub fn Shell() -> impl IntoView {
         </Show>
         <Show when=move || state.week_more.get().is_some() fallback=|| ()>
             <WeekMoreModal />
+        </Show>
+        <Show when=move || state.jump_open.get() == Some("year") fallback=|| ()>
+            <YearMenu />
+        </Show>
+        <Show when=move || state.jump_open.get() == Some("month") fallback=|| ()>
+            <MonthMenu />
         </Show>
     }
 }

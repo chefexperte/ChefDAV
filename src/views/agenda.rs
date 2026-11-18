@@ -174,7 +174,7 @@ pub fn AgendaView() -> impl IntoView {
                                                             <span class="agenda-loc">{location_text.clone()}</span>
                                                         </Show>
                                                         <Show when=move || read_only fallback=|| ()>
-                                                            <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
+                                                            <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.4" /><rect x="3.4" y="7" width="9.2" height="6.6" rx="1.4" fill="currentColor" /></svg></span>
                                                         </Show>
                                                     </button>
                                                 </li>

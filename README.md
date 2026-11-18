@@ -42,7 +42,11 @@ GNOME Adwaita looks, Rust reliability.
   concurrency via `If-Match`), with a read-only details card before the editor.
 - **Multi-day events** — the editor has an end-date picker for all-day *and*
   overnight timed events; month and week views render them as spanning bars
-  with striped continuation fades at week boundaries and day edges.
+  with striped continuation fades at week boundaries and day edges. Events
+  that cross a month boundary are shown in **both** months.
+- **Jump anywhere** — click the month or the year in the toolbar title to get a
+  month picker or a year grid, and the details card has a **New event** button
+  that starts a copy in the same date and time slot.
 - **Timezone-aware** — events render in your browser's timezone, whether they
   carry a `TZID` from another client or were saved as UTC (DST-correct).
 - **Recurrence** — RRULE/RDATE/EXDATE expanded client-side in the event's own
@@ -96,7 +100,78 @@ GNOME Adwaita looks, Rust reliability.
 - All protocol, ICS and recurrence logic lives in a **pure-Rust crate**
   (`crates/caldav`) with native unit tests — the browser code is only glue + UI.
 
-## Setup (production / day-to-day)
+## Quick start with Docker / Podman
+
+The published image is **just the calendar frontend**: the static Rust/WASM app
+served by Caddy's file server. It contains no CalDAV server — the browser talks
+straight to *your* Radicale / CalDAV server, exactly like a locally hosted build.
+
+```sh
+docker run -d --name chefdav -p 8080:80 ghcr.io/chefexperte/chefdav:latest
+```
+
+Open <http://localhost:8080> and log in with your CalDAV server URL and
+credentials. Or use compose:
+
+```sh
+docker compose -f docker/docker-compose.prod.yml up -d     # → :8080
+```
+
+From a checkout, build the same image yourself (a cold build compiles the WASM
+app: a few minutes on a desktop, ~10 min on a 2-core CI runner):
+
+```sh
+docker build -f docker/Dockerfile -t chefdav .
+docker run -d -p 8080:80 chefdav
+```
+
+What the image does:
+
+- **Serves the app** (`/srv`) with an SPA fallback, so deep links and reloads
+  (`/month/2026-11`, `/week/2026-11-16`, `/event/<calendar>/<uid>`) work.
+  Content-hashed bundle files are cached immutably; `index.html` is not.
+- **No state** — no volumes; calendars live in your CalDAV server and the
+  browser cache. Safe to run read-only.
+- **Plain HTTP on port 80** — put it behind your own TLS proxy/frontend
+  (Caddy, nginx, Traefik …), which then also handles your domain.
+- **`/healthz`** — for container healthchecks / load balancers.
+
+### Locking it to your server (`BACKEND_URL`)
+
+By default the login screen asks for the CalDAV server URL. To ship a build that
+is **hard-wired to one server** — the field is read-only and a previously saved
+login cannot point it anywhere else — set `BACKEND_URL` when building:
+
+```sh
+# locally: copy .env.example to .env, set BACKEND_URL, then
+trunk build --release                # or: trunk serve
+
+# or as an image build argument
+docker build -f docker/Dockerfile \
+  --build-arg BACKEND_URL=https://dav.example.org -t chefdav .
+```
+
+For the published image, set the repository **variable** `BACKEND_URL`
+(Settings → Secrets and variables → Actions → Variables); the workflow passes it
+to the build. It is a *build-time* value because the app is a static bundle with
+no backend that could read configuration at runtime.
+
+Either way, your CalDAV server must send **CORS headers for the app's origin**
+(see the next section) — unless you serve the app and the CalDAV server from the
+same origin.
+
+### Image tags
+
+`latest` (default branch), `edge` (every default-branch push), `X.Y.Z`/`X.Y`
+(tags `v*`) and `sha-<commit>`, built and smoke-tested by
+[`.github/workflows/docker.yml`](.github/workflows/docker.yml). The image is
+`linux/amd64`; see [`docs/RELEASING.md`](docs/RELEASING.md) for the release steps
+and how to add arm64.
+
+> **GHCR visibility** — new packages start private. After the first run, set the
+> `chefdav` package to public (otherwise pull as a user with `read:packages`).
+
+## Setup without Docker (bring your own server)
 
 You need three things: a CalDAV server, a reverse proxy with CORS, and a static
 host for the app.
@@ -114,12 +189,13 @@ host for the app.
        header Access-Control-Allow-Headers "Authorization, Content-Type, Depth"
    }
    ```
-3. **The app** — build and serve the static bundle:
+3. **The app** — use the container above, or build and serve the static bundle:
    ```sh
    cargo install trunk          # once
    trunk build --release        # output in dist/
-   # serve dist/ from any static host; optionally bake in your CalDAV URL:
-   CHEFDAV_DAV_URL=https://your-caldav.example.com trunk build --release
+   # serve dist/ from any static host. To lock every visitor to one server,
+   # copy .env.example to .env and set BACKEND_URL=https://your-caldav.example.com
+   # before building (see "Locking it to your server" above).
    ```
    Then open the app, log in with server URL + your CalDAV credentials, and go.
    "Stay logged in" keeps you signed in across reloads on that device.
@@ -179,7 +255,8 @@ ChefDAV/
 ├── crates/caldav/        # pure-Rust, native-testable core
 │   └── src/{client,xml,ics,recurrence,time,crypto,transport}.rs
 ├── e2e/                  # Playwright suites + screenshot/layout audit
-├── docker/               # Radicale + Caddy (CORS) + optional glauth LDAP
+├── docker/               # Dockerfile + compose files (published image),
+│                         # Radicale/Caddy for dev, optional glauth LDAP
 └── scripts/              # serve.py (SPA static server), stable.sh
 ```
 

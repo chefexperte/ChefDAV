@@ -136,6 +136,20 @@ await page.click('.popover .popup-action:has-text("New all-day event")');
 await page.waitForSelector(".modal", { timeout: 10000 });
 const allDayChecked = await page.locator('.modal input[type="checkbox"]').first().isChecked();
 check("all-day row click creates all-day event", allDayChecked);
+// Regression (2026-11-18): the generic checkbutton rule out-specified
+// `.switch input`, so the All day switch rendered as a 16px dot with a stray
+// knob instead of its 44x24 track.
+const sw = await page.evaluate(() => {
+  const i = document.querySelector(".modal .switch input");
+  if (!i) return null;
+  const b = i.getBoundingClientRect();
+  return { w: Math.round(b.width), h: Math.round(b.height), bg: getComputedStyle(i).backgroundColor };
+});
+check(
+  "all-day switch renders as a 44x24 track",
+  !!sw && Math.abs(sw.w - 44) <= 1 && Math.abs(sw.h - 24) <= 1 && sw.bg !== "rgba(0, 0, 0, 0)",
+  JSON.stringify(sw)
+);
 await page.click('.modal button:has-text("Cancel")');
 await page.waitForSelector(".modal", { state: "detached" });
 
@@ -173,7 +187,7 @@ await page.waitForSelector(".modal", { state: "detached" });
 // ---------- tasks ----------
 await page.click('.segmented-btn:has-text("Tasks")');
 await page.waitForSelector(".tasks-view", { timeout: 10000 });
-await page.click('button:has-text("+ New task")');
+await page.click(".tasks-head .btn-primary");
 await page.waitForSelector(".modal-small");
 const taskTitle = `Task ${run}`;
 await page.fill('.modal-small input[type="text"]', taskTitle);
@@ -348,6 +362,42 @@ check(
     barGeom.h < barGeom.colH,
   JSON.stringify({ dayOverflow, barGeom })
 );
+
+// Regression (2026-11-18, user report): the "+N more" popup used to be a
+// dialog containing a bordered list — a card inside a card. It is now one
+// plain popover: the popover carries the surface, the rows are flat.
+await page.locator(".day-column .more-bar").first().click();
+await page.waitForSelector(".more-popover", { timeout: 8000 });
+await page.waitForTimeout(400);
+const moreSurfaces = await page.evaluate(() => {
+  const pop = document.querySelector(".more-popover");
+  const cs = getComputedStyle(pop);
+  const list = pop.querySelector("ul");
+  const lcs = getComputedStyle(list);
+  const row = pop.querySelector(".popover-event");
+  const rcs = row ? getComputedStyle(row) : null;
+  return {
+    isPopover: pop.classList.contains("popover"),
+    noNestedModal: document.querySelectorAll(".more-popover .modal").length === 0,
+    popHasSurface: cs.backgroundColor !== "rgba(0, 0, 0, 0)" && cs.boxShadow !== "none",
+    listFlat: lcs.backgroundColor === "rgba(0, 0, 0, 0)" && lcs.boxShadow === "none",
+    rowFlat: !rcs || (rcs.backgroundColor === "rgba(0, 0, 0, 0)" && rcs.boxShadow === "none"),
+    rows: pop.querySelectorAll(".popover-event").length,
+  };
+});
+check(
+  "'+N more' popup is a single popover, not a card in a card",
+  moreSurfaces.isPopover &&
+    moreSurfaces.noNestedModal &&
+    moreSurfaces.popHasSurface &&
+    moreSurfaces.listFlat &&
+    moreSurfaces.rowFlat &&
+    moreSurfaces.rows > 0,
+  JSON.stringify(moreSurfaces)
+);
+await page.keyboard.press("Escape");
+await page.waitForTimeout(300);
+check("'+N more' popup closes with Escape", (await page.locator(".more-popover").count()) === 0);
 
 // the point of the cluster rewrite: a lone event must keep FULL width while
 // the overflowing block next to it shrinks — the old day-global layout gave

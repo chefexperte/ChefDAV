@@ -45,6 +45,17 @@ pub fn Toolbar() -> impl IntoView {
             .set(caldav::time::today(&state.tz, browser::now_utc()));
     };
 
+    // The month view's title is split so the month and the year are each
+    // clickable (month picker / year picker). Every other view keeps one title.
+    let month_part = Memo::new(move |_| {
+        crate::i18n::month_name(state.lang.get(), state.anchor.get().month()).to_string()
+    });
+    let year_part = Memo::new(move |_| state.anchor.get().year().to_string());
+    let open_menu = move |kind: &'static str| {
+        let cur = state.jump_open.get();
+        state.jump_open.set(if cur == Some(kind) { None } else { Some(kind) });
+    };
+
     let title = Memo::new(move |_| match state.view.get() {
         ViewMode::Month => {
             let d = state.anchor.get();
@@ -59,6 +70,14 @@ pub fn Toolbar() -> impl IntoView {
         ViewMode::Tasks => crate::i18n::t(state.lang.get(), "tasks").to_string(),
     });
 
+    // Search runs from 2 characters (see `api::search`); a shorter query must
+    // not claim "no matching events" — the panel says "keep typing" instead.
+    let min_chars = 2;
+    let query = Memo::new(move |_| state.search_query.get().trim().to_string());
+    let too_short = Memo::new(move |_| {
+        let n = query.get().chars().count();
+        n > 0 && n < min_chars
+    });
     let on_search = move |ev| {
         let q = event_target_value(&ev);
         state.search_query.set(q.clone());
@@ -133,10 +152,26 @@ pub fn Toolbar() -> impl IntoView {
                             <polyline points="9 22 9 12 15 12 15 22"></polyline>
                         </svg>
                     </button>
-                    <button class="btn btn-icon" on:click=prev title=move || crate::i18n::t(state.lang.get(), "previous")>"‹"</button>
-                    <button class="btn btn-icon" on:click=next title=move || crate::i18n::t(state.lang.get(), "next")>"›"</button>
+                    <button class="btn btn-icon" on:click=prev title=move || crate::i18n::t(state.lang.get(), "previous") aria-label=move || crate::i18n::t(state.lang.get(), "previous")>"‹"</button>
+                    <button class="btn btn-icon" on:click=next title=move || crate::i18n::t(state.lang.get(), "next") aria-label=move || crate::i18n::t(state.lang.get(), "next")>"›"</button>
                 </div>
-                <h2 class="month-title">{title}</h2>
+                <Show
+                    when=move || state.view.get() == ViewMode::Month
+                    fallback=move || view! { <h2 class="month-title">{title}</h2> }
+                >
+                    <h2 class="month-title month-title-split">
+                        <button
+                            class="title-part"
+                            on:click=move |_| open_menu("month")
+                            title=move || crate::i18n::t(state.lang.get(), "jump_month")
+                        >{month_part}</button>
+                        <button
+                            class="title-part"
+                            on:click=move |_| open_menu("year")
+                            title=move || crate::i18n::t(state.lang.get(), "jump_year")
+                        >{year_part}</button>
+                    </h2>
+                </Show>
                 <div class="toolbar-right">
                     <Show when=move || (state.pending.get() > 0) fallback=|| ()>
                         <span class="pending-badge" title="Changes waiting to sync">
@@ -180,6 +215,12 @@ pub fn Toolbar() -> impl IntoView {
 
             <Show when=move || state.search_open.get() fallback=|| ()>
                 <div class="search-panel" node_ref=search_panel>
+                    <Show when=move || too_short.get() fallback=move || ()>
+                        <p class="search-empty search-hint">
+                            {move || crate::i18n::t(state.lang.get(), "search_min_chars")}
+                        </p>
+                    </Show>
+                    <Show when=move || !too_short.get() fallback=|| ()>
                     <Show
                         when=move || !state.search_results.get().is_empty()
                         fallback=move || {
@@ -223,6 +264,7 @@ pub fn Toolbar() -> impl IntoView {
                                 }
                             }
                         />
+                    </Show>
                     </Show>
                 </div>
             </Show>

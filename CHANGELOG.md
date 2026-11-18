@@ -5,6 +5,43 @@ latest section of this file (baked into each build).
 
 ## Unreleased
 
+### Adwaita fidelity pass + fixes
+
+Refinements after reviewing the Adwaita re-skin, all following the real
+libadwaita stylesheet values.
+
+- **All-day switch in the event editor is fixed** — it rendered as a stray
+  16px dot because the generic checkbutton rule out-specified the switch; it
+  is a proper 44×24 Adwaita switch again (grey off, blue on, sliding knob).
+- **Events that cross a month boundary now show up in BOTH months.** A
+  multi-day event starting 30 Nov and ending 2 Dec used to disappear from the
+  December grid (recurring series were filtered by start date only), and the
+  month grid reused the shared boundary week row across months so its
+  spanning bars never appeared. Both are fixed.
+- **Month-view day cells read as cards** — white cells were only 1.04:1
+  against the window and effectively edgeless; they now have a real card
+  elevation and hairline (dark mode unchanged).
+- **Week/day all-day bars no longer overflow or shrink the day columns** in
+  day view; they are positioned by grid column.
+- **The Dark/Light and DE/EN footer buttons are visible** — they sit on the
+  sidebar, where a 10 % tint is invisible, so they use libadwaita's opaque
+  standalone button surface with a hairline; the active language/theme reads
+  clearly in both themes.
+- **Log out is a red destructive button**; the Calendars heading lost its
+  misleading chevron; Home/previous/next are raised circular headerbar
+  buttons; the sidebar toggles are back to consistent widths.
+- **New: year and month switchers** — click the year or the month in the
+  month-view title to jump through a 5×3 year grid or the twelve months,
+  keeping the current day where the month allows it.
+- **New: "New event" in the details popup** creates an event in the same slot
+  as the one you are looking at (same date, start and end time).
+- **The "+N more" popup is a plain popover** (one surface, flat rows) instead
+  of a dialog containing a bordered card, and it is anchored at the click.
+- **Search asks you to keep typing**: one character now shows "Type at least
+  2 characters to search." instead of "No matching events".
+- **Dialogs follow AdwDialog**: a padded header, scrollable content and a
+  footer action row separated by a hairline.
+
 ### Re-skin to GNOME libadwaita (Adwaita)
 
 **Note:** the black-and-gold Art Deco redesign from earlier today was a
@@ -33,6 +70,17 @@ this re-skin.
   fill + white check), a pill search entry with magnifier icon, boxed-list
   rows (agenda/tasks) with hairline separators, flat circular icon buttons,
   and a real Adwaita switch.
+
+### Docker image
+
+- ChefDAV now ships as a **container image**, `ghcr.io/chefexperte/chefdav`:
+  the calendar frontend (static WASM app) on a small Caddy file server, with an
+  SPA fallback for deep links, immutable caching for the hashed bundle and a
+  `/healthz` probe. `docker run -d -p 8080:80 ghcr.io/chefexperte/chefdav:latest`
+  and log in with your CalDAV server.
+- Login failures are now explained better: if the browser blocked the request
+  because the CalDAV server sent no CORS headers, the login page says so and
+  points at the fix instead of only "server unreachable".
 
 ## 0.2.0 — 2026-11-17
 

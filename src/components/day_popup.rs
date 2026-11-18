@@ -47,6 +47,7 @@ pub fn DayPopup() -> impl IntoView {
     let new_event = move |_| {
         state.day_popup.set(None);
         state.new_event_time.set(None);
+        state.new_event_end_time.set(None);
         state.new_event_all_day.set(false);
         state.modal.set(Some(ModalState::New { date }));
     };

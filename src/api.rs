@@ -37,7 +37,12 @@ impl HttpTransport for FetchTransport {
             if let Some(b) = req.body {
                 r = r.body(b);
             }
-            let resp = r.send().await.map_err(|e| DavError::Transport(e.to_string()))?;
+            let resp = r.send().await.map_err(|e| {
+                // warn, not error: an offline write is an expected failure that
+                // the outbox retries, and it must not show up as a console error
+                leptos::logging::warn!("chefdav: request to {} failed: {e:?}", req.url);
+                DavError::Transport(e.to_string())
+            })?;
             let status = resp.status().as_u16();
             let headers = resp
                 .headers()
@@ -63,14 +68,102 @@ pub fn client(session: &Session) -> DavClient<FetchTransport> {
     )
 }
 
+/// Why a CalDAV request never reached the server, in terms a login screen can
+/// phrase for someone who is wiring up a self-hosted deployment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Unreachable {
+    /// No response at all: the browser refused the cross-origin request. For a
+    /// CalDAV endpoint this almost always means the CORS proxy is missing or
+    /// does not allow the WebDAV methods (PROPFIND/REPORT/...).
+    Cors,
+    /// Any other network/DNS/TLS failure.
+    Network,
+}
+
+impl Unreachable {
+    /// Build the error a caller should surface for this failure.
+    fn into_error(self, lang: crate::state::Lang) -> DavError {
+        DavError::Transport(error_text(self, lang).to_string())
+    }
+
+    fn i18n_key(self) -> &'static str {
+        match self {
+            Unreachable::Cors => "server_cors_blocked",
+            Unreachable::Network => "server_unreachable",
+        }
+    }
+}
+
+/// Translated one-line explanation for a failed connection.
+pub fn error_text(reason: Unreachable, lang: crate::state::Lang) -> &'static str {
+    crate::i18n::t(lang, reason.i18n_key())
+}
+
+/// Best-effort classification of a failed `fetch`. Browsers report both a CORS
+/// rejection and a dead host as `TypeError: Failed to fetch`, so everything that
+/// is not an obviously local problem (bad URL/headers) is treated as CORS —
+/// the far more common cause for a CalDAV app.
+fn classify_transport_error(e: &reqwest::Error) -> Unreachable {
+    if e.is_builder() || e.is_body() || e.is_decode() {
+        Unreachable::Network
+    } else {
+        Unreachable::Cors
+    }
+}
+
 /// Verify credentials against the server and discover principal + home.
 pub async fn login(server: &str, username: &str, password: &str) -> Result<Session> {
-    let server = Url::parse(server.trim().trim_end_matches('/'))
-        .map_err(|e| DavError::Transport(format!("invalid server URL: {e}")))?;
+    login_classified(server, username, password, crate::state::Lang::En)
+        .await
+        .map_err(|(_, err)| err)
+}
+
+/// [`login`] variant that also reports why it could not reach the server, so
+/// the login page can say "this looks like CORS" instead of "unreachable".
+pub async fn login_classified(
+    server: &str,
+    username: &str,
+    password: &str,
+    lang: crate::state::Lang,
+) -> std::result::Result<Session, (Unreachable, DavError)> {
+    let server = Url::parse(server.trim().trim_end_matches('/')).map_err(|e| {
+        (
+            Unreachable::Network,
+            DavError::Transport(format!("invalid server URL: {e}")),
+        )
+    })?;
+
+    // Probe with a plain GET: browsers send it as a CORS "simple" request, so
+    // it already succeeds against any server that replies with
+    // Access-Control-Allow-Origin, and fails (while the network is fine) only
+    // when that header is missing. A wrong password shows up later as a 401.
+    if let Err(e) = reqwest::Client::new().get(server.as_str()).send().await {
+        let reason = classify_transport_error(&e);
+        if reason == Unreachable::Cors {
+            leptos::logging::error!("chefdav: login probe to {server} was blocked: {e:?}");
+        }
+        return Err((reason, reason.into_error(lang)));
+    }
+
     let c = DavClient::new(FetchTransport, server.clone(), username, password);
-    c.check().await?;
-    let principal = c.current_principal().await?;
-    let home = c.calendar_home(&principal).await?;
+    c.check().await.map_err(|e| {
+        match e {
+            // Still no response after the GET worked: the proxy answered the
+            // simple request but not the proper CalDAV method / preflight.
+            DavError::Transport(_) => (
+                Unreachable::Cors,
+                Unreachable::Cors.into_error(lang),
+            ),
+            // The server answered. A 401/403 is a real login failure and must
+            // keep its own message ("check username/password"), not be
+            // rewritten as a connection problem.
+            other => (Unreachable::Network, other),
+        }
+    })?;
+    // From here on the connection works; any failure is a server/XML answer.
+    let plain = |e: DavError| (Unreachable::Network, e);
+    let principal = c.current_principal().await.map_err(plain)?;
+    let home = c.calendar_home(&principal).await.map_err(plain)?;
     Ok(Session {
         server,
         username: username.to_string(),

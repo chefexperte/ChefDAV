@@ -85,26 +85,37 @@ pub fn LoginPage() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let navigate = use_navigate();
 
-    let server = RwSignal::new(crate::config::DEFAULT_SERVER.to_string());
+    // A build with a locked backend (BACKEND_URL) never takes a server from
+    // the user or from previously stored logins.
+    let locked = crate::config::is_locked();
+    let server = RwSignal::new(crate::config::initial_server().to_string());
     let username = RwSignal::new(String::new());
     let password = RwSignal::new(String::new());
     let stay = RwSignal::new(true);
     let busy = RwSignal::new(false);
     let error = RwSignal::new(None::<String>);
+    // Extra context for a failed connection (e.g. "this looks like CORS").
+    let hint = RwSignal::new(None::<String>);
     let (changelog_title, changelog_items) = latest_changelog();
 
     // Prefill the last used server/username (and the password when it was
     // saved). The checkbox mirrors the persisted "stay logged in" choice.
+    // With a locked backend the server stays as configured — only the
+    // username/password are restored.
     spawn_local(async move {
         let settings = store::settings_load().await;
         stay.set(settings.stay_logged_in);
         if let Ok(Some(last)) = store::kv_get::<LastLogin>("last_login").await {
-            server.set(last.server);
+            if !locked {
+                server.set(last.server);
+            }
             username.set(last.username);
         }
         if settings.stay_logged_in {
             if let Ok(Some(creds)) = store::kv_get::<StoredCreds>("creds").await {
-                server.set(creds.server);
+                if !locked {
+                    server.set(creds.server);
+                }
                 username.set(creds.username);
                 password.set(creds.password);
             }
@@ -129,9 +140,10 @@ pub fn LoginPage() -> impl IntoView {
         let remember = stay.get();
         busy.set(true);
         error.set(None);
+        hint.set(None);
         state.login_error.set(None);
         spawn_local(async move {
-            match api::login(&server_s, &user, &pass).await {
+            match api::login_classified(&server_s, &user, &pass, state.lang.get_untracked()).await {
                 Ok(session) => {
                     // Keep the non-secret part for prefilling after logout.
                     let _ = store::kv_set(
@@ -161,8 +173,14 @@ pub fn LoginPage() -> impl IntoView {
                     }
                     state.session.set(Some(session));
                 }
-                Err(e) => {
+                Err((reason, e)) => {
                     error.set(Some(e.to_string()));
+                    if reason == api::Unreachable::Cors {
+                        hint.set(Some(
+                            crate::i18n::t(state.lang.get_untracked(), "server_cors_hint")
+                                .to_string(),
+                        ));
+                    }
                     busy.set(false);
                 }
             }
@@ -178,11 +196,31 @@ pub fn LoginPage() -> impl IntoView {
                     <p class="tagline">{move || crate::i18n::t(state.lang.get(), "tagline")}</p>
                 </div>
                 <form on:submit=submit>
-                    <label class="field">
+                    <label class="field has-icon">
                         <span>{move || crate::i18n::t(state.lang.get(), "server")}</span>
+                        <span class="field-icon" aria-hidden="true">
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+                                <circle cx="8" cy="8" r="6" />
+                                <path d="M2 8h12M8 2c1.8 1.8 2.7 3.8 2.7 6S9.8 12.2 8 14c-1.8-1.8-2.7-3.8-2.7-6S6.2 3.8 8 2z" />
+                            </svg>
+                        </span>
                         <input type="url" required placeholder="http://127.0.0.1:8080"
+                            // Locked build (BACKEND_URL): read-only, no editing.
+                            readonly=locked
+                            class:locked=locked
+                            title=move || {
+                                if locked {
+                                    crate::i18n::t(state.lang.get(), "server_locked").to_string()
+                                } else {
+                                    String::new()
+                                }
+                            }
                             prop:value=move || server.get()
-                            on:input=move |ev| server.set(event_target_value(&ev)) />
+                            on:input=move |ev| {
+                                if !locked {
+                                    server.set(event_target_value(&ev));
+                                }
+                            } />
                     </label>
                     <label class="field">
                         <span>{move || crate::i18n::t(state.lang.get(), "username")}</span>
@@ -209,6 +247,9 @@ pub fn LoginPage() -> impl IntoView {
                         <p class="form-error">
                             {move || error.get().or_else(|| state.login_error.get()).unwrap_or_default()}
                         </p>
+                    </Show>
+                    <Show when=move || hint.get().is_some() fallback=|| ()>
+                        <p class="form-hint">{move || hint.get().unwrap_or_default()}</p>
                     </Show>
                     <button class="btn btn-primary btn-block" type="submit" disabled=move || busy.get()>
                         {move || if busy.get() { crate::i18n::t(state.lang.get(), "connecting") } else { crate::i18n::t(state.lang.get(), "login") }}

@@ -2,6 +2,7 @@ pub mod calendar_action;
 pub mod day_popup;
 pub mod event_details;
 pub mod event_modal;
+pub mod jump;
 pub mod new_calendar;
 pub mod prefs;
 pub mod slot_popup;

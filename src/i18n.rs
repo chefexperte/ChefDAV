@@ -4,6 +4,22 @@ use chrono::{Datelike, NaiveDate};
 
 use crate::state::Lang;
 
+/// Three-letter month name for the month picker (DE keeps its own forms).
+pub fn month_short(lang: Lang, month: u32) -> &'static str {
+    match lang {
+        Lang::De => match month {
+            1 => "Jan", 2 => "Feb", 3 => "Mär", 4 => "Apr", 5 => "Mai", 6 => "Jun",
+            7 => "Jul", 8 => "Aug", 9 => "Sep", 10 => "Okt", 11 => "Nov", 12 => "Dez",
+            _ => "?",
+        },
+        Lang::En => match month {
+            1 => "Jan", 2 => "Feb", 3 => "Mar", 4 => "Apr", 5 => "May", 6 => "Jun",
+            7 => "Jul", 8 => "Aug", 9 => "Sep", 10 => "Oct", 11 => "Nov", 12 => "Dec",
+            _ => "?",
+        },
+    }
+}
+
 pub fn month_name(lang: Lang, month: u32) -> &'static str {
     match lang {
         Lang::De => match month {
@@ -253,6 +269,9 @@ pub fn t(lang: Lang, key: &str) -> &'static str {
         (Lang::De, "restoring_session") => "Sitzung wird wiederhergestellt…",
         (Lang::De, "session_expired") => "Deine gespeicherte Sitzung ist nicht mehr gültig. Bitte melde dich erneut an.",
         (Lang::De, "server_unreachable") => "Der Server ist nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.",
+        (Lang::De, "server_cors_blocked") => "Der Browser hat die Verbindung zum Kalenderserver blockiert.",
+        (Lang::De, "server_locked") => "Dieser Kalenderserver ist fest eingestellt und kann hier nicht geändert werden.",
+        (Lang::De, "server_cors_hint") => "Das ist meistens ein CORS-Problem: Der Kalenderserver braucht einen Reverse Proxy, der OPTIONS beantwortet und Access-Control-Allow-* setzt (WebDAV-Methoden wie PROPFIND und REPORT inklusive).",
         (Lang::De, "no_events") => "Nichts geplant",
         (Lang::De, "all_clear") => "Alles erledigt",
         (Lang::De, "read_only") => "Nur lesen",
@@ -341,6 +360,11 @@ pub fn t(lang: Lang, key: &str) -> &'static str {
         (Lang::De, "whats_new") => "Was ist neu",
         (Lang::De, "search_placeholder") => "Termine suchen…",
         (Lang::De, "no_matching_events") => "Keine passenden Termine.",
+        (Lang::De, "search_min_chars") => "Mindestens 2 Zeichen eingeben, um zu suchen.",
+        (Lang::De, "search_prompt") => "Suche in Terminen, Orten und Notizen.",
+        (Lang::De, "new_event_same_time") => "Neuen Termin im selben Zeitfenster anlegen",
+        (Lang::De, "jump_year") => "Jahr wählen",
+        (Lang::De, "jump_month") => "Monat wählen",
         (Lang::De, "no_events_next") => "Keine Termine in den nächsten 30 Tagen.",
         (Lang::De, "read_only_short") => "Nur lesen",
         (Lang::De, "delete_calendar_confirm") => "Löschen",
@@ -398,6 +422,9 @@ pub fn t(lang: Lang, key: &str) -> &'static str {
         (_, "restoring_session") => "Restoring your session…",
         (_, "session_expired") => "Your saved session is no longer valid. Please log in again.",
         (_, "server_unreachable") => "Could not reach the server. Check your connection and try again.",
+        (_, "server_cors_blocked") => "The browser blocked the connection to your calendar server.",
+        (_, "server_locked") => "This calendar server is fixed for this deployment and cannot be changed here.",
+        (_, "server_cors_hint") => "This usually means CORS: the CalDAV server needs a reverse proxy that answers OPTIONS and sends Access-Control-Allow-* headers, including the WebDAV methods (PROPFIND, REPORT, …).",
         (_, "no_events") => "Nothing on the horizon",
         (_, "all_clear") => "All clear",
         (_, "read_only") => "Read-only",
@@ -486,6 +513,11 @@ pub fn t(lang: Lang, key: &str) -> &'static str {
         (_, "whats_new") => "What's new",
         (_, "search_placeholder") => "Search events…",
         (_, "no_matching_events") => "No matching events.",
+        (_, "search_min_chars") => "Type at least 2 characters to search.",
+        (_, "search_prompt") => "Search event titles, places and notes.",
+        (_, "new_event_same_time") => "Create a new event in the same time slot",
+        (_, "jump_year") => "Choose a year",
+        (_, "jump_month") => "Choose a month",
         (_, "no_events_next") => "No events in the next 30 days.",
         (_, "read_only_short") => "read-only",
         (_, "delete_calendar_confirm") => "Delete calendar",

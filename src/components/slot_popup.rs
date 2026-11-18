@@ -31,6 +31,7 @@ pub fn SlotPopup() -> impl IntoView {
         if all_day {
             state.new_event_all_day.set(true);
             state.new_event_time.set(None);
+            state.new_event_end_time.set(None);
         } else {
             state.new_event_all_day.set(false);
             state.new_event_time

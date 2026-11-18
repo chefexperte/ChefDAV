@@ -1,7 +1,7 @@
 //! Read-only event details. The editor opens only from the pencil button.
 
 use caldav::ics::{DtValue, VEvent};
-use chrono::Duration;
+use chrono::{Duration, Timelike};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
@@ -187,6 +187,32 @@ pub fn EventDetails() -> impl IntoView {
                         let has_location = !location.is_empty();
                         let has_description = !description.is_empty();
                         let is_multi_day = days.map(|d| d > 1).unwrap_or(false);
+                        // "New event" clones this event's day and time slot: the
+                        // editor prefills start/end from these signals.
+                        let base_day = start
+                            .map(|s| s.with_timezone(&tz).date_naive())
+                            .or_else(|| {
+                                shown
+                                    .dtstart
+                                    .as_ref()
+                                    .and_then(|d| d.to_datetime(&tz))
+                                    .map(|s| s.date_naive())
+                            });
+                        let new_like_this = move |_| {
+                            let Some(day) = base_day else {
+                                return;
+                            };
+                            let span = start
+                                .map(|s| (s.with_timezone(&tz), (s + dur).with_timezone(&tz)));
+                            state.new_event_all_day.set(all_day);
+                            state.new_event_time.set(span.map(|(a, _)| {
+                                (a.hour() as u32, a.minute() as u32)
+                            }));
+                            state.new_event_end_time.set(span.map(|(_, b)| {
+                                (b.hour() as u32, b.minute() as u32)
+                            }));
+                            state.modal.set(Some(ModalState::New { date: day }));
+                        };
                         view! {
                             <div class="details-head">
                                 <span class="cal-dot" style=format!("background:{color}")></span>
@@ -255,6 +281,16 @@ pub fn EventDetails() -> impl IntoView {
                                             }.into_any()
                                         }
                                     }}
+                                </button>
+                                <button
+                                    class="btn btn-ghost"
+                                    title=move || crate::i18n::t(state.lang.get(), "new_event_same_time")
+                                    on:click=new_like_this
+                                >
+                                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                                        <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                                    </svg>
+                                    {move || crate::i18n::t(state.lang.get(), "new_event")}
                                 </button>
                                 <Show when=move || !read_only fallback=|| ()>
                                     <button

@@ -46,10 +46,24 @@
   --danger-line: rgba(224, 27, 36, 0.4);
   --info: #1a5fb4;
 
-  /* buttons — libadwaita raised button: currentColor 10% bg, 1px border */
+  /* buttons — libadwaita `_buttons.scss`:
+       raised button   background-color: color-mix(currentColor 10%, transparent)
+                       hover 15%, active 30%
+       destructive     color: var(--destructive-color);
+                       background: currentColor 15% / hover 20% / active 35% */
   --btn-bg: color-mix(in srgb, var(--ink) 10%, transparent);
   --btn-bg-hover: color-mix(in srgb, var(--ink) 15%, transparent);
   --btn-bg-active: color-mix(in srgb, var(--ink) 30%, transparent);
+  --destructive-btn-bg: color-mix(in srgb, var(--ink) 15%, transparent);
+  --destructive-btn-bg-hover: color-mix(in srgb, var(--ink) 20%, transparent);
+  --destructive-btn-bg-active: color-mix(in srgb, var(--ink) 35%, transparent);
+
+  /* standalone buttons on a non-window surface (the sidebar footer): the 10 %
+     tint disappears on the sidebar grey, so libadwaita switches to its opaque
+     surface — `$opaque_button_default_bg` = window_bg 85 % + window_fg */
+  --btn-bg-solid: color-mix(in srgb, var(--paper) 70%, var(--ink));
+  --btn-bg-solid-hover: color-mix(in srgb, var(--paper) 64%, var(--ink));
+  --btn-bg-solid-active: color-mix(in srgb, var(--paper) 56%, var(--ink));
 
   /* overlay behind modals/popovers — the Adwaita "dimmer" */
   --overlay: rgba(0, 0, 6, 0.3);
@@ -68,13 +82,27 @@
   --gem-ink: #ffffff;
   --gem-ink-soft: rgba(255, 255, 255, 0.85);
 
-  /* shape — libadwaita radii: window 15, card 12, button/entry 9 */
+  /* shape — libadwaita radii: window 15, card 12, button/entry 9, chip 6 */
   --radius: 12px;
   --radius-sm: 9px;
   --radius-xs: 6px;
   --radius-pill: 999px;
-  --shadow: 0 1px 3px rgba(0, 0, 6, 0.1), 0 8px 24px rgba(0, 0, 6, 0.1);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 6, 0.07);
+  /* libadwaita popover shadow (`widgets/_popovers.scss` > contents) */
+  --shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 5px 1px rgba(0, 0, 0, 0.09),
+    0 2px 14px 3px rgba(0, 0, 0, 0.05);
+  /* boxed list / card shadow (`widgets/_lists.scss`, AdwCard). The stock
+     values are tuned for cards sitting on a framed window; a month grid has
+     no frame, and white-on-#fafafb is only 1.04:1, so the elevation is
+     strengthened until the cells actually read as cards. */
+  --shadow-sm: 0 0 0 1px rgba(0, 0, 6, 0.06), 0 1px 2px rgba(0, 0, 6, 0.12),
+    0 2px 6px rgba(0, 0, 6, 0.08), 0 4px 12px rgba(0, 0, 6, 0.05);
+
+  /* headerbar / toolbar surface (headerbar_bg_color in light mode) */
+  --toolbar-bg: #ffffff;
+
+  /* the GNOME "dimmer" that sits over the window when a menu/popover opens */
+  --dimmer: rgba(0, 0, 6, 0.06);
+
   --font-display: "Klarissa", "Montserrat", "Segoe UI", sans-serif;
   --font-ui: "Montserrat", "Segoe UI", -apple-system, sans-serif;
 }
@@ -113,9 +141,27 @@
   --btn-bg: color-mix(in srgb, var(--ink) 10%, transparent);
   --btn-bg-hover: color-mix(in srgb, var(--ink) 15%, transparent);
   --btn-bg-active: color-mix(in srgb, var(--ink) 30%, transparent);
+  --destructive-btn-bg: color-mix(in srgb, var(--ink) 15%, transparent);
+  --destructive-btn-bg-hover: color-mix(in srgb, var(--ink) 20%, transparent);
+  --destructive-btn-bg-active: color-mix(in srgb, var(--ink) 35%, transparent);
+
+  /* the dark sidebar (#2e2e32) is DARKER than the window, so mixing towards
+     the window background would make the button darker than its surface.
+     Standalone buttons lift towards the foreground on dark, as libadwaita's
+     dark button does. */
+  --btn-bg-solid: color-mix(in srgb, var(--ink) 22%, transparent);
+  --btn-bg-solid-hover: color-mix(in srgb, var(--ink) 28%, transparent);
+  --btn-bg-solid-active: color-mix(in srgb, var(--ink) 36%, transparent);
 
   --overlay: rgba(0, 0, 0, 0.5);
 
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  /* same libadwaita popover / card shadows, on the dark window */
+  --shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 1px 5px 1px rgba(0, 0, 0, 0.4),
+    0 2px 14px 3px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 3px 1px rgba(0, 0, 0, 0.4),
+    0 2px 6px 2px rgba(0, 0, 0, 0.25);
+
+  /* headerbar is darker than the window in Adwaita dark */
+  --toolbar-bg: #2e2e32;
+  --dimmer: rgba(0, 0, 6, 0.25);
 }

@@ -272,6 +272,62 @@ check(
   agendaText.split("\n").filter((l) => l.includes(SPANWK)).join(" | ")
 );
 
+// ---------- month boundary: an event ending in the next month shows there ----------
+// Regression (2026-11-18): the RRULE expansion filtered occurrences by start
+// only, so a multi-day event starting in one month disappeared from the next.
+// Dec 30 → Jan 2: no seeded event shares this window (TaCoS occupies the
+// 30 Nov → 2 Dec row, and the month grid only has 2 bar slots per week row).
+const MONTHSPAN = `MonthSpan ${run}`; // Wed 30 Dec → Sat 2 Jan (all-day)
+await page.goto(`${APP}/month/2026-12`, { waitUntil: "networkidle" });
+await page.waitForSelector(".month-grid", { timeout: 20000 });
+await page.waitForTimeout(800);
+await newEvent();
+await page.fill('.modal input[type="text"]', MONTHSPAN);
+await page.locator('.modal input[type="date"]').nth(0).fill("2026-12-30");
+await page.locator('.modal input[type="date"]').nth(1).fill("2027-01-02");
+await page.locator(".modal .switch input").click(); // all-day
+await saveAndClose(MONTHSPAN);
+await page.goto(`${APP}/month/2026-12`, { waitUntil: "networkidle" });
+await page.waitForSelector(".month-grid", { timeout: 20000 });
+await page.waitForTimeout(1000);
+check(
+  "month span: event visible in its start month",
+  (await page.locator(".span-bar", { hasText: MONTHSPAN }).count()) > 0
+);
+await page.goto(`${APP}/month/2027-01`, { waitUntil: "networkidle" });
+await page.waitForSelector(".month-grid", { timeout: 20000 });
+await page.waitForTimeout(1200);
+const jan = await page.evaluate((t) => {
+  const bar = [...document.querySelectorAll(".span-bar, .chip")].find((b) => b.textContent.includes(t));
+  if (!bar) return null;
+  const b = bar.getBoundingClientRect();
+  const cells = [...[...document.querySelectorAll(".week")][0].querySelectorAll(".day")];
+  // the bar must START in the cell labelled 30 (its true start) and end at the
+  // right edge of the cell labelled 2
+  const startCell = cells.findIndex((c) => c.querySelector(".day-num")?.textContent.trim() === "30");
+  const endCell = cells.findIndex((c) => c.querySelector(".day-num")?.textContent.trim() === "2");
+  const cw = cells[0].getBoundingClientRect().width;
+  return {
+    isBar: bar.classList.contains("span-bar"),
+    contLeft: bar.classList.contains("cont-left"),
+    startsAtTrueStart: startCell >= 0 && Math.abs(b.left - cells[startCell].getBoundingClientRect().left) < 20,
+    spansIntoJan: endCell >= 0 && b.right > cells[endCell].getBoundingClientRect().left - 10,
+    coversDays: +(b.width / cw).toFixed(2),
+  };
+}, MONTHSPAN);
+// January's grid starts Mon 28 Dec, so the event starts INSIDE the grid (no
+// left fade) but only its 1–2 Jan days belong to January.
+check(
+  "month span: event visible in the month it ends in",
+  !!jan && jan.isBar,
+  JSON.stringify(jan) || "(not rendered in January)"
+);
+check(
+  "month span: bar runs from its 30 Dec start into January",
+  !!jan && jan.startsAtTrueStart && jan.spansIntoJan && jan.coversDays > 2.5,
+  JSON.stringify(jan)
+);
+
 // ---------- cleanup (directly via CalDAV, so hidden events are caught too) ----------
 await cleanupRun(run);
 await page.goto(`${APP}/month/2026-11`, { waitUntil: "networkidle" });

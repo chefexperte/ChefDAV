@@ -53,7 +53,6 @@ pub fn TasksView() -> impl IntoView {
     view! {
         <div class="tasks-view">
             <div class="tasks-head">
-                <h2 class="tasks-title">{move || crate::i18n::t(state.lang.get(), "tasks")}</h2>
                 <button
                     class="btn btn-primary"
                     on:click=move |_| {
@@ -61,7 +60,10 @@ pub fn TasksView() -> impl IntoView {
                         state.modal.set(Some(ModalState::NewTodo { date }));
                     }
                 >
-                    {move || format!("+ {}", crate::i18n::t(state.lang.get(), "new_task"))}
+                    <svg class="btn-add-icon" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                    {move || crate::i18n::t(state.lang.get(), "new_task")}
                 </button>
             </div>
             <Show
@@ -124,7 +126,7 @@ pub fn TasksView() -> impl IntoView {
                                                         <span class="task-prio">{format!("P{}", priority.unwrap_or(0))}</span>
                                                     </Show>
                                                     <Show when=move || t.read_only fallback=|| ()>
-                                                        <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
+                                                        <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.4" /><rect x="3.4" y="7" width="9.2" height="6.6" rx="1.4" fill="currentColor" /></svg></span>
                                                     </Show>
                                                 </li>
                                             }

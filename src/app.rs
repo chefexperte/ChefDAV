@@ -37,20 +37,19 @@ pub fn App() -> impl IntoView {
 
             if settings.stay_logged_in {
                 if let Ok(Some(creds)) = store::kv_get::<StoredCreds>("creds").await {
-                    match api::login(&creds.server, &creds.username, &creds.password).await {
+                    let lang = state.lang.get_untracked();
+                    match api::login_classified(&creds.server, &creds.username, &creds.password, lang).await {
                         Ok(session) => state.session.set(Some(session)),
-                        Err(DavError::Unauthorized) => {
+                        Err((_, DavError::Unauthorized)) => {
                             // The saved password no longer works: forget it but
                             // keep server/username for the login form.
                             let _ = store::kv_delete("creds").await;
                             state.login_error.set(Some(
-                                crate::i18n::t(state.lang.get(), "session_expired").to_string(),
+                                crate::i18n::t(lang, "session_expired").to_string(),
                             ));
                         }
-                        Err(_) => {
-                            state.login_error.set(Some(
-                                crate::i18n::t(state.lang.get(), "server_unreachable").to_string(),
-                            ));
+                        Err((reason, _)) => {
+                            state.login_error.set(Some(api::error_text(reason, lang).to_string()));
                         }
                     }
                 }

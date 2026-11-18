@@ -37,28 +37,43 @@ button {
   outline-offset: 2px;
 }
 
-/* ---------- buttons ---------- */
+/* ---------- buttons ----------
+   Values are libadwaita `widgets/_buttons.scss`:
+     button           min-height 24px; padding 5px 10px; radius 9px;
+                      font-weight bold
+     raised           background currentColor 10% (hover 15 %, active 30 %)
+     .circular        border-radius 9999px; padding 6px; icon 16px
+     suggested-action background var(--accent-bg-color); color accent fg
+     destructive      color var(--destructive-color);
+                      background currentColor 15% (hover 20 %, active 35 %) */
 
-/* raised button: currentColor 10% background, 1px border, 9px radius */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  border: 1px solid var(--line);
+  gap: 6px;
+  min-height: 34px;
   background: var(--btn-bg);
   color: var(--ink);
+  border: none;
   border-radius: var(--radius-sm);
-  padding: 8px 14px;
+  padding: 6px 15px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition: background 0.12s ease, box-shadow 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .btn svg {
   width: 15px;
   height: 15px;
+  flex: none;
+}
+
+/* flat "plus" glyph in front of a create button */
+.btn-add-icon {
+  width: 14px;
+  height: 14px;
   flex: none;
 }
 
@@ -75,68 +90,98 @@ button {
   cursor: default;
 }
 
+/* Adwaita focus ring: inset 2px accent ring (never a drop shadow) */
+.btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
 /* suggested-action: accent background, accent foreground */
-.btn-primary {
+.btn.btn-primary {
   background: var(--accent-bg);
-  border-color: var(--accent-bg);
   color: var(--accent-fg);
 }
 
-.btn-primary:hover {
+.btn.btn-primary:hover {
   background: var(--accent-bg-hover);
-  border-color: var(--accent-bg-hover);
 }
 
-.btn-primary:active {
-  background: var(--accent-bg-hover);
-  opacity: 0.85;
+.btn.btn-primary:active {
+  background: color-mix(in srgb, var(--accent-bg) 82%, black);
 }
 
-/* flat button */
-.btn-ghost {
+/* flat button: no panel, just the hover/active tint (`currentColor 7% / 16%`) */
+.btn.btn-ghost {
   background: transparent;
-  border-color: transparent;
   color: var(--ink);
 }
 
-.btn-ghost:hover {
-  background: var(--paper-deep);
-  border-color: transparent;
+.btn.btn-ghost:hover {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
 }
 
-/* destructive-action: danger text, tinted hover */
-.btn-danger {
-  background: transparent;
-  border-color: transparent;
+.btn.btn-ghost:active {
+  background: color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+/* destructive-action: red label on a tinted panel — exactly _buttons.scss */
+.btn.btn-danger {
+  background: var(--destructive-btn-bg);
   color: var(--danger);
 }
 
-.btn-danger:hover {
-  background: var(--danger-soft);
-  border-color: var(--danger-line);
+.btn.btn-danger:hover {
+  background: var(--destructive-btn-bg-hover);
 }
 
-.btn-icon {
+.btn.btn-danger:active {
+  background: var(--destructive-btn-bg-active);
+}
+
+/* circular icon button (.circular / .image-button): raised disc, 16px icon */
+.btn.btn-icon {
   width: 34px;
   height: 34px;
+  min-width: 34px;
   padding: 0;
   font-size: 19px;
   line-height: 1;
-  border-radius: 50%;
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
+  border-radius: 9999px;
+  background: var(--btn-bg);
+  color: var(--ink);
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.btn-icon:hover {
-  background: var(--paper-deep);
-  border-color: transparent;
+.btn.btn-icon:hover {
+  background: var(--btn-bg-hover);
 }
 
-.btn-icon svg {
+.btn.btn-icon:active {
+  background: var(--btn-bg-active);
+}
+
+.btn.btn-icon.btn-ghost {
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.btn.btn-icon.btn-ghost:hover {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  color: var(--ink);
+}
+
+.btn.btn-icon.btn-primary {
+  background: var(--accent-bg);
+  color: var(--accent-fg);
+}
+
+.btn.btn-icon.btn-primary:hover {
+  background: var(--accent-bg-hover);
+}
+
+.btn.btn-icon svg {
   width: 16px;
   height: 16px;
   display: block;
@@ -145,6 +190,12 @@ button {
 .btn-block {
   width: 100%;
 }
+
+/* the sidebar's Log out is a destructive-action button */
+.sidebar-footer .btn-danger.btn-block {
+  min-height: 34px;
+}
+
 
 /* ---------- login ---------- */
 
@@ -253,6 +304,7 @@ button {
   flex-direction: column;
   gap: 5px;
   margin-bottom: 13px;
+  position: relative;
   /* flex item: allow shrinking below the input's intrinsic width, otherwise
      .field-row (date + 2 times + switch) overflows the modal -> h-scrollbar */
   min-width: 0;
@@ -340,28 +392,48 @@ button {
   color: var(--ink-soft);
 }
 
+/* the switch cell hugs its 44 px track instead of stretching to 100 % */
+.field.field-check {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.field.field-check .switch {
+  height: 42px;
+  display: flex;
+  align-items: center;
+}
+
 .switch {
   display: flex;
   align-items: center;
   height: 42px;
 }
 
-.switch input {
+/* AdwSwitch: 44x24 pill track, 18 px knob. The `input.switch` selector keeps
+   this above the generic checkbutton rule (which is why the switch used to
+   render as a stray 16 px dot). */
+.switch input[type="checkbox"],
+input.switch {
   appearance: none;
   -webkit-appearance: none;
   width: 44px;
   height: 24px;
+  min-width: 44px;
+  flex: none;
   border-radius: var(--radius-pill);
-  background: var(--line);
+  background: color-mix(in srgb, var(--ink) 15%, transparent);
   border: none;
+  box-shadow: none;
   position: relative;
   cursor: pointer;
   margin: 0;
-  transition: background 0.15s ease;
+  padding: 0;
+  transition: background-color 0.15s ease;
   outline: none;
 }
 
-.switch input::after {
+.switch input[type="checkbox"]::after {
   content: "";
   position: absolute;
   top: 3px;
@@ -374,16 +446,18 @@ button {
   transition: transform 0.15s ease;
 }
 
-.switch input:checked {
+.switch input[type="checkbox"]:checked {
   background: var(--accent-bg);
+  box-shadow: none;
 }
 
-.switch input:checked::after {
+.switch input[type="checkbox"]:checked::after {
   transform: translateX(20px);
 }
 
-.switch input:focus-visible {
-  box-shadow: 0 0 0 2px var(--focus-ring);
+.switch input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .hidden {
@@ -398,6 +472,15 @@ button {
   padding: 8px 11px;
   font-size: 13px;
   margin: 4px 0 12px;
+}
+
+/* Secondary, calmer explanation under an error (e.g. the CORS hint on the
+   login page) — informational, not a second alarm. */
+.form-hint {
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+  margin: -4px 0 12px;
 }
 
 
@@ -467,9 +550,10 @@ input[type="checkbox"]:focus-visible {
   justify-content: center;
 }
 
+
 .login-prefs .prefs-row .btn {
   flex: 0 0 auto;
-  padding: 6px 14px;
+  padding: 0 16px;
 }
 
 .login-hint {
@@ -489,7 +573,8 @@ input[type="checkbox"]:focus-visible {
 
 .sidebar {
   background: var(--sidebar-bg);
-  border-right: 1px solid var(--line);
+  /* sidebars in Adwaita have no border — the shade separates them */
+  border-right: none;
   padding: 20px 16px;
   display: flex;
   flex-direction: column;
@@ -512,23 +597,40 @@ input[type="checkbox"]:focus-visible {
   line-height: 1.1;
 }
 
+/* the "+ New event" suggested-action button fills the sidebar width */
 .new-event {
-  padding: 10px;
+  width: 100%;
+  padding: 0 12px;
+  min-height: 36px;
 }
 
 .sidebar-heading-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 6px 4px -6px;
+  margin: 8px 2px -4px 6px;
 }
 
+.sidebar-heading-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-faint);
+}
+
+.sidebar-heading-label .disclosure {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  opacity: 0.9;
+}
+
+/* AdwNavigationSection title: small, dim, sentence case — not an eyebrow */
 .sidebar-heading {
   font-family: var(--font-ui);
   font-size: 11.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0;
   color: var(--ink-faint);
   margin: 0;
 }
@@ -539,8 +641,8 @@ input[type="checkbox"]:focus-visible {
   color: var(--ink-soft);
   font-size: 18px;
   line-height: 1;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   cursor: pointer;
 }
@@ -556,18 +658,21 @@ input[type="checkbox"]:focus-visible {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   overflow-y: auto;
 }
 
+/* a sidebar row (AdwSidebarItem): 30px tall, 9px radius, hide-on-hover */
 .cal-item label {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 9px;
-  border-radius: 6px;
+  gap: 8px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 500;
+  font-size: 13.5px;
 }
 
 .cal-item label:hover {
@@ -643,6 +748,95 @@ input[type="checkbox"]:focus-visible {
   text-overflow: ellipsis;
 }
 
+/* month view: the title is two buttons (month + year), each opening a
+   picker; they look like the plain title until hovered */
+.month-title-split {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.title-part {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  padding: 0 4px;
+  margin: 0 -4px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-family: var(--font-display);
+}
+
+.title-part:hover {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+
+.title-part:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* ---------- title menus (year / month picker) ---------- */
+
+.jump-popover {
+  width: auto;
+  padding: 8px;
+}
+
+.jump-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.jump-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.jump-header .btn-icon {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+}
+
+/* AdwMenuPanel: a flat grid of cells, 9px radius, active cell = accent */
+.jump-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr));
+  gap: 2px;
+}
+
+.jump-cell {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  min-height: 32px;
+  padding: 0 4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.jump-cell:hover {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+
+.jump-cell.active {
+  background: var(--accent-bg);
+  color: var(--accent-fg);
+  font-weight: 700;
+}
+
 .toolbar-right {
   display: flex;
   align-items: center;
@@ -650,37 +844,71 @@ input[type="checkbox"]:focus-visible {
   justify-content: flex-end;
 }
 
-/* AdwViewSwitcher-style segmented control: shade-colored track, the active
-   segment is a raised card */
+/* toolbar navigation: raised circular headerbar buttons (`.circular`) —
+   they must read as discs, i.e. background different from the window */
+.toolbar-left {
+  gap: 6px;
+}
+
+.toolbar-left .btn-icon {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+}
+
+.toolbar-left .btn-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- AdwViewSwitcher ---------- */
+
+/* boxed list, not a segmented control: one 9px-radius card, hairline
+   separators, the active segment is the accent fill (libadwaita
+   viewswitcherbutton: 10px padding, 420-weight label) */
 .segmented {
   display: inline-flex;
-  background: var(--paper-deep);
+  align-items: stretch;
+  background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  padding: 3px;
-  gap: 2px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .segmented-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
+  border-left: 1px solid var(--line);
   background: transparent;
-  color: var(--ink-soft);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 5px 13px;
-  border-radius: 6px;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 0 12px;
+  min-height: 32px;
+  border-radius: 0;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+  transition: background 0.12s ease;
+}
+
+.segmented-btn:first-child {
+  border-left: none;
 }
 
 .segmented-btn:hover {
-  color: var(--ink);
+  background: var(--paper-deep);
 }
 
 .segmented-btn.active {
-  background: var(--card);
-  color: var(--ink);
-  box-shadow: var(--shadow-sm), 0 0 0 1px var(--line);
+  background: var(--accent-bg);
+  color: var(--accent-fg);
+  font-weight: 600;
+  box-shadow: none;
 }
 
 .loading {
@@ -734,9 +962,11 @@ input[type="checkbox"]:focus-visible {
   position: relative; /* spanning bars for multi-day events are positioned in here */
 }
 
+/* libadwaita card: card_bg surface, 12px radius, soft shadow; no hairline —
+   the surface against the window background is the separation */
 .day {
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   height: 124px;
   min-height: 0;
@@ -746,18 +976,31 @@ input[type="checkbox"]:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  box-shadow: var(--shadow-sm);
   transition: box-shadow 0.12s ease, border-color 0.12s ease;
 }
 
-.day:hover {
-  border-color: var(--ink-faint);
-  box-shadow: var(--shadow-sm);
+/* In light mode card_bg_color (#ffffff) sits only 2 % off the #fafafb window;
+   libadwaita relies on the window frame for that edge, which a grid of cells
+   does not have. Pair the card shadow with a hairline so the cells read as
+   cards (the shadow alone keeps dark mode as it is). */
+[data-theme="light"] .day {
+  /* 6 % reads as a hairline without turning the grid into a table; combined
+     with the deeper card shadow the cells separate clearly from the window */
+  border-color: rgba(0, 0, 6, 0.13);
 }
 
+.day:hover {
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+}
+
+/* days outside the shown month: no surface, just the date */
 .day.out {
   background: transparent;
-  border-style: dashed;
-  opacity: 0.62;
+  border-color: transparent;
+  box-shadow: none;
+  opacity: 0.55;
 }
 
 .day.today {
@@ -999,8 +1242,9 @@ input[type="checkbox"]:focus-visible {
 
 .week-view {
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   /* clip, not hidden: still clips to the rounded corners but does not become
      a scroll container, so the sticky .te-title can track the page scroller */
   overflow: clip;
@@ -1070,6 +1314,20 @@ input[type="checkbox"]:focus-visible {
 
 .week-allday {
   position: relative; /* spanning bars for multi-day all-day events */
+}
+
+/* the all-day row's grid lives in a box that excludes the time gutter, so
+   spanning bars are positioned relative to the day columns only and can
+   never spill past the card's right edge (they used to, in day view).
+   It must span ALL day columns of the parent `56px + N×1fr` grid — as a
+   plain child it was squeezed into one track and shrank every day cell. */
+.week-allday-cols {
+  display: grid;
+  grid-column: 2 / -1;
+  min-width: 0;
+  grid-template-columns: repeat(var(--cols, 7), 1fr);
+  position: relative;
+  min-height: 30px;
 }
 
 .allday-cell {
@@ -1302,9 +1560,10 @@ input[type="checkbox"]:focus-visible {
   display: flex;
   flex-direction: column;
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .agenda-item {
@@ -1316,10 +1575,12 @@ input[type="checkbox"]:focus-visible {
   border: none;
   border-bottom: 1px solid var(--line);
   border-radius: 0;
-  padding: 9px 12px;
+  padding: 10px 14px;
+  min-height: 38px;
   cursor: pointer;
   text-align: left;
   font: inherit;
+  font-size: 13.5px;
   color: var(--ink);
   transition: background-color 0.12s ease;
 }
@@ -1358,7 +1619,7 @@ input[type="checkbox"]:focus-visible {
 }
 
 .agenda-title {
-  font-weight: 600;
+  font-weight: 500;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1376,8 +1637,9 @@ input[type="checkbox"]:focus-visible {
 
 .empty-state {
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   padding: 40px 20px;
   text-align: center;
 }
@@ -1409,18 +1671,37 @@ input[type="checkbox"]:focus-visible {
   overflow-y: auto;
 }
 
+/* AdwDialog: 15px radius, dialog_bg, padded header, padded content box and a
+   full-width action row with its own top separator (widgets/_dialogs.scss) */
 .modal {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--dialog-bg);
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: 15px;
   box-shadow: var(--shadow);
   width: 100%;
   max-width: 460px;
   max-height: calc(100vh - 12vh);
-  overflow-y: auto;
-  padding: 24px 26px 22px;
+  padding: 0;
   animation: pop 0.14s ease;
+}
+
+.modal > :not(.modal-actions) {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.modal > :not(.modal-actions):first-child {
+  padding-top: 22px;
+}
+
+/* the last content element needs breathing room above the action row */
+.modal > :not(.modal-actions):last-of-type:not(.modal-actions) {
+  padding-bottom: 4px;
 }
 
 /* × close button in the top-right corner (replaces the old text "Close") */
@@ -1468,17 +1749,25 @@ input[type="checkbox"]:focus-visible {
 
 .modal h3 {
   margin: 0 0 16px;
+  padding-right: 28px; /* room for the × close button */
   font-family: var(--font-display);
   font-size: 24px;
   font-weight: 400;
 }
 
+/* the action row: own surface, top hairline, padded like AdwDialog's */
 .modal-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--dialog-bg);
+  flex: none;
 }
+
+
 
 .modal-actions .spacer {
   flex: 1;
@@ -1653,22 +1942,26 @@ input[type="checkbox"]:focus-visible {
   max-height: 70vh;
   overflow-y: auto;
   background: var(--popover-bg);
-  border: 1px solid var(--line);
-  border-radius: 15px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 16px;
+  padding: 12px;
 }
 
+/* popover heading: Adwaita popover labels are plain, not display type */
 .popover-title {
   margin: 0 0 10px;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 400;
+  padding: 2px 4px 0;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .popover-events {
   list-style: none;
   margin: 0 0 10px;
+  border-radius: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -1715,6 +2008,7 @@ input[type="checkbox"]:focus-visible {
 
 .popover-empty {
   margin: 0 0 10px;
+  padding: 2px 4px;
   color: var(--ink-faint);
   font-size: 12.5px;
 }
@@ -1724,13 +2018,14 @@ input[type="checkbox"]:focus-visible {
   flex-wrap: wrap;
   gap: 4px;
   border-top: 1px solid var(--line);
-  padding-top: 12px;
+  padding-top: 8px;
+  margin-top: 2px;
 }
 
 .popover-actions .popup-action {
   flex: 1 1 auto;
   justify-content: center;
-  padding: 7px 8px;
+  padding: 6px 8px;
 }
 
 /* ---------- search ---------- */
@@ -1741,9 +2036,13 @@ input[type="checkbox"]:focus-visible {
   align-items: center;
 }
 
+/* Adwaita search entry: the "view" surface (white in light, #1d1d20 dark),
+   accent focus ring, no hard border — height 32px in a headerbar */
 .search-box input {
+  appearance: none;
+  -webkit-appearance: none;
   font: inherit;
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--ink);
   background-color: var(--view-bg);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='4.5' fill='none' stroke='%23777780' stroke-width='1.8'/%3E%3Cpath d='M10.5 10.5 14 14' stroke='%23777780' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -1752,10 +2051,12 @@ input[type="checkbox"]:focus-visible {
   background-size: 14px 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
-  padding: 7px 30px 7px 32px;
-  width: 170px;
+  height: 32px;
+  padding: 0 30px 0 32px;
+  width: 180px;
   outline: none;
-  transition: border-color 0.12s ease, width 0.15s ease;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, width 0.15s ease;
 }
 
 [data-theme="dark"] .search-box input {
@@ -1764,19 +2065,41 @@ input[type="checkbox"]:focus-visible {
 
 .search-box input:focus {
   border-color: var(--accent-bg);
-  box-shadow: 0 0 0 1px var(--accent-bg);
-  width: 220px;
+  box-shadow: 0 0 0 1px var(--accent-bg), var(--shadow-sm);
+  width: 230px;
 }
 
+/* Adwaita entry's clear icon: a small flat circle, far right */
 .search-clear {
   position: absolute;
-  right: 6px;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   border: none;
+  border-radius: 50%;
   background: transparent;
   color: var(--ink-faint);
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
   line-height: 1;
+}
+
+.search-clear:hover {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+
+/* hide the browser's own search-field decorations (the app draws its own) */
+.search-box input::-webkit-search-decoration,
+.search-box input::-webkit-search-cancel-button,
+.search-box input::-webkit-search-results-button,
+.search-box input::-webkit-search-results-decoration {
+  appearance: none;
+  -webkit-appearance: none;
+  display: none;
 }
 
 .search-panel {
@@ -1789,10 +2112,10 @@ input[type="checkbox"]:focus-visible {
   max-height: 60vh;
   overflow-y: auto;
   background: var(--popover-bg);
-  border: 1px solid var(--line);
-  border-radius: 15px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
-  padding: 6px;
+  padding: 4px;
 }
 
 .toolbar-wrap {
@@ -1808,8 +2131,9 @@ input[type="checkbox"]:focus-visible {
   background: transparent;
   color: var(--ink);
   font: inherit;
+  font-size: 13.5px;
   text-align: left;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
@@ -1886,10 +2210,13 @@ input[type="checkbox"]:focus-visible {
   max-width: 780px;
 }
 
+/* the toolbar already carries the view title; the content header only
+   holds the primary action, right-aligned (Adwaita headerbar convention) */
 .tasks-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  min-height: 0;
 }
 
 .tasks-title {
@@ -1912,9 +2239,10 @@ input[type="checkbox"]:focus-visible {
   display: flex;
   flex-direction: column;
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .task-item {
@@ -1923,7 +2251,8 @@ input[type="checkbox"]:focus-visible {
   gap: 9px;
   background: transparent;
   border-bottom: 1px solid var(--line);
-  padding: 8px 12px;
+  padding: 10px 14px;
+  min-height: 38px;
 }
 
 .task-item:last-child {
@@ -1981,13 +2310,15 @@ input[type="checkbox"]:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 34px;
   border: none;
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 500;
   text-align: left;
-  padding: 9px 10px;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
@@ -2040,10 +2371,51 @@ input[type="checkbox"]:focus-visible {
   gap: 5px;
 }
 
+/* inside a menu/popover, only the item shape matters (no card surface):
+   the popover IS the card, a list with its own border/background would be a
+   card inside a card */
+.popover .more-list,
+.popover .agenda-list,
+.popover .popover-events {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+  gap: 2px;
+}
+
+/* the "+N more" popover: plain AdwPopover, no nested surface */
+.more-popover {
+  padding: 8px;
+}
+
+.more-popover .popover-title {
+  margin: 2px 4px 8px;
+}
+
+/* read-only marker: a small padlock glyph (never an emoji) */
 .lock {
-  font-size: 10px;
-  opacity: 0.7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
   flex: none;
+}
+
+.lock svg {
+  width: 11px;
+  height: 11px;
+  display: block;
+}
+
+/* inside a colored chip, the lock follows the chip's own label ink */
+.chip .lock svg,
+.span-bar .lock svg,
+.allday-bar .lock svg,
+.allday-chip .lock svg,
+.timed-event .lock svg {
+  color: var(--gem-ink-soft);
 }
 
 .cal-item {
@@ -2058,16 +2430,30 @@ input[type="checkbox"]:focus-visible {
 }
 
 .cal-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   border: none;
   background: transparent;
   color: var(--ink-faint);
-  font-size: 16px;
   line-height: 1;
-  padding: 2px 6px;
-  border-radius: 6px;
+  padding: 0;
+  border-radius: 50%;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.12s ease;
+  transition: opacity 0.12s ease, background-color 0.12s ease;
+}
+
+.cal-menu-btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.cal-menu-btn:focus-visible {
+  opacity: 1;
 }
 
 .cal-item:hover .cal-menu-btn {
@@ -2079,15 +2465,58 @@ input[type="checkbox"]:focus-visible {
   color: var(--ink);
 }
 
+/* linked buttons (Adw linked box) — the footer's Dark/Light and DE/EN
+   toggles. They sit on the *sidebar*, where the 10 % raised tint is
+   invisible, so they use libadwaita's opaque standalone surface
+   (`--btn-bg-solid`, = window_bg 85 % + window_fg) plus a hairline, and the
+   two halves share one border the way Adwaita's `.linked` does. */
 .prefs-row {
   display: flex;
-  gap: 2px;
+  gap: 0;
+  border-radius: var(--radius-sm);
 }
 
 .prefs-row .btn {
   flex: 1;
-  padding: 6px 4px;
-  font-size: 12px;
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 0;
+  background: var(--btn-bg-solid);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.prefs-row .btn:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.prefs-row .btn:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* the shared inner edge is one hairline, not two. No negative margin: the
+   halves must keep identical widths/colours (stacking contexts made them
+   render at different shades). */
+.prefs-row .btn + .btn {
+  box-shadow: inset 1px 0 0 var(--line), inset -1px 0 0 var(--line),
+    inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line);
+}
+
+.prefs-row .btn:hover {
+  background: var(--btn-bg-solid-hover);
+  z-index: 1;
+}
+
+.prefs-row .btn:active {
+  background: var(--btn-bg-solid-active);
+}
+
+.prefs-row .btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  z-index: 2;
 }
 
 .btn.active-pref {
@@ -2104,6 +2533,7 @@ input[type="checkbox"]:focus-visible {
   border-radius: var(--radius-pill);
   padding: 2px 9px;
   white-space: nowrap;
+  align-self: center;
 }
 
 .banner-info {
@@ -2131,6 +2561,34 @@ input[type="checkbox"]:focus-visible {
 
 .modal-fields:disabled {
   opacity: 0.75;
+}
+
+/* prefix icon inside an entry (the URL field's world icon) */
+.field-icon {
+  position: absolute;
+  left: 11px;
+  top: 31px;
+  width: 15px;
+  height: 15px;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+.field-icon svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.field.has-icon input {
+  padding-left: 33px;
+}
+
+/* Locked server field (build with BACKEND_URL): reads as fixed, not editable. */
+.field input.locked {
+  color: var(--ink-soft);
+  cursor: default;
+  border-style: dashed;
 }
 
 .field-hint {

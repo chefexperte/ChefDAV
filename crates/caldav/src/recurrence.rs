@@ -387,7 +387,10 @@ pub fn expand_event(
                     d < range_end
                 })
                 .map(|d| to_ctz(d))
-                .filter(|d| *d >= range_start)
+                // Keep occurrences that OVERLAP the range, not just those that
+                // start inside it: a multi-day occurrence (e.g. 30 Nov → 2 Dec)
+                // must still appear when the requested range is December only.
+                .filter(|d| *d + dur > range_start)
                 .take(2000)
                 .collect();
             return dates
@@ -442,6 +445,23 @@ mod tests {
         assert_eq!(expand_event(&e, s, en, &Berlin).len(), 1);
         let (s, en) = range(2026, 12, 1, 2027, 1, 1);
         assert_eq!(expand_event(&e, s, en, &Berlin).len(), 0);
+    }
+
+    #[test]
+    fn multi_day_recurring_occurrence_reaches_into_next_month() {
+        // Regression (2026-11-18): the RRULE path filtered occurrences by start
+        // only, so a weekly 3-day event starting 30 Nov vanished from the
+        // December month grid even though it still covers 1–2 Dec.
+        let e = ev("BEGIN:VEVENT\nUID:m\nDTSTART;VALUE=DATE:20261130\nDTEND;VALUE=DATE:20261203\nRRULE:FREQ=WEEKLY;COUNT=1\nEND:VEVENT");
+        // December only: the 30 Nov occurrence ends 3 Dec, so it must show up.
+        let (s, en) = range(2026, 12, 1, 2027, 1, 1);
+        let occ = expand_event(&e, s, en, &Berlin);
+        assert_eq!(occ.len(), 1, "the occurrence spanning into December is missing");
+        assert_eq!(occ[0].start.format("%Y-%m-%d").to_string(), "2026-11-30");
+        assert_eq!(occ[0].end.format("%Y-%m-%d").to_string(), "2026-12-03");
+        // And a range before it must still yield nothing.
+        let (s, en) = range(2026, 10, 1, 2026, 11, 1);
+        assert!(expand_event(&e, s, en, &Berlin).is_empty());
     }
 
     #[test]

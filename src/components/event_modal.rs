@@ -194,8 +194,18 @@ pub fn EventModal() -> impl IntoView {
             String::new(),
             String::new(),
             default_date.format("%Y-%m-%d").to_string(),
-            def_start.clone(),
-            def_end.clone(),
+            // "New event" from the details popover hands over the selected
+            // event's start AND end time, so the copy lands in the same slot.
+            state
+                .new_event_time
+                .get_untracked()
+                .map(|(h, m)| format!("{h:02}:{m:02}"))
+                .unwrap_or_else(|| def_start.clone()),
+            state
+                .new_event_end_time
+                .get_untracked()
+                .map(|(h, m)| format!("{h:02}:{m:02}"))
+                .unwrap_or_else(|| def_end.clone()),
             state.new_event_all_day.get(),
             default_date.format("%Y-%m-%d").to_string(),
             state
@@ -297,6 +307,7 @@ pub fn EventModal() -> impl IntoView {
 
     let close = move |_| {
         state.new_event_time.set(None);
+        state.new_event_end_time.set(None);
         state.new_event_all_day.set(false);
         state.modal.set(None);
     };
@@ -429,6 +440,7 @@ pub fn EventModal() -> impl IntoView {
                                 api::refresh_events(&st).await;
                             }
                             st.new_event_time.set(None);
+                            st.new_event_end_time.set(None);
                             st.new_event_all_day.set(false);
                             st.modal.set(None);
                         }

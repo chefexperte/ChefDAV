@@ -39,14 +39,14 @@ pub fn PrefsRow() -> impl IntoView {
     };
 
     view! {
-        <div class="prefs-row">
-            <button class="btn btn-ghost" on:click=toggle_theme>
+        <div class="prefs-row linked">
+            <button class="btn" on:click=toggle_theme>
                 {move || match state.theme.get() {
                     Theme::Light => crate::i18n::t(state.lang.get(), "dark"),
                     Theme::Dark => crate::i18n::t(state.lang.get(), "light"),
                 }}
             </button>
-            <button class="btn btn-ghost" on:click=toggle_lang>
+            <button class="btn" on:click=toggle_lang>
                 {move || state.lang.get().code().to_uppercase()}
             </button>
         </div>

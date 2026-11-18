@@ -14,6 +14,7 @@ fn main() {
     use tower_http::services::{ServeDir, ServeFile};
 
     let site_root = std::env::var("CHEFDAV_SITE_ROOT").unwrap_or_else(|_| "dist".to_string());
+    // Default is loopback for local use; override with CHEFDAV_SITE_ADDR.
     let addr = std::env::var("CHEFDAV_SITE_ADDR").unwrap_or_else(|_| "127.0.0.1:3100".to_string());
 
     let app = Router::new()

@@ -212,10 +212,18 @@ pub struct AppState {
     /// Prefilled start time for a new event (hour, minute) from a week/day
     /// timeline click.
     pub new_event_time: RwSignal<Option<(u32, u32)>>,
+    /// Prefilled end time (hour, minute) — set when a new event is created
+    /// from an existing event ("New event" in the details popover), so it
+    /// takes over the selected event's time slot.
+    pub new_event_end_time: RwSignal<Option<(u32, u32)>>,
     /// True when the new event was started from the all-day row.
     pub new_event_all_day: RwSignal<bool>,
-    /// Events hidden behind a "+N more" badge in the week view.
-    pub week_more: RwSignal<Option<Vec<usize>>>,
+    /// Events hidden behind a "+N more" badge in the week view, plus the click
+    /// position the popover is anchored at.
+    pub week_more: RwSignal<Option<(Vec<usize>, f64, f64)>>,
+    /// Title menu: None = closed, "year" / "month" = which picker is open
+    /// (opened by clicking the year / month in the toolbar title).
+    pub jump_open: RwSignal<Option<&'static str>>,
     pub new_calendar: RwSignal<bool>,
     pub calendar_action: RwSignal<Option<CalendarAction>>,
     /// Event hrefs selected for bulk operations.
@@ -265,8 +273,10 @@ impl AppState {
             day_popup: RwSignal::new(None),
             slot_popup: RwSignal::new(None),
             new_event_time: RwSignal::new(None),
+            new_event_end_time: RwSignal::new(None),
             new_event_all_day: RwSignal::new(false),
             week_more: RwSignal::new(None),
+            jump_open: RwSignal::new(None),
             new_calendar: RwSignal::new(false),
             calendar_action: RwSignal::new(None),
             selected: RwSignal::new(Vec::new()),

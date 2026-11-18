@@ -391,6 +391,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
 
             <div class="week-allday">
                 <div class="week-gutter">{move || crate::i18n::t(state.lang.get(), "all_day_lower")}</div>
+                <div class="week-allday-cols">
                 <For
                     each=move || days.get()
                     key=|d| *d
@@ -491,7 +492,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                             >
                                                 {summary}
                                                 <Show when=move || read_only fallback=|| ()>
-                                                    <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
+                                                    <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.4" /><rect x="3.4" y="7" width="9.2" height="6.6" rx="1.4" fill="currentColor" /></svg></span>
                                                 </Show>
                                             </div>
                                         }
@@ -548,8 +549,12 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                             move |_| state.selected.get().iter().any(|h| h == &href)
                         });
                         let n = b.c1 - b.c0 + 1;
-                        let left = format!("calc(62px + {} * ((100% - 98px) / 7 + 6px))", b.c0);
-                        let width = format!("calc({} * (100% - 98px) / 7 + {} * 6px - 4px)", n, n.saturating_sub(1));
+                        // Place the bar by grid column (2 = first day; col 1 is the
+                        // time gutter), so the span follows the actual column count —
+                        // the old pixel math hardcoded 7 days + a 56px gutter and ran
+                        // past the card's right edge in day view.
+                        let left = format!("calc((100% - 3px) / var(--cols, 7) * {} + 6px)", b.c0);
+                        let width = format!("calc((100% - 3px) / var(--cols, 7) * {} - 4px)", n);
                         let top = 3 + b.slot * 22;
                         view! {
                             <div
@@ -570,12 +575,13 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                             >
                                 <span class="bar-title">{summary.clone()}</span>
                                 <Show when=move || read_only fallback=|| ()>
-                                    <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
+                                    <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.4" /><rect x="3.4" y="7" width="9.2" height="6.6" rx="1.4" fill="currentColor" /></svg></span>
                                 </Show>
                             </div>
                         }
                     }
                 />
+                </div>
             </div>
 
             <div class="week-timeline" style=format!("--hour-height:{}px", HOUR_HEIGHT)>
@@ -711,7 +717,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                                 <span class="te-time">{time}</span>
                                                 <span class="te-title">{summary}</span>
                                                 <Show when=move || read_only fallback=|| ()>
-                                                    <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")>"🔒"</span>
+                                                    <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.4" /><rect x="3.4" y="7" width="9.2" height="6.6" rx="1.4" fill="currentColor" /></svg></span>
                                                 </Show>
                                             </div>
                                         }
@@ -746,7 +752,11 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                                 on:click=move |e| {
                                                     e.stop_propagation();
                                                     // open exactly the events hidden behind this bar
-                                                    state.week_more.set(Some(indices.clone()));
+                                                    state.week_more.set(Some((
+                                                        indices.clone(),
+                                                        e.client_x() as f64,
+                                                        e.client_y() as f64,
+                                                    )));
                                                 }
                                             >
                                                 {move || crate::i18n::more_count(state.lang.get(), count)}
