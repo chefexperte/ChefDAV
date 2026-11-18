@@ -5,24 +5,6 @@ use leptos::prelude::*;
 use crate::day_events::{self, DayItem};
 use crate::state::{AppState, ModalState};
 
-pub fn clamp_position(x: f64, y: f64, width: f64, height: f64) -> (f64, f64) {
-    let win = web_sys::window();
-    let vw = win
-        .as_ref()
-        .and_then(|w| w.inner_width().ok())
-        .and_then(|v| v.as_f64())
-        .unwrap_or(1200.0);
-    let vh = win
-        .as_ref()
-        .and_then(|w| w.inner_height().ok())
-        .and_then(|v| v.as_f64())
-        .unwrap_or(800.0);
-    (
-        (x + 8.0).min(vw - width - 8.0).max(8.0),
-        (y + 8.0).min(vh - height - 8.0).max(8.0),
-    )
-}
-
 pub fn occurrence_time(state: &AppState, item: &DayItem) -> String {
     if item.all_day {
         crate::i18n::t(state.lang.get(), "all_day").to_string()
@@ -41,7 +23,13 @@ pub fn DayPopup() -> impl IntoView {
     let popup = state.day_popup.get().expect("day popup is open");
     let date = popup.date;
     let items = Memo::new(move |_| day_events::events_for_day(&state, date));
-    let (left, top) = clamp_position(popup.x, popup.y, 340.0, 460.0);
+    // Place from the pointer, then let `place` re-measure the rendered popover
+    // (a guessed size pushed the panel away from the cursor).
+    let panel: NodeRef<leptos::html::Div> = NodeRef::new();
+    crate::components::popover_pos::use_place(
+        panel,
+        crate::components::popover_pos::Anchor::Cursor(popup.x, popup.y),
+    );
 
     let close = move |_| state.day_popup.set(None);
     let new_event = move |_| {
@@ -65,7 +53,7 @@ pub fn DayPopup() -> impl IntoView {
         <div class="popover-backdrop" on:click=close>
             <div
                 class="popover"
-                style=format!("left:{left}px; top:{top}px")
+                node_ref=panel
                 on:click=move |e| e.stop_propagation()
                 role="dialog"
                 aria-modal="true"
@@ -113,15 +101,15 @@ pub fn DayPopup() -> impl IntoView {
                 </Show>
                 <div class="popover-actions">
                     <button class="popup-action" on:click=new_event>
-                        <span class="popup-icon">"＋"</span>
+                        <span class="popup-icon"><crate::components::icons::IconPlus /></span>
                         <span>{move || crate::i18n::t(state.lang.get(), "new_event")}</span>
                     </button>
                     <button class="popup-action" on:click=new_task>
-                        <span class="popup-icon">"☑"</span>
+                        <span class="popup-icon"><crate::components::icons::IconTaskAdd /></span>
                         <span>{move || crate::i18n::t(state.lang.get(), "new_task")}</span>
                     </button>
                     <button class="popup-action" on:click=go_day>
-                        <span class="popup-icon">"→"</span>
+                        <span class="popup-icon"><crate::components::icons::IconArrowRight /></span>
                         <span>{move || crate::i18n::t(state.lang.get(), "go_to_day")}</span>
                     </button>
                 </div>

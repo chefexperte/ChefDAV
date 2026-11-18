@@ -64,12 +64,12 @@ LABEL org.opencontainers.image.title="ChefDAV" \
 # routes (/week/2026-11-16 …). No API, no admin listener.
 COPY docker/frontend/Caddyfile /etc/caddy/Caddyfile
 COPY --from=builder /src/dist/ /srv/
-COPY docker/container-entrypoint.sh /usr/local/bin/chefdav-start
+COPY --chmod=0755 docker/container-entrypoint.sh /usr/local/bin/chefdav-start
 
-# /srv holds the bundle plus the generated config.json. Hand it to the user
-# Caddy runs as, so the entrypoint can (re)write the config on every start,
-# including with a read-only root filesystem.
-RUN chown -R caddy:caddy /srv && chmod 0755 /usr/local/bin/chefdav-start
+# The bundle is image content; the per-start config.json goes to /srv-runtime.
+# Mount a tmpfs there (the shipped compose file does) — it is tiny and holds
+# nothing worth persisting.
+VOLUME ["/srv-runtime"]
 
 ENV BACKEND_URL="" \
     BACKEND_LOCK=""

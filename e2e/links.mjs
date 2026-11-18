@@ -231,6 +231,88 @@ check(
   page.url()
 );
 
+// ---------- popovers open at the anchor, at every depth ----------
+// Regression (2026-11-18, user report): panels were clamped against a GUESSED
+// height, so anything below the middle of the screen was pushed away from the
+// cursor. They must open at the pointer (below-right when there is room,
+// flipped above when there is not) and stay fully on screen.
+const depths = [];
+for (const row of [1, 4]) {
+  await page.goto(`${APP}/month/2026-11`, { waitUntil: "networkidle" });
+  await page.waitForSelector(".month-grid", { timeout: 20000 });
+  await page.waitForTimeout(900);
+  const chip = page.locator(".week").nth(row).locator(".chip").first();
+  if (!(await chip.count())) continue;
+  const b = await chip.boundingBox();
+  const cx = Math.round(b.x + 20);
+  const cy = Math.round(b.y + 8);
+  await page.mouse.click(cx, cy);
+  await page.waitForSelector(".details-modal", { timeout: 8000 });
+  await page.waitForTimeout(500);
+  depths.push(
+    await page.evaluate(
+      ([cx, cy, row]) => {
+        const p = document.querySelector(".details-modal");
+        const r = p.getBoundingClientRect();
+        return {
+          row,
+          clickY: cy,
+          dx: Math.round(r.left - cx),
+          dy: Math.round(r.top - cy),
+          onScreen: r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth,
+        };
+      },
+      [cx, cy, row]
+    )
+  );
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+}
+check(
+  "popover opens at the cursor at every depth (flips up near the bottom)",
+  depths.length === 2 &&
+    depths.every((d) => Math.abs(d.dx - 8) <= 2 && (Math.abs(d.dy - 8) <= 2 || d.dy < 0) && d.onScreen),
+  JSON.stringify(depths)
+);
+
+// the month/year menus hang centred under THEIR OWN field
+await page.goto(`${APP}/month/2026-11`, { waitUntil: "networkidle" });
+await page.waitForSelector(".month-grid", { timeout: 20000 });
+await page.waitForTimeout(800);
+const menuChecks = [];
+for (const [kind, sel] of [
+  ["month", '.title-part:has-text("November")'],
+  ["year", '.title-part:has-text("2026")'],
+]) {
+  const fb = await page.locator(sel).boundingBox();
+  await page.click(sel);
+  await page.waitForSelector(".jump-popover", { timeout: 8000 });
+  await page.waitForTimeout(400);
+  // the field is located by its index, not a :has-text() selector (that is
+  // Playwright syntax, not valid CSS inside the page)
+  const fieldIdx = kind === "month" ? 0 : 1;
+  const m = await page.evaluate((fieldIdx) => {
+    const p = document.querySelector(".jump-popover");
+    const r = p.getBoundingClientRect();
+    const f = document.querySelectorAll(".title-part")[fieldIdx].getBoundingClientRect();
+    return {
+      fieldCentre: Math.round(f.left + f.width / 2),
+      menuCentre: Math.round(r.left + r.width / 2),
+      gap: Math.round(r.top - f.bottom),
+    };
+  }, fieldIdx);
+  menuChecks.push({ kind, ...m });
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+}
+check(
+  "month/year menus open centred under their own field",
+  menuChecks.length === 2 &&
+    menuChecks.every((m) => Math.abs(m.menuCentre - m.fieldCentre) <= 2 && m.gap >= 0 && m.gap <= 12) &&
+    menuChecks[0].fieldCentre !== menuChecks[1].fieldCentre,
+  JSON.stringify(menuChecks)
+);
+
 // ---------- brand (logo + ChefDAV) links home ----------
 // From a resource link in another view: click the wordmark -> month view of
 // the current month, nothing selected, no modal open.
@@ -255,6 +337,31 @@ check(
   JSON.stringify(homeState)
 );
 check("brand is a real link (href=/)", (await page.getAttribute(".brand", "href")) === "/");
+
+// The URL alone is not proof: the old brand click rewrote the path but left
+// the week grid on screen. Start from another view and assert the DOM changed.
+await page.goto(`${APP}/week/2026-09-14`, { waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 20000 });
+await page.waitForTimeout(800);
+await page.locator(".brand img").click();
+await page.waitForTimeout(1200);
+const brandRender = {
+  url: new URL(page.url()).pathname,
+  weekGone: (await page.locator(".week-view").count()) === 0,
+  monthShown: (await page.locator(".month-grid").count()) === 1,
+};
+check(
+  "brand click actually renders the month view (not just the URL)",
+  brandRender.url === "/month/2026-11" && brandRender.weekGone && brandRender.monthShown,
+  JSON.stringify(brandRender)
+);
+// and the brand keeps top/bottom breathing room
+const brandBox = await page.locator(".brand").boundingBox();
+check(
+  "brand has top/bottom padding",
+  !!brandBox && brandBox.height >= 44 && brandBox.y >= 8,
+  JSON.stringify(brandBox)
+);
 
 // ---------- unknown resource link -> error + back to / ----------
 await page.goto(`${APP}/event/${encodeURIComponent(calNames[0] ?? "x")}/no-such-uid-12345`, {

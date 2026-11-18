@@ -5,11 +5,10 @@
 # small CORS proxy in front of it) handles the API traffic.
 #
 # /config.json is written by docker/container-entrypoint.sh from the container's
-# BACKEND_URL / BACKEND_LOCK environment variables on every start; the app
-# fetches it once at startup (src/config.rs).
+# BACKEND_URL / BACKEND_LOCK environment variables on every start (into the
+# /srv-runtime tmpfs); the app fetches it once at startup (src/config.rs).
 
-# No admin API: the container has nothing to manage at runtime, and it would
-# only open another port.
+# No admin API: the container has nothing to manage at runtime.
 {
 	admin off
 }
@@ -18,22 +17,30 @@
 	# Liveness for the container healthcheck; never touches /srv.
 	respond /healthz 200
 
-	root * /srv
+	# Runtime config, from its own root. It must be handled BEFORE the SPA
+	# fallback below — otherwise `try_files {path}` matches it in /srv and the
+	# app gets index.html instead of JSON.
+	handle /config.json {
+		root * /srv-runtime
+		file_server
+	}
 
-	# SPA fallback: any path that is not a file is the app's entry document, so
-	# deep links and reloads (/month/2026-11, /event/<cal>/<uid>, …) work.
-	try_files {path} /index.html
-	file_server
+	handle {
+		root * /srv
 
-	# Trunk emits content-hashed names for the bundle (Trunk.release.toml), so
-	# those can never go stale — cache them for a year. The entry document and
-	# the small unhashed assets must always be revalidated.
-	@hashed path /chef-dav*.js /chef-dav*.wasm /main-*.css
-	header @hashed Cache-Control "public, max-age=31536000, immutable"
+		# SPA fallback: any path that is not a file is the app's entry document,
+		# so deep links and reloads (/month/2026-11, /event/<cal>/<uid>, …) work.
+		try_files {path} /index.html
+		file_server
 
-	# Everything that is not a hashed bundle file must be revalidated: the
-	# entry document for `/` and for every SPA route, the small unhashed
-	# assets next to it, and the runtime config (which changes per start).
+		# Trunk emits content-hashed names for the bundle (Trunk.release.toml),
+		# so those can never go stale — cache them for a year.
+		@hashed path /chef-dav*.js /chef-dav*.wasm /main-*.css
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	# Everything else is revalidated: the entry document for `/` and for every
+	# SPA route, the small unhashed assets, and the runtime config.
 	@revalidate {
 		not path /chef-dav*.js /chef-dav*.wasm /main-*.css
 	}

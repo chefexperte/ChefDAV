@@ -2,7 +2,7 @@
 
 use leptos::prelude::*;
 
-use crate::components::day_popup::{clamp_position, occurrence_time};
+use crate::components::day_popup::occurrence_time;
 use crate::day_events::{self, DayItem};
 use crate::state::{AppState, ModalState};
 
@@ -23,7 +23,11 @@ pub fn SlotPopup() -> impl IntoView {
             day_events::events_at_slot(&state, date, minutes)
         }
     });
-    let (left, top) = clamp_position(popup.x, popup.y, 340.0, 420.0);
+    let panel: NodeRef<leptos::html::Div> = NodeRef::new();
+    crate::components::popover_pos::use_place(
+        panel,
+        crate::components::popover_pos::Anchor::Cursor(popup.x, popup.y),
+    );
 
     let close = move |_| state.slot_popup.set(None);
     let new_event = move |_| {
@@ -59,7 +63,7 @@ pub fn SlotPopup() -> impl IntoView {
         <div class="popover-backdrop" on:click=close>
             <div
                 class="popover"
-                style=format!("left:{left}px; top:{top}px")
+                node_ref=panel
                 on:click=move |e| e.stop_propagation()
                 role="dialog"
                 aria-modal="true"
@@ -107,7 +111,7 @@ pub fn SlotPopup() -> impl IntoView {
                 </Show>
                 <div class="popover-actions">
                     <button class="popup-action" on:click=new_event>
-                        <span class="popup-icon">"＋"</span>
+                        <span class="popup-icon"><crate::components::icons::IconPlus /></span>
                         <span>
                             {move || if all_day {
                                 crate::i18n::t(state.lang.get(), "new_all_day_event")

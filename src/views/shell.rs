@@ -400,6 +400,14 @@ pub fn Shell() -> impl IntoView {
                         state.search_query.set(String::new());
                         state.search_open.set(false);
                         state.jump_open.set(None);
+                        state.link_active.set(false);
+                        // Set the target state as well as the URL: navigating to
+                        // "/" alone only rewrites the path, and the router's
+                        // location effect does not re-apply "month view, today"
+                        // when the path it already saw was a resource link.
+                        let today = caldav::time::today(&state.tz, crate::browser::now_utc());
+                        state.view.set(crate::state::ViewMode::Month);
+                        state.anchor.set(today);
                         go_home_nav("/", Default::default());
                     }
                 >
@@ -430,7 +438,7 @@ pub fn Shell() -> impl IntoView {
                         title=move || crate::i18n::t(state.lang.get(), "new_calendar")
                         on:click=move |_| state.new_calendar.set(true)
                     >
-                        "+"
+                        <crate::components::icons::IconPlus />
                     </button>
                 </div>
                 <ul class="cal-list">
@@ -547,10 +555,10 @@ pub fn Shell() -> impl IntoView {
         <Show when=move || state.week_more.get().is_some() fallback=|| ()>
             <WeekMoreModal />
         </Show>
-        <Show when=move || state.jump_open.get() == Some("year") fallback=|| ()>
+        <Show when=move || state.jump_open.get().map(|(k, _)| k) == Some("year") fallback=|| ()>
             <YearMenu />
         </Show>
-        <Show when=move || state.jump_open.get() == Some("month") fallback=|| ()>
+        <Show when=move || state.jump_open.get().map(|(k, _)| k) == Some("month") fallback=|| ()>
             <MonthMenu />
         </Show>
     }

@@ -88,30 +88,22 @@ pub fn EventDetails() -> impl IntoView {
     let event = move || state.events.get().get(index).cloned();
 
     // Popover anchored at the click position; deep links / search results
-    // (no click) fall back to centered near the top.
-    let (left, top) = match anchor {
-        Some((x, y)) => crate::components::day_popup::clamp_position(x as f64, y as f64, 440.0, 560.0),
-        None => {
-            let win = web_sys::window();
-            let vw = win
-                .as_ref()
-                .and_then(|w| w.inner_width().ok())
-                .and_then(|v| v.as_f64())
-                .unwrap_or(1200.0);
-            let vh = win
-                .as_ref()
-                .and_then(|w| w.inner_height().ok())
-                .and_then(|v| v.as_f64())
-                .unwrap_or(800.0);
-            (((vw - 440.0) / 2.0).max(8.0), (vh * 0.12).max(8.0))
-        }
-    };
+    // (no click) open centred near the top. The size is measured after render
+    // (a guessed height pushed the card away from the cursor lower down).
+    let panel: NodeRef<leptos::html::Div> = NodeRef::new();
+    crate::components::popover_pos::use_place(
+        panel,
+        match anchor {
+            Some((x, y)) => crate::components::popover_pos::Anchor::Cursor(x as f64, y as f64),
+            None => crate::components::popover_pos::Anchor::Centered,
+        },
+    );
 
     view! {
         <div class="popover-backdrop" on:click=move |_| state.modal.set(None)>
             <div
                 class="popover details-modal"
-                style=format!("left:{left}px;top:{top}px")
+                node_ref=panel
                 on:click=move |e| e.stop_propagation()
                 role="dialog"
                 aria-modal="true"

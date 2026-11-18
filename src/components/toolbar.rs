@@ -4,6 +4,7 @@
 use caldav::time::week_days;
 use chrono::{Datelike, Duration, NaiveDate};
 use leptos::prelude::*;
+use wasm_bindgen::JsCast;
 use leptos::task::spawn_local;
 
 use crate::api;
@@ -51,9 +52,24 @@ pub fn Toolbar() -> impl IntoView {
         crate::i18n::month_name(state.lang.get(), state.anchor.get().month()).to_string()
     });
     let year_part = Memo::new(move |_| state.anchor.get().year().to_string());
-    let open_menu = move |kind: &'static str| {
+    // The picker opens centred under the field that was clicked, so pass the
+    // clicked button's own rect (it used to be a hardcoded position).
+    let open_menu = move |kind: &'static str, ev: leptos::ev::MouseEvent| {
         let cur = state.jump_open.get();
-        state.jump_open.set(if cur == Some(kind) { None } else { Some(kind) });
+        if cur.map(|(k, _)| k) == Some(kind) {
+            state.jump_open.set(None);
+            return;
+        }
+        let target = ev
+            .current_target()
+            .and_then(|t| t.dyn_into::<web_sys::Element>().ok());
+        let rect = target.map(|el| {
+            let r = el.get_bounding_client_rect();
+            (r.left(), r.right(), r.bottom())
+        });
+        if let Some(rect) = rect {
+            state.jump_open.set(Some((kind, rect)));
+        }
     };
 
     let title = Memo::new(move |_| match state.view.get() {
@@ -152,8 +168,12 @@ pub fn Toolbar() -> impl IntoView {
                             <polyline points="9 22 9 12 15 12 15 22"></polyline>
                         </svg>
                     </button>
-                    <button class="btn btn-icon" on:click=prev title=move || crate::i18n::t(state.lang.get(), "previous") aria-label=move || crate::i18n::t(state.lang.get(), "previous")>"‹"</button>
-                    <button class="btn btn-icon" on:click=next title=move || crate::i18n::t(state.lang.get(), "next") aria-label=move || crate::i18n::t(state.lang.get(), "next")>"›"</button>
+                    <button class="btn btn-icon" on:click=prev title=move || crate::i18n::t(state.lang.get(), "previous") aria-label=move || crate::i18n::t(state.lang.get(), "previous")>
+                        <crate::components::icons::IconChevronLeft />
+                    </button>
+                    <button class="btn btn-icon" on:click=next title=move || crate::i18n::t(state.lang.get(), "next") aria-label=move || crate::i18n::t(state.lang.get(), "next")>
+                        <crate::components::icons::IconChevronRight />
+                    </button>
                 </div>
                 <Show
                     when=move || state.view.get() == ViewMode::Month
@@ -162,12 +182,12 @@ pub fn Toolbar() -> impl IntoView {
                     <h2 class="month-title month-title-split">
                         <button
                             class="title-part"
-                            on:click=move |_| open_menu("month")
+                            on:click=move |ev| open_menu("month", ev)
                             title=move || crate::i18n::t(state.lang.get(), "jump_month")
                         >{month_part}</button>
                         <button
                             class="title-part"
-                            on:click=move |_| open_menu("year")
+                            on:click=move |ev| open_menu("year", ev)
                             title=move || crate::i18n::t(state.lang.get(), "jump_year")
                         >{year_part}</button>
                     </h2>
@@ -190,7 +210,9 @@ pub fn Toolbar() -> impl IntoView {
                             on:input=on_search
                         />
                         <Show when=move || !state.search_query.get().is_empty() fallback=|| ()>
-                            <button class="search-clear" on:click=clear_search title=move || crate::i18n::t(state.lang.get(), "clear")>"×"</button>
+                            <button class="search-clear" on:click=clear_search title=move || crate::i18n::t(state.lang.get(), "clear")>
+                                <crate::components::icons::IconClose />
+                            </button>
                         </Show>
                     </div>
                     <div class="segmented" role="tablist">

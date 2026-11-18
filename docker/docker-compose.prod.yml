@@ -41,12 +41,12 @@ services:
       BACKEND_LOCK: ${BACKEND_LOCK:-}
     ports:
       - "${CHEFDAV_PORT:-8080}:80"
-    # No volumes, no state: the calendar data lives in your CalDAV server and
-    # the browser cache. Read-only root plus a tmpfs is enough — the entrypoint
-    # writes /srv/config.json in place, which needs no writable layer.
+    # No persistent state: the calendar data lives in your CalDAV server and
+    # the browser cache. A read-only root plus a tmpfs for the per-start
+    # /config.json is all the container needs.
     read_only: true
     tmpfs:
-      - /config
-      - /data
+      - /srv-runtime
+      - /tmp
     security_opt:
       - "no-new-privileges:true"

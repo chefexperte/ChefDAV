@@ -6,7 +6,7 @@
 
 use leptos::prelude::*;
 
-use crate::components::day_popup::clamp_position;
+use crate::components::popover_pos;
 use crate::state::AppState;
 
 #[component]
@@ -15,7 +15,11 @@ pub fn WeekMoreModal() -> impl IntoView {
     let (indices, px, py) = state.week_more.get().expect("week more is open");
     let tz = state.tz;
     let close = move |_| state.week_more.set(None);
-    let (left, top) = clamp_position(px, py, 340.0, 420.0);
+    let panel: NodeRef<leptos::html::Div> = NodeRef::new();
+    crate::components::popover_pos::use_place(
+        panel,
+        crate::components::popover_pos::Anchor::Cursor(px, py),
+    );
 
     // `indices` are (global event index, occurrence start) pairs, resolved by
     // the view from the day's own occurrence list.
@@ -30,7 +34,7 @@ pub fn WeekMoreModal() -> impl IntoView {
         <div class="popover-backdrop" on:click=close>
             <div
                 class="popover more-popover"
-                style=format!("left:{left}px; top:{top}px")
+                node_ref=panel
                 on:click=move |e| e.stop_propagation()
                 role="dialog"
                 aria-modal="true"

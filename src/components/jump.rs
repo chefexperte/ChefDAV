@@ -11,7 +11,7 @@
 use chrono::{Datelike, NaiveDate};
 use leptos::prelude::*;
 
-use crate::components::day_popup::clamp_position;
+use crate::components::popover_pos::{Anchor, use_place};
 use crate::state::AppState;
 
 /// Years per block in the year picker (5 columns × 3 rows).
@@ -78,7 +78,14 @@ pub fn YearMenu() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let anchor = state.anchor.get();
     let lang = state.lang.get();
-    let (left, top) = clamp_position(250.0, 150.0, 248.0, 250.0);
+    // centred under the year field that was clicked
+    let pop_anchor = state
+        .jump_open
+        .get()
+        .map(|(_, r)| Anchor::Under(r.0, r.1, r.2))
+        .unwrap_or(Anchor::Centered);
+    let panel: NodeRef<leptos::html::Div> = NodeRef::new();
+    use_place(panel, pop_anchor);
     let close = move |_| state.jump_open.set(None);
     let block_start = anchor.year() - 7;
     let step = move |delta: i32| {
@@ -91,16 +98,20 @@ pub fn YearMenu() -> impl IntoView {
         <div class="popover-backdrop" on:click=close>
             <div
                 class="popover jump-popover"
-                style=format!("left:{left}px;top:{top}px")
+                node_ref=panel
                 on:click=move |e| e.stop_propagation()
                 role="dialog"
                 aria-modal="true"
                 aria-label=move || crate::i18n::t(state.lang.get(), "jump_year")
             >
                 <div class="jump-header">
-                    <button class="btn btn-icon btn-ghost" aria-label=move || crate::i18n::t(state.lang.get(), "previous") on:click=move |_| step(-1)>"‹"</button>
+                    <button class="btn btn-icon btn-ghost" aria-label=move || crate::i18n::t(state.lang.get(), "previous") on:click=move |_| step(-1)>
+                        <crate::components::icons::IconChevronLeft />
+                    </button>
                     <span class="jump-title">{format!("{} – {}", block_start, block_start + YEARS_PER_BLOCK - 1)}</span>
-                    <button class="btn btn-icon btn-ghost" aria-label=move || crate::i18n::t(state.lang.get(), "next") on:click=move |_| step(1)>"›"</button>
+                    <button class="btn btn-icon btn-ghost" aria-label=move || crate::i18n::t(state.lang.get(), "next") on:click=move |_| step(1)>
+                        <crate::components::icons::IconChevronRight />
+                    </button>
                 </div>
                 {picker_body(state, true, anchor, lang)}
             </div>
@@ -113,7 +124,13 @@ pub fn MonthMenu() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let anchor = state.anchor.get();
     let lang = state.lang.get();
-    let (left, top) = clamp_position(250.0, 150.0, 268.0, 250.0);
+    let pop_anchor = state
+        .jump_open
+        .get()
+        .map(|(_, r)| Anchor::Under(r.0, r.1, r.2))
+        .unwrap_or(Anchor::Centered);
+    let panel: NodeRef<leptos::html::Div> = NodeRef::new();
+    use_place(panel, pop_anchor);
     let close = move |_| state.jump_open.set(None);
     let step = move |delta: i32| {
         let a = state.anchor.get();
@@ -123,16 +140,20 @@ pub fn MonthMenu() -> impl IntoView {
         <div class="popover-backdrop" on:click=close>
             <div
                 class="popover jump-popover"
-                style=format!("left:{left}px;top:{top}px")
+                node_ref=panel
                 on:click=move |e| e.stop_propagation()
                 role="dialog"
                 aria-modal="true"
                 aria-label=move || crate::i18n::t(state.lang.get(), "jump_month")
             >
                 <div class="jump-header">
-                    <button class="btn btn-icon btn-ghost" aria-label=move || crate::i18n::t(state.lang.get(), "previous") on:click=move |_| step(-1)>"‹"</button>
+                    <button class="btn btn-icon btn-ghost" aria-label=move || crate::i18n::t(state.lang.get(), "previous") on:click=move |_| step(-1)>
+                        <crate::components::icons::IconChevronLeft />
+                    </button>
                     <span class="jump-title">{anchor.year().to_string()}</span>
-                    <button class="btn btn-icon btn-ghost" aria-label=move || crate::i18n::t(state.lang.get(), "next") on:click=move |_| step(1)>"›"</button>
+                    <button class="btn btn-icon btn-ghost" aria-label=move || crate::i18n::t(state.lang.get(), "next") on:click=move |_| step(1)>
+                        <crate::components::icons::IconChevronRight />
+                    </button>
                 </div>
                 {picker_body(state, false, anchor, lang)}
             </div>

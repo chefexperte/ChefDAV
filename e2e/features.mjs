@@ -129,6 +129,25 @@ check("week slot click prefills time", startVal.startsWith("14:"), startVal);
 await page.click('.modal button:has-text("Cancel")');
 await page.waitForSelector(".modal", { state: "detached" });
 
+// ---------- icons are real SVGs, not text glyphs ----------
+// (user report: `＋`, `☑`, `→`, `‹`, `›` rendered as characters)
+const iconAudit = await page.evaluate(() => {
+  const glyphs = ["＋", "‹", "›", "☑", "→", "+"];
+  const buttons = [...document.querySelectorAll(
+    ".toolbar-left .btn-icon, .search-clear, .btn-icon-plain, .popup-action"
+  )];
+  const asText = buttons
+    .filter((b) => !b.querySelector("svg") && glyphs.includes(b.textContent.trim()))
+    .map((b) => b.textContent.trim());
+  return { checked: buttons.length, asText };
+});
+const toolbarSvgs = await page.locator(".toolbar-left .btn-icon svg").count();
+check(
+  "toolbar/popup buttons use SVG icons, not text glyphs",
+  iconAudit.asText.length === 0 && toolbarSvgs >= 3,
+  JSON.stringify({ ...iconAudit, toolbarSvgs })
+);
+
 // ---------- all-day row click ----------
 await page.locator(".allday-cell").nth(2).click();
 await page.waitForSelector(".popover", { timeout: 10000 });

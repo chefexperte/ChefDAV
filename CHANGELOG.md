@@ -47,9 +47,20 @@ libadwaita stylesheet values.
 - **Multi-day bars keep the day cell's padding** on the right in the month
   view — they no longer run flush to the day's edge (the width calculation
   ignored the bar's own left inset).
+- **Popovers open exactly where you click, at any height.** The panels
+  (event details, day and time-slot popups, "+N more") used to be clamped
+  against a *guessed* size, so anything below the middle of the screen was
+  pushed far from the cursor. They are now placed from their real measured
+  size: below-right of the pointer when there is room, flipped above it near
+  the bottom, always fully on screen. The **month and year menus open centred
+  under their own field** instead of at a fixed spot.
 - **The logo and "ChefDAV" wordmark are a link home**: one click returns to the
   month view of the current month with nothing open or selected (a real link,
-  so middle-click still opens it in a new tab).
+  so middle-click still opens it in a new tab), with breathing room around it.
+- **All icons are real SVGs** — the "New event" / "New task" / "Go to day"
+  actions, the previous/next chevrons, the picker arrows, the search clear
+  button and the "new calendar" plus were text characters before (they render
+  differently on every platform); they now come from one inline icon set.
 - **Search asks you to keep typing**: one character now shows "Type at least
   2 characters to search." instead of "No matching events".
 - **Dialogs follow AdwDialog**: a padded header, scrollable content and a

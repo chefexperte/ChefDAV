@@ -224,7 +224,9 @@ pub struct AppState {
     pub week_more: RwSignal<Option<(Vec<(usize, chrono::DateTime<chrono_tz::Tz>)>, f64, f64)>>,
     /// Title menu: None = closed, "year" / "month" = which picker is open
     /// (opened by clicking the year / month in the toolbar title).
-    pub jump_open: RwSignal<Option<&'static str>>,
+    /// `("year"|"month", the title field's rect (left, right, bottom))` — the
+    /// menu is centred under exactly the field that was clicked.
+    pub jump_open: RwSignal<Option<(&'static str, (f64, f64, f64))>>,
     pub new_calendar: RwSignal<bool>,
     pub calendar_action: RwSignal<Option<CalendarAction>>,
     /// Event hrefs selected for bulk operations.
