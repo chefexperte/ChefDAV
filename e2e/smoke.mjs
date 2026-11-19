@@ -40,6 +40,16 @@ page.on("console", (m) => {
 });
 page.on("pageerror", (e) => consoleErrors.push(String(e)));
 
+// Requests the app sends to the CalDAV server. A plain GET on the server root
+// (the old login probe) makes the browser show its own Basic auth dialog when
+// the server answers 401 with WWW-Authenticate.
+const davRequests = [];
+page.on("request", (r) => {
+  if (r.url().startsWith(DAV)) {
+    davRequests.push({ method: r.method(), path: new URL(r.url()).pathname });
+  }
+});
+
 async function login() {
   await page.goto(APP, { waitUntil: "networkidle" });
   await page.waitForSelector(".login-card form", { timeout: 20000 });
@@ -96,6 +106,14 @@ check("agenda view renders", true, await page.textContent(".month-title"));
 
 await page.click('.segmented-btn:has-text("Month")');
 await page.waitForSelector(".month-grid", { timeout: 10000 });
+
+// ---------- no unauthenticated probe ----------
+const rootGets = davRequests.filter((r) => r.method === "GET" && r.path === "/");
+check(
+  "no plain GET on the CalDAV root (Basic auth popup)",
+  rootGets.length === 0,
+  rootGets.length ? `${rootGets.length} request(s)` : ""
+);
 
 // ---------- create ----------
 await page.click("button.new-event");

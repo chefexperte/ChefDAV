@@ -5,6 +5,14 @@ section of this file, baked into each build.
 
 ## Unreleased
 
+### Fixes
+
+- The browser no longer opens its own Basic auth dialog when the calendar
+  loads. An unauthenticated probe request to the CalDAV root caused it, and the
+  browser asked for credentials even though the app sends its own. The probe is
+  gone; connection problems are still reported as CORS or unreachable from the
+  real CalDAV request.
+
 ### Adwaita fidelity pass
 
 Refinements after reviewing the Adwaita re-skin, using the values from

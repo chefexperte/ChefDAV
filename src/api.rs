@@ -146,18 +146,6 @@ pub fn error_text(reason: Unreachable, lang: crate::state::Lang) -> &'static str
     crate::i18n::t(lang, reason.i18n_key())
 }
 
-/// Best-effort classification of a failed `fetch`. Browsers report both a CORS
-/// rejection and a dead host as `TypeError: Failed to fetch`, so everything that
-/// is not an obviously local problem (bad URL/headers) is treated as CORS —
-/// the far more common cause for a CalDAV app.
-fn classify_transport_error(e: &reqwest::Error) -> Unreachable {
-    if e.is_builder() || e.is_body() || e.is_decode() {
-        Unreachable::Network
-    } else {
-        Unreachable::Cors
-    }
-}
-
 /// Verify credentials against the server and discover principal + home.
 pub async fn login(server: &str, username: &str, password: &str) -> Result<Session> {
     login_classified(server, username, password, crate::state::Lang::En)
@@ -180,23 +168,15 @@ pub async fn login_classified(
         )
     })?;
 
-    // Probe with a plain GET: browsers send it as a CORS "simple" request, so
-    // it already succeeds against any server that replies with
-    // Access-Control-Allow-Origin, and fails (while the network is fine) only
-    // when that header is missing. A wrong password shows up later as a 401.
-    if let Err(e) = reqwest::Client::new().get(server.as_str()).send().await {
-        let reason = classify_transport_error(&e);
-        if reason == Unreachable::Cors {
-            leptos::logging::error!("chefdav: login probe to {server} was blocked: {e:?}");
-        }
-        return Err((reason, reason.into_error(lang)));
-    }
-
+    // Do not send an unauthenticated request to the server root first: with a
+    // `WWW-Authenticate` answer the browser opens its own Basic auth dialog,
+    // even though the app supplies the credentials itself. The CalDAV request
+    // below classifies transport failures just as well.
     let c = DavClient::new(FetchTransport, server.clone(), username, password);
     c.check().await.map_err(|e| {
         match e {
-            // Still no response after the GET worked: the proxy answered the
-            // simple request but not the proper CalDAV method / preflight.
+            // No response at all: almost always a missing CORS proxy, since
+            // the CalDAV method and its headers need a preflight.
             DavError::Transport(_) => (
                 Unreachable::Cors,
                 Unreachable::Cors.into_error(lang),
