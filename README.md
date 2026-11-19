@@ -80,22 +80,13 @@ GNOME Adwaita looks, Rust reliability.
 
 ## How it works
 
-```
-┌───────────────────────────────┐     fetch: PROPFIND / REPORT / PUT / MKCALENDAR …
-│  Browser: Rust → WASM SPA     │     (XML bodies, Basic auth header)
-│  (Leptos, this repo)          │ ──▶ requires CORS headers
-└───────────────────────────────┘     ▼
-                              ┌──────────────┐
-                              │ Caddy/nginx  │  adds Access-Control-*, answers OPTIONS
-                              └──────────────┘
-                                     ▼
-                              ┌──────────────┐
-                              │   Radicale   │  LDAP auth + file-based rights (ACLs)
-                              └──────────────┘
-```
+ChefDAV is a single-page app. The browser loads the WASM bundle once and then
+talks CalDAV directly to your server — `PROPFIND`, `REPORT`, `PUT`,
+`MKCALENDAR`, … — with HTTP Basic auth. There is no application backend in
+between.
 
-- **Who may log in** is decided by Radicale (`[auth] type = ldap`); the SPA only
-  sends Basic auth.
+- **Logins are forwarded to Radicale**: the app sends the username and password
+  as Basic auth, and Radicale decides whether they are valid.
 - **Who may read/write what** is decided by Radicale's `[rights]` file; the app
   reflects read-only calendars with a lock.
 - All protocol, ICS and recurrence logic lives in a **pure-Rust crate**
