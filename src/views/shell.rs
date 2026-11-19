@@ -431,9 +431,9 @@ pub fn Shell() -> impl IntoView {
                         let today = caldav::time::today(&state.tz, crate::browser::now_utc());
                         state.view.set(crate::state::ViewMode::Month);
                         state.anchor.set(today);
-                        // "" is the route root; a leading "/" would
-                        // become "/ui//" under a mount path.
-                        go_home_nav("", Default::default());
+                        // "/" resolves against the router base ("/ui"), while
+                        // "" would resolve relative to the current path.
+                        go_home_nav("/", Default::default());
                     }
                 >
                     <img src=move || crate::config::asset_url("logo.svg") width="34" height="34" alt="ChefDAV logo" />

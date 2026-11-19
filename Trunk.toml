@@ -2,9 +2,15 @@
 [build]
 target = "index.html"
 dist = "dist"
-# Relative asset URLs: the bundle works at "/" as well as under a path
-# prefix (/ui/) behind a reverse proxy — see docker/frontend/Caddyfile.
-public_url = "./"
+# Root-absolute asset URLs ("/chef-dav-<hash>.js"). This is what the dev
+# server, scripts/serve.py, the stable instance and the e2e suites rely on:
+# with relative URLs a deep link (/month/2026-11) would resolve "./x.js" to
+# "/month/x.js", and the SPA fallback would answer it with index.html, so the
+# module never loads.
+#
+# The container image builds with Trunk.release.toml instead, which uses
+# public_url = "./" plus a <base href> written at start-up — that is what makes
+# a path-prefix mount (/ui) work. Keep the two in sync only in that direction.
 
 # Dev server:  trunk serve --address 127.0.0.1 --port 3100
 [serve]

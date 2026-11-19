@@ -108,6 +108,12 @@ this re-skin.
 - Login failures are now explained better: if the browser blocked the request
   because the CalDAV server sent no CORS headers, the login page says so and
   points at the fix instead of only "server unreachable".
+- The image can be published **under a path** (`calendar.example.com/ui` with
+  the CalDAV server at the site root): set `BASE_PATH=/ui` and route by
+  `Host()` + `PathPrefix()`. It works whether or not your proxy strips the
+  prefix.
+- **Fixed:** logging in a second time after logging out (and visiting the
+  `/login` URL) stayed on the login page instead of opening the calendar.
 
 ## 0.2.0 — 2026-11-17
 

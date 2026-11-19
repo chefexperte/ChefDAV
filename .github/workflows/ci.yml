@@ -40,6 +40,20 @@ jobs:
       - name: Production build
         run: trunk build --release
 
+      # The dev/production config must emit root-absolute asset URLs: on a deep
+      # link (/month/2026-11) a relative "./x.js" resolves to "/month/x.js", the
+      # SPA fallback answers it with index.html, and the app never boots (this
+      # broke the smoke suite's "reload stays logged in" check). Only the
+      # container image uses relative URLs, with a <base href> written at start.
+      - name: Asset URLs are root-absolute
+        run: |
+          if grep -qE '(src|href)="\./' dist/index.html; then
+            echo "dist/index.html uses relative asset URLs (./x.js) — see Trunk.toml"
+            grep -oE '(src|href)="\./[^"]*"' dist/index.html | head -5
+            exit 1
+          fi
+          grep -qE '(href|src)="/[^"]*\.(js|css)"' dist/index.html
+
   e2e:
     name: End-to-end (Radicale + Caddy)
     runs-on: ubuntu-latest
