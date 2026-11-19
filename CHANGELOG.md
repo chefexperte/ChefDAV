@@ -1,279 +1,247 @@
 # Changelog
 
-All notable, user-visible changes to ChefDAV. The login screen shows the
-latest section of this file (baked into each build).
+All notable, user-visible changes to ChefDAV. The login screen shows the latest
+section of this file, baked into each build.
 
 ## Unreleased
 
-### Adwaita fidelity pass + fixes
+### Adwaita fidelity pass
 
-Refinements after reviewing the Adwaita re-skin, all following the real
-libadwaita stylesheet values.
+Refinements after reviewing the Adwaita re-skin, using the values from
+libadwaita's stylesheet.
 
-- **All-day switch in the event editor is fixed** — it rendered as a stray
-  16px dot because the generic checkbutton rule out-specified the switch; it
-  is a proper 44×24 Adwaita switch again (grey off, blue on, sliding knob).
-- **Events that cross a month boundary now show up in BOTH months.** A
-  multi-day event starting 30 Nov and ending 2 Dec used to disappear from the
-  December grid (recurring series were filtered by start date only), and the
-  month grid reused the shared boundary week row across months so its
-  spanning bars never appeared. Both are fixed.
-- **Month-view day cells read as cards** — white cells were only 1.04:1
-  against the window and effectively edgeless; they now have a real card
-  elevation and hairline (dark mode unchanged).
-- **Week/day all-day bars no longer overflow or shrink the day columns** in
-  day view; they are positioned by grid column.
-- **The Dark/Light and DE/EN footer buttons are visible** — they sit on the
-  sidebar, where a 10 % tint is invisible, so they use libadwaita's opaque
-  standalone button surface with a hairline; the active language/theme reads
-  clearly in both themes.
-- **Log out is a red destructive button**; the Calendars heading lost its
-  misleading chevron; Home/previous/next are raised circular headerbar
-  buttons; the sidebar toggles are back to consistent widths.
-- **New: year and month switchers** — click the year or the month in the
-  month-view title to jump through a 5×3 year grid or the twelve months,
-  keeping the current day where the month allows it.
-- **New: "New event" in the details popup** creates an event in the same slot
-  as the one you are looking at (same date, start and end time).
-- **The "+N more" popup lists the right events.** It used to show an event
-  that was already visible, one that was never hidden, and events from a
-  completely different day: the bar stored indices into *that day's* occurrence
-  list, which the popup then looked up in the global event list, and a refresh
-  could keep a stale bar whose hidden set had changed. Both the day and the
-  week view now list exactly the events the bar hides, and clicking one opens
-  that event.
-- **The "+N more" popup is a plain popover** (one surface, flat rows) instead
-  of a dialog containing a bordered card, and it is anchored at the click.
-- **Multi-day bars keep the day cell's padding** on the right in the month
-  view — they no longer run flush to the day's edge (the width calculation
-  ignored the bar's own left inset).
-- **Popovers open exactly where you click, at any height.** The panels
-  (event details, day and time-slot popups, "+N more") used to be clamped
-  against a *guessed* size, so anything below the middle of the screen was
-  pushed far from the cursor. They are now placed from their real measured
-  size: below-right of the pointer when there is room, flipped above it near
-  the bottom, always fully on screen. The **month and year menus open centred
-  under their own field** instead of at a fixed spot.
-- **The logo and "ChefDAV" wordmark are a link home**: one click returns to the
-  month view of the current month with nothing open or selected (a real link,
-  so middle-click still opens it in a new tab), with breathing room around it.
-- **All icons are real SVGs** — the "New event" / "New task" / "Go to day"
-  actions, the previous/next chevrons, the picker arrows, the search clear
-  button and the "new calendar" plus were text characters before (they render
-  differently on every platform); they now come from one inline icon set.
-- **Search asks you to keep typing**: one character now shows "Type at least
-  2 characters to search." instead of "No matching events".
-- **Dialogs follow AdwDialog**: a padded header, scrollable content and a
-  footer action row separated by a hairline.
+- The all-day switch in the event editor is a proper 44×24 Adwaita switch again
+  (grey off, blue on, sliding knob). The generic checkbutton rule had
+  out-specified it and left a stray dot.
+- Events that cross a month boundary appear in both months. A 30 Nov to 2 Dec
+  event used to disappear from December for two reasons: recurring series were
+  filtered by start date, and the shared boundary week row kept the previous
+  month's bar state. Both are fixed.
+- Month-view day cells read as cards. White cells were 1.04:1 against the window
+  and had no visible edge; they now carry a card shadow and a hairline. Dark
+  mode is unchanged.
+- Week and day all-day bars no longer overflow or shrink the day columns; they
+  are positioned by grid column.
+- The Dark/Light and DE/EN footer buttons are visible. They sit on the sidebar,
+  where a 10 % tint disappears, so they use libadwaita's opaque standalone
+  button surface with a hairline. The active language and theme read clearly in
+  both themes.
+- Log out is a red destructive button. The Calendars heading lost its chevron,
+  Home/previous/next are raised circular headerbar buttons, and the sidebar
+  toggles have consistent widths.
+- Year and month switchers: click the year or the month in the month-view title
+  to open a 5×3 year grid or the twelve months, keeping the current day where the
+  month allows it.
+- The details popup has a "New event" button that starts an event in the same
+  date and time slot.
+- The "+N more" popup lists the events its bar hides. It used to show an event
+  that was already visible, one that was never hidden, and events from another
+  day. The bar stored indices into that day's occurrence list, and the popup
+  looked them up in the global event list. Day and week views now map the hidden
+  set correctly, and clicking a row opens that event.
+- The "+N more" popup is a plain popover with flat rows instead of a dialog
+  containing a card, and it opens at the click.
+- Multi-day bars keep the day cell's padding on the right in month view; their
+  width calculation ignored the left inset.
+- Popovers open where you click at any screen height. The details card, day and
+  time-slot popups and "+N more" used to be clamped against a guessed size, so
+  anything below the middle of the screen was pushed away from the cursor. They
+  are now measured and placed below-right of the pointer, flipped above near the
+  bottom, and always kept on screen. The month and year menus open centred under
+  their own field.
+- The logo and "ChefDAV" wordmark are a link home. One click returns to the
+  month view of the current month with nothing open or selected. It is a real
+  link, so middle-click opens it in a new tab.
+- All icons are real SVGs. The "New event", "New task" and "Go to day" actions,
+  the previous/next chevrons, the picker arrows, the search clear button and the
+  "new calendar" plus were text characters with different shapes on every
+  platform. They now come from one inline icon set.
+- Search asks you to keep typing. One character shows "Type at least 2
+  characters to search." instead of "No matching events".
+- Dialogs follow AdwDialog: padded header, scrollable content and a footer
+  action row separated by a hairline.
 
-### Re-skin to GNOME libadwaita (Adwaita)
+### Re-skin to GNOME libadwaita
 
-**Note:** the black-and-gold Art Deco redesign from earlier today was a
-mistake (the owner rejected it from the screenshots) and is fully replaced by
-this re-skin.
+The black-and-gold Art Deco design from earlier the same day was rejected by the
+owner and is replaced by this re-skin.
 
-- The app now follows the **GTK4 / libadwaita design**: colors, radii
-  (buttons/entries 9px, cards 12px, dialogs/popovers 15px) and shadows are
-  the real named colors from GNOME libadwaita's stylesheet — light mode
-  (`#fafafb` window, white cards, `#ebebed` sidebar) is the default, the
-  dark mode is Adwaita dark (`#222226` window, `#1d1d20` view,
-  `rgba(255,255,255,8%)` cards).
-- **Accent is Adwaita blue `#3584e4`** (white label); the calendar palette
-  is the eight Adwaita accent hues (blue, red, orange, green, teal, purple,
-  pink, slate), each keeping white chip labels above 3:1.
-- Buttons are flat Adwaita raised buttons (10% ink background, 1px border);
-  the primary action is the blue *suggested action*. The view switcher is an
-  AdwViewSwitcher-style segmented control; "today" is an accent-filled
-  circle like in GNOME Calendar; modals/popovers are dialog-styled cards with
-  a dimmed overlay (no blur). The logo is a flat accent-blue calendar tile.
-- **Fonts stay as requested, then refined**: Klarissa keeps the
-  wordmark/headings; the body face is now **Montserrat** (self-hosted, OFL) —
-  both bundled in `public/fonts/`, no CDN. The logo is back to the original
-  pastel-mint mark from before the first redesign.
-- More Adwaita widgets transferred: GTK-style checkbuttons (6px radius, accent
-  fill + white check), a pill search entry with magnifier icon, boxed-list
-  rows (agenda/tasks) with hairline separators, flat circular icon buttons,
-  and a real Adwaita switch.
+- The app follows GTK4/libadwaita. Colours, radii (buttons and entries 9 px,
+  cards 12 px, dialogs and popovers 15 px) and shadows are the named values from
+  libadwaita's stylesheet. Light is the default (`#fafafb` window, white cards,
+  `#ebebed` sidebar); dark is Adwaita dark (`#222226` window, `#1d1d20` view,
+  white at 8 % for cards).
+- Accent is Adwaita blue `#3584e4` with white labels. The calendar palette is the
+  eight Adwaita accent hues (blue, red, orange, green, teal, purple, pink,
+  slate), each with white chip labels above 3:1.
+- Buttons are flat Adwaita raised buttons (10 % ink background, 1 px border),
+  and the primary action is the blue suggested action. The view switcher is an
+  AdwViewSwitcher-style segmented control. Today is an accent-filled circle as in
+  GNOME Calendar. Modals and popovers are dialog-styled cards on a dimmed
+  overlay, with no blur. The logo is a flat accent-blue calendar tile.
+- Klarissa keeps the wordmark and headings; the body face is Montserrat, self
+  hosted under the OFL. Both are bundled in `public/fonts/`, with no CDN. The
+  logo is back to the original pastel-mint mark.
+- More Adwaita widgets: GTK checkbuttons (6 px radius, accent fill and white
+  check), a pill search entry with a magnifier, boxed-list rows for the list and
+  tasks views with hairline separators, flat circular icon buttons, and a real
+  Adwaita switch.
 
 ### Docker image
 
-- ChefDAV now ships as a **container image**, `ghcr.io/chefexperte/chefdav`:
-  the calendar frontend (static WASM app) on a small Caddy file server, with an
-  SPA fallback for deep links, immutable caching for the hashed bundle and a
-  `/healthz` probe.
-- The CalDAV server is chosen **when the container starts** — set
-  `BACKEND_URL` (and optionally `BACKEND_LOCK=true|false`) in the environment or
-  a `.env` file next to the compose file. One image serves every deployment;
-  with no `BACKEND_URL` the login screen asks for the server as before.
-- Login failures are now explained better: if the browser blocked the request
-  because the CalDAV server sent no CORS headers, the login page says so and
+- ChefDAV ships as a container image, `ghcr.io/chefexperte/chefdav`: the calendar
+  frontend (static WASM app) on a small Caddy file server, with an SPA fallback
+  for deep links, immutable caching for the hashed bundle and a `/healthz` probe.
+- The CalDAV server is chosen at container start. Set `BACKEND_URL` in the
+  environment or a `.env` file. With it set, the login screen asks only for
+  credentials; with it empty, users enter the server themselves. There is no
+  separate lock option.
+- Login failures are explained better. When the browser blocks the request
+  because the CalDAV server sends no CORS headers, the login page says so and
   points at the fix instead of only "server unreachable".
-- The image can be published **under a path** (`calendar.example.com/ui` with
-  the CalDAV server at the site root): set `BASE_PATH=/ui` and route by
-  `Host()` + `PathPrefix()`. It works whether or not your proxy strips the
-  prefix.
-- **Fixed:** logging in a second time after logging out (and visiting the
-  `/login` URL) stayed on the login page instead of opening the calendar.
+- The app can be published under a path (`calendar.example.com/ui` with the
+  CalDAV server at the site root). Set `BASE_PATH=/ui` and route by `Host()` and
+  `PathPrefix()`; it works whether or not the proxy strips the prefix. Deep links
+  under `/ui` keep working, and the address bar no longer gets a double slash.
+- Fixed: logging in a second time after logging out, or visiting `/login` while
+  logged out, stayed on the login page instead of opening the calendar.
 
 ## 0.2.0 — 2026-11-17
 
-Second feature batch: Tetris layout, self-hosted fonts, timezone fix,
-"+N more" everywhere, month-view labels.
+Second feature batch: cluster layout for overlapping events, self-hosted fonts,
+a timezone fix, "+N more" everywhere and clearer month labels.
 
-- The **"+N more" overflow entries are now clearly visible**, especially in
-  dark mode: they get their own neutral surface with a hairline border
-  instead of a background that vanished against the timeline (dark mode
-  especially). The **month view** overflow chip now also says **"+N more"**
-  (counting the hidden events) like the week/day bars, instead of
-  "Show all".
-- **Smarter stacking of overlapping events** ("Tetris" layout): events that
-  overlap now form clusters, and each cluster gets exactly as many columns
-  as its busiest moment needs. A quiet morning no longer shrinks because a
-  busy afternoon exists somewhere else in the day (a lone event keeps full
-  width next to a packed block), staggered chains pack tightly, and every
-  overflowing block gets its own "+N more" bar. The bar **counts every
-  hidden event** (one used to be skipped silently) and opens exactly the
-  events it hides.
-- **No more third-party CDNs**: the fonts are now **bundled with the app and
-  served from your own origin** — it no longer loads anything from Google
-  Fonts (or anyone else). The only network peers left are your calendar
-  server and OpenStreetMap (optional map preview).
-- Fixed **events created by other clients showing at the wrong local time**:
-  the app silently fell back to UTC instead of using the browser's timezone
-  (a broken `Intl` lookup), so events with a `TZID` — e.g. from AgenDAV,
-  Thunderbird or the demo seed — rendered one hour early in winter (two in
-  summer). Events now show in your actual timezone.
-- The week/day overflow entry is now a **"+N more"** button (N = hidden event
-  count) that spans exactly the **time range of the hidden events** (earliest
-  start → latest end) instead of the full column height, and only appears when
-  events truly overlap too much — many non-overlapping events never trigger it.
-- The **event details card is now a popover** anchored at the click position
-  (deep links / search results open it centered near the top), and the text
-  **"Close" button is now an × button in the top-right corner** (also in the
-  "more events" popup).
-- Fixed the **month view boundary cells** keeping stale out-of-month styling
-  when navigating between months (e.g. Dec → Jan showed the last December
-  days as in-month) — the `out` class is now computed reactively.
-- **Day view fits more events**: up to **four** overlapping timed events are
-  shown side by side (the week view keeps two); from five on, three are shown
-  plus a **"Show all" bar spanning the full column height** in the freed slot,
-  so it stays visible while scrolling. The all-day row is unchanged.
-- **Event titles stick while scrolling**: in the week/day timeline the title of
-  a tall event stays pinned at the top of the viewport, so the event name
-  never scrolls out of sight.
+- "+N more" entries are clearly visible, especially in dark mode: they have their
+  own neutral surface and a hairline border instead of a background that vanished
+  against the timeline. The month-view overflow chip says "+N more" and counts
+  the hidden events, like the week and day bars.
+- Overlapping events stack in clusters. Each cluster gets as many columns as its
+  busiest moment needs, so a quiet morning keeps its width when the afternoon is
+  packed. Chains pack tightly, a lone event keeps full width next to an
+  overflowing cluster, and each overflowing cluster gets its own "+N more" bar.
+  The bar counts every hidden event (one used to be skipped) and lists exactly
+  those events.
+- No more third-party CDNs. The fonts are bundled and served from your own
+  origin, so nothing loads from Google Fonts or another host. The only network
+  peers are your calendar server and OpenStreetMap for the optional map preview.
+- Fixed events from other clients showing at the wrong local time. A broken
+  `Intl` lookup made the app fall back to UTC, so events with a `TZID` from
+  AgenDAV, Thunderbird or the demo seed rendered an hour early in winter and two
+  hours early in summer. They now use the browser's timezone.
+- The week and day overflow entry is a "+N more" button that spans the time range
+  of the hidden events instead of the full column, and only appears on real
+  overlap.
+- The event details card is a popover anchored at the click; deep links and
+  search results open it centred near the top. The Close text button is an × in
+  the top-right corner, in the "more events" popup as well.
+- Fixed month boundary cells keeping stale out-of-month styling when navigating,
+  for example December days showing as in-month after Dec → Jan. The state is
+  computed reactively.
+- Day view shows up to four overlapping timed events side by side; week view
+  keeps two. From five on, three are shown plus a "Show all" bar spanning the
+  full column in the freed slot. The all-day row is unchanged.
+- Event titles stay pinned at the top of the viewport while you scroll a tall
+  event in the week and day timelines.
 - Fixed event columns not resizing when a new overlapping event was created in
-  the day view (stale rows until reload).
-- Fixed a reloaded `/event/...` deep link occasionally opening the **wrong
-  event** (the details modal stored a positional index that shifted when the
-  event list was re-synced; it is now remapped by href).
-- Fixed the **continuation fade of multi-day events when navigating weeks**: a
-  week-crossing all-day event kept the previous week's fade side (and position)
-  after clicking next/previous — the spanning-bar row is now re-rendered when
-  its segment geometry changes.
-- **Deep links for every resource**: opening an event or task pushes its own
-  URL (`/event/<calendar>/<uid>`, `/task/<calendar>/<uid>`, plus `?occ=…` for
-  one occurrence of a recurring event) into the address bar, and the details
-  card has a **copy-link** button. Opening such a link — including on a fresh
-  load — opens that resource directly (the calendar is found by name, hidden
-  calendars are fetched on demand).
-- The **Agenda view is now called "List"** (EN) / **"Liste"** (DE).
-- The **Copy link button** in the event details card is now an **icon** (link
-  glyph; turns into a check mark once the link is in the clipboard).
-- In the event details card the **"Location" text label is now a pin icon**.
-- Fixed a **horizontal scrollbar in the edit-event popup** (field rows could
-  overflow the modal width).
-- Fixed the week view **"+N more" badge** being rendered too high instead of in
-  its day column.
-- The **day view no longer shows the redundant day header** (weekday
-  abbreviation + circled number); the toolbar already shows the date.
-- **Multi-day events**: all-day and timed events in the editor now have an
-  **end date** picker (overnight events like 23:00 → 01:00 next day work). In
-  the month view, multi-day and overnight events render as a **bar spanning
-  the day cells**; week/day/all-day rows and the list view respect
-  continuation, shown as a **striped fade-out** at the continuing edge.
-- **Event styling**: event chips/bars are now **solid calendar color** (no more
-  pale tint + left border) and a bit bigger; month cells show **two events +
-  a "+N more" entry** that looks like an event but in a neutral color (clicking
-  it opens the day popover — no more badge). The week-view "+N more" is
-  event-like as well. The **Edit button** uses a proper pencil icon.
-- **Continuation fades**: events crossing into another day/week fade out with
-  a striped dissolve (smooth, rounded) at the continuing edge — horizontal at
-  week boundaries (month view renders multi-day events as one spanning bar per
-  week row; the week all-day row as one longer bar), vertical for timed events
-  clipped at the day top/bottom (also in day view).
-- The toolbar **"Today" button is now a home icon button** left of prev/next
-  (jumps to the current day; prev/next unchanged).
-- Week/day: the **all-day row is a fixed 3-entry height** (up to 3 events; more
-  → an event-sized neutral **"Show all"** entry), and each timeline column
-  shows **2 slots — on overflow the second slot is a "Show all" entry**
-  instead of the "+N more" badge.
-- **The URL now reflects the current view and date** — `/month/2026-11`,
-  `/week/2026-11-09`, `/day/…`, `/list/…`, `/tasks` — so a copied link restores
-  exactly that view (resource links `/event/…` still work and return to the
-  view URL on close). Month cells show up to 3 events (more → 2 + "Show all"),
-  with more spacing and the same border inset for spanning bars.
+  day view. The rows stayed stale until a reload.
+- Fixed a reloaded `/event/…` deep link opening the wrong event. The details
+  modal stored a positional index that shifted when the event list was
+  re-synced; it is now remapped by href.
+- Fixed the continuation fade of multi-day events when navigating weeks. A
+  week-crossing all-day event kept the previous week's fade side and position
+  because the bar row was not re-rendered when its geometry changed.
+- Deep links for every resource. Opening an event or task puts its URL in the
+  address bar (`/event/<calendar>/<uid>`, `/task/<calendar>/<uid>`, with
+  `?occ=…` for one occurrence), and the details card has a copy-link button. A
+  fresh load of such a link opens the resource, fetching a hidden calendar on
+  demand if needed.
+- The Agenda view is called "List" in English and "Liste" in German.
+- The copy-link button is an icon: a link glyph that turns into a check mark
+  once the link is in the clipboard.
+- The "Location" label in the details card is a pin icon.
+- Fixed a horizontal scrollbar in the edit-event popup.
+- Fixed the week-view "+N more" badge rendering too high instead of in its day
+  column.
+- Day view no longer shows a redundant day header; the toolbar already shows the
+  date.
+- Multi-day events: all-day and timed events have an end-date picker, so
+  overnight events such as 23:00 to 01:00 work. Month view draws them as a bar
+  across day cells, and week, day and list views show a striped fade where the
+  event continues.
+- Event chips and bars use a solid calendar colour (no pale tint with a left
+  border) and are a little larger. Month cells show two events plus a "+N more"
+  entry styled in a neutral colour; clicking it opens the day popover. The
+  week-view "+N more" entry looks the same. The Edit button uses a pencil icon.
+- Continuation fades: an event that crosses into another day or week fades out
+  with a striped dissolve at the continuing edge. The fade is horizontal at week
+  boundaries, where month view draws one spanning bar per week row and the week
+  all-day row draws one longer bar. Timed events clipped at the day top or bottom
+  fade vertically, in day view too.
+- The toolbar's "Today" button is a home icon to the left of prev/next. It jumps
+  to the current day.
+- Week and day views keep the all-day row at a fixed three-entry height. More
+  events collapse into an event-sized "Show all" entry. Each timeline column
+  shows two slots; overflow turns the second slot into "Show all".
+- The URL reflects the current view and date (`/month/2026-11`,
+  `/week/2026-11-09`, `/day/…`, `/list/…`, `/tasks`), so a copied link restores
+  that view. Resource links still work and return to the view URL when closed.
+  Month cells show up to three events (more becomes two plus "Show all"), with
+  more spacing and a matching inset for spanning bars.
 
 ## 0.1.1 — 2026-11-08
 
-- README now warns prominently that the project is **written entirely by AI**.
-
-- README rewritten as a proper project readme (what it is, screenshots, setup,
-  dev setup, limitations, licensing).
-
-- License clarified: all original code and assets are **MIT** (`LICENSE`,
-  `license = "MIT"` in both Cargo.tomls). No AgenDAV code was ever copied;
-  dependencies are permissive crates (see NOTICE.md), fonts are OFL and loaded
+- The README warns that the project is written entirely by AI, and was rewritten
+  as a proper project readme with screenshots, setup, development, limitations
+  and licensing.
+- Licensing clarified: all original code and assets are MIT (`LICENSE`,
+  `license = "MIT"` in both Cargo.tomls). No AgenDAV code was copied.
+  Dependencies are permissive crates (see `NOTICE.md`); fonts are OFL and loaded
   at runtime.
-
-- **Stay logged in**: the saved session is restored automatically on reload;
-  a "Stay logged in on this device" checkbox (on by default) controls it.
-  Logging out deletes the saved password, and the login page keeps the server
-  and username for prefilling.
-- The login page now has **dark/light and EN/DE controls** and applies the
-  saved theme before rendering.
-- **OpenStreetMap preview** in event details: coordinates show a pinned map
-  (click opens OSM in a new tab); address-like locations are geocoded with
-  Photon, and other names get an OSM search link.
-- Agenda view shows **start–end times** (e.g. `12:30–13:30`).
-- Week/day: short events (15–45 min) use a **compact one-line layout** so the
-  title is no longer clipped.
-- The search results panel is now anchored **directly under the search box**.
-- Removed the non-functional reminders bell and the reminder service worker.
-- New **logo**: pastel mint parallelogram with rounded corners and an abstract deep-green ring-and-dot mark (no rendered text).
+- "Stay logged in": the saved session is restored on reload. A checkbox, on by
+  default, controls it. Logging out deletes the saved password, and the login
+  page keeps the server and username for prefilling.
+- The login page has dark/light and EN/DE controls and applies the saved theme
+  before rendering.
+- OpenStreetMap preview in event details: coordinates show a pinned map, a click
+  opens OSM in a new tab, address-like locations are geocoded with Photon, and
+  other names get an OSM search link.
+- The list view shows start and end times (`12:30–13:30`).
+- Week and day views give events shorter than 45 minutes a compact one-line
+  layout so the title stays visible.
+- The search results panel opens directly under the search box.
+- Removed the non-functional reminders bell and service worker.
+- New logo: a pastel mint parallelogram with rounded corners and an abstract
+  deep-green ring-and-dot mark.
 
 ## 0.1.0 — 2026-11-07
 
 - Month, week, day, agenda and tasks views with a shared toolbar.
-- Equal-height month cells (max three chips + "+N more"), a day popover with
-  the day's events, and time-slot/all-day popovers with events + prefilled
-  New event.
-- Click an event to see a read-only details card first; the pencil button opens
-  the editor.
-- Week/day: click a time slot or the all-day row to create an event there;
-  overlapping events collapse into a readable "+N more" popup.
-- Event create/edit/delete with an RRULE editor (daily/weekly/monthly/yearly,
-  interval, weekdays, count/until, raw RRULE fallback).
-- Recurrence exceptions: edit or cancel **this event**, **this and following**,
-  or **all events** (RECURRENCE-ID / THISANDFUTURE).
-- Client-side recurrence expansion (RRULE/RDATE/EXDATE), DST-correct.
-- Search across the cached calendar, multi-select + bulk delete.
-- Drag & drop events between days (month view; non-recurring events).
-- Calendar create, rename, delete and **color editing** (palette + custom
-  picker); read-only calendars are detected via `current-user-privilege-set`
-  and shown with a lock. A sharing panel shows the calendar URL, your
-  privileges and Radicale `[rights]` guidance.
-- VTODO tasks: create, edit, complete/uncomplete, delete.
-- Incremental sync via `sync-token` + `calendar-multiget`.
+- Equal-height month cells with up to three chips plus "+N more", a day popover
+  listing the day's events, and time-slot and all-day popovers with events and a
+  prefilled New event action.
+- Clicking an event opens a read-only details card; the pencil button opens the
+  editor.
+- Week and day views: click a time slot or the all-day row to create an event
+  there. Overlapping events collapse into a "+N more" popup.
+- Event create, edit and delete, with an RRULE editor (daily, weekly, monthly or
+  yearly; interval, weekdays, count or until, and a raw RRULE fallback).
+- Recurrence exceptions: edit or cancel this event, this and following, or all
+  events (RECURRENCE-ID / THISANDFUTURE).
+- Client-side recurrence expansion for RRULE, RDATE and EXDATE, DST-correct.
+- Search across the cached calendar, multi-select and bulk delete.
+- Drag and drop events between days in month view, for non-recurring events.
+- Calendar create, rename, delete and colour editing with a palette and custom
+  picker. Read-only calendars are detected through
+  `current-user-privilege-set` and shown with a lock. The sharing panel shows the
+  calendar URL, your privileges and Radicale `[rights]` guidance.
+- VTODO tasks: create, edit, complete, uncomplete and delete.
+- Incremental sync through `sync-token` and `calendar-multiget`.
 - Offline outbox: writes are queued and retried when the connection returns.
-- Reminder service worker schedules upcoming notifications.
-- Fixed calendar visibility toggles after a calendar-list refresh, the
-  "Your access" separator, and mobile horizontal overflow.
-- Mint design system with reusable tokens (`style/tokens.css`), dark theme,
-  full English/German UI (labels, dates, weekdays/months, rule descriptions),
-  and switch-style toggles matching the text-input height.
-- Keyboard shortcuts: `n` new event, `t` today, `m/w/d/a/k` views, `/` search,
-  arrow keys navigate, `Esc` closes dialogs.
-- Abstract logo (ring + dot on a pastel parallelogram) and a changelog on the
-  login screen.
-- Stable instance script (`scripts/stable.sh`) with its own Radicale volume and
-  ports, built from the `stable` git tag.
+- A reminder service worker scheduled upcoming notifications.
+- Fixed calendar visibility toggles after a calendar-list refresh, the "Your
+  access" separator, and horizontal overflow on mobile.
+- Mint design system with reusable tokens (`style/tokens.css`), a dark theme, a
+  full English/German interface, and switch-style toggles.
+- Keyboard shortcuts: `n` for a new event, `t` for today, `m/w/d/a/k` for views,
+  `/` for search, arrow keys to navigate, `Esc` to close dialogs.
+- Abstract logo and a changelog on the login screen.

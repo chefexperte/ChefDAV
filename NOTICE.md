@@ -1,62 +1,59 @@
 # NOTICE — licenses and code provenance
 
-## ChefDAV itself (original work)
+## ChefDAV
 
-All code and assets in this repository (unless noted otherwise) are original
-work for this project and are licensed **MIT** — see `LICENSE` and the
-`license = "MIT"` fields in the `Cargo.toml` files.
+All code and assets in this repository are original work for this project unless
+noted otherwise. They are MIT licensed. See `LICENSE` and the `license = "MIT"`
+fields in the `Cargo.toml` files.
 
-## Inspiration (no code copied)
+## Inspiration
 
-- **[AgenDAV](https://github.com/agendav/agendav)** — AGPL-3.0-only.
-  ChefDAV is architecturally inspired by it (a CalDAV web frontend), but no
-  AgenDAV source code, assets or text have been copied — only the general idea.
-  **Important:** if any AgenDAV code is ever ported into this repository, this
-  project becomes a derivative work and must be distributed under
-  **AGPL-3.0** — update `LICENSE`, the `license` fields and this notice at
-  that point.
-- **[Runway](https://github.com/liesen/runway)** (MIT) — prior art for a
-  Rust/WASM CalDAV frontend; no code copied.
+- [AgenDAV](https://github.com/agendav/agendav) (AGPL-3.0-only) is the closest
+  relative: a CalDAV web frontend with the same purpose. No AgenDAV source code,
+  assets or text were copied.
+- [Runway](https://github.com/liesen/runway) (MIT) is prior art for a Rust/WASM
+  CalDAV frontend. No code was copied.
 
-## Fonts (bundled, self-hosted — no CDN)
+## Fonts
 
-The app loads **nothing from third-party CDNs** (project rule, see AGENTS.md).
-The display and UI fonts are shipped in this repository and served same-origin:
+The app loads nothing from third-party CDNs (a project rule, also recorded in
+AGENTS.md). Both fonts ship in this repository and are served from the app's own
+origin:
 
-- `public/fonts/montserrat-*.woff2` — **Montserrat**, SIL Open Font License
-  1.1 (body/UI face, 400/500/600/700 + italic), © 2011 The Montserrat Project
-  Authors (Julieta Ulanovsky et al., https://github.com/googlefonts/montserrat).
-  The OFL expressly permits redistribution and bundling; the woff2 subsets
-  were obtained from Google Fonts once at download time — at runtime the app
-  only requests them from its own origin.
-- `public/fonts/Klarissa-Regular.ttf` — **Klarissa**, accent/display face,
-  © 2003 Dieter Steffmann / Typographer Mediengestaltung. Bundled under the
-  **1001Fonts Free For Commercial Use (FFC) license**; the complete EULA as
-  distributed with the font is committed verbatim as
-  `public/fonts/1001fonts-klarissa-eula.txt`. (Font sites disagree about the
-  status of this 2003 freeware release; the project ships it on the basis of
-  the 1001Fonts FFC grant, per the project owner's decision, 2026-11-18.)
+- `public/fonts/montserrat-*.woff2` is **Montserrat** under the SIL Open Font
+  License 1.1 (body and UI face, 400/500/600/700 plus italic), © 2011 The
+  Montserrat Project Authors (Julieta Ulanovsky et al.,
+  https://github.com/googlefonts/montserrat). The OFL permits redistribution and
+  bundling. The woff2 subsets were downloaded from Google Fonts once; at runtime
+  the app only requests them from its own origin.
+- `public/fonts/Klarissa-Regular.ttf` is **Klarissa** (accent and display face),
+  © 2003 Dieter Steffmann / Typographer Mediengestaltung. It is bundled under the
+  1001Fonts Free For Commercial Use (FFC) license, and the EULA shipped with the
+  font is committed as `public/fonts/1001fonts-klarissa-eula.txt`. Font sites
+  disagree about the status of this 2003 freeware release; the project ships it
+  on the basis of the 1001Fonts FFC grant, as decided by the project owner on
+  2026-11-18.
 
-The logo (`public/logo.svg`, `public/favicon.svg`) is an original SVG drawing
-(pastel-mint parallelogram with a ring-and-dot mark, no font outlines).
+The logo (`public/logo.svg`, `public/favicon.svg`) is an original SVG drawing: a
+pastel mint parallelogram with a ring-and-dot mark, no font outlines.
 
 ## Design reference
 
-The UI follows the **GTK4/libadwaita (GNOME Adwaita)** design: color values,
-radii and shadows in `style/tokens.css` are taken from libadwaita's public
-stylesheet (`src/stylesheet/_colors.scss`, `_palette.scss`, `_common.scss`).
-libadwaita is LGPL-2.1-only; no code is copied — only design values (color
-constants, corner radii), which are facts, not copyrightable expression.
+The interface follows GTK4/libadwaita. The colour values, corner radii and
+shadows in `style/tokens.css` come from libadwaita's public stylesheet
+(`src/stylesheet/_colors.scss`, `_palette.scss`, `_common.scss`). libadwaita is
+LGPL-2.1-only. No code was copied; only design values such as colour constants
+and corner radii are used.
 Reference: https://gitlab.gnome.org/GNOME/libadwaita
 
-## Third-party crates (via Cargo)
+## Third-party crates
 
-Borrowed code comes from crates.io dependencies, used under their own licenses
-(all permissive; none copyleft). Full texts ship with the crates in the cargo
-registry and are linked from each crate's crates.io page. `cargo deny check`
-can audit this (`cargo install cargo-deny`).
+Code from crates.io dependencies is used under each crate's own license. All of
+them are permissive and none is copyleft. The full license texts ship with the
+crates in the cargo registry and are linked from each crate's crates.io page.
+`cargo deny check` can audit this (`cargo install cargo-deny`).
 
-License groups from `cargo metadata` (ChefDAV's own crates excluded):
+License groups from `cargo metadata`, with ChefDAV's own crates excluded:
 
 - **MIT**: leptos, leptos_router, tachys, reactive_graph, reqwest, hyper, tokio,
   tower, axum, bytes, serde, serde_json, syn, quote, proc-macro2, roxmltree,
@@ -79,12 +76,12 @@ License groups from `cargo metadata` (ChefDAV's own crates excluded):
 - **Unicode-3.0**: unicode-ident, icu_* (via idna)
 - **MIT AND BSD-3-Clause**: matchit (also listed above)
 
-No GPL/AGPL/LGPL crate is in the dependency tree. If one is ever added, this
-project's MIT license stays valid (the crate keeps its own license), but the
-distribution terms of that crate must be followed — record it here.
+No GPL, AGPL or LGPL crate is in the dependency tree. If one is ever added,
+ChefDAV's MIT license stays valid, but that crate's distribution terms apply and
+belong in this file.
 
-## Infrastructure images (dev only, not part of the app)
+## Infrastructure images (dev only)
 
-- Radicale image (`tomsquest/docker-radicale`) — AGPL-3.0 (server)
+- `tomsquest/docker-radicale` — AGPL-3.0 (the server)
 - `caddy:2-alpine` — Apache-2.0
-- `glauth/glauth` — MIT (LDAP fixture, dev only)
+- `glauth/glauth` — MIT (LDAP fixture)
