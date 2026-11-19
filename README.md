@@ -186,6 +186,19 @@ and use port 8080. Log in with your CalDAV credentials.
 - **App at the root:** drop `BASE_PATH` and the `PathPrefix` rule, and give
   Radicale its own host.
 
+**Running it locally.** Traefik matches the host name and ignores the port, so
+for a test without DNS use `localhost` everywhere. Everything else in the file
+stays the same:
+
+- `Host(\`localhost\`)` in both router rules, instead of `calendar.example.com`,
+- `BACKEND_URL: http://localhost:8080`,
+- the CORS origin `http://localhost:8080`,
+- open <http://localhost:8080/ui/>.
+
+No `/etc/hosts` entry is needed. If you browse to `127.0.0.1` instead, use
+`Host(\`127.0.0.1\`)` and put the same host in `BACKEND_URL` and the CORS
+origin.
+
 **How `/ui` reaches the app.** `BASE_PATH=/ui` tells ChefDAV that it lives
 under that path, so its links and deep links stay inside `/ui`. The Traefik
 rule above only has to match the path and forward it unchanged; no prefix
