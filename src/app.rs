@@ -18,6 +18,11 @@ pub fn App() -> impl IntoView {
     let state = AppState::new(tz);
     provide_context(state);
 
+    // The mount path is only known after `/config.json` was loaded, and the
+    // router needs it at construction time. So the whole app (router included)
+    // is created once this is set — before that, only the splash renders.
+    let router_base = RwSignal::new(None::<String>);
+
     // Load runtime configuration, then restore preferences and try the saved
     // session (auto-login). The splash stays up until all of this settles, so
     // the login form never flashes — and never briefly shows a server field
@@ -36,6 +41,7 @@ pub fn App() -> impl IntoView {
                 }
             }
             crate::config::set_runtime(runtime);
+            router_base.set(Some(crate::config::router_base()));
 
             let settings = store::settings_load().await;
             state.theme.set(if settings.theme == "dark" {
@@ -83,10 +89,27 @@ pub fn App() -> impl IntoView {
     });
 
     view! {
+        <Show
+            when=move || router_base.get().is_some()
+            fallback=move || {
+                view! {
+                    <div class="login-page">
+                        <div class="login-card">
+                            <div class="login-brand">
+                                <img src=move || crate::config::asset_url("logo.svg") width="64" height="64" alt="ChefDAV logo" />
+                                <h1>"ChefDAV"</h1>
+                            </div>
+                            <p class="restoring">
+                                {move || crate::i18n::t(state.lang.get(), "restoring_session")}
+                            </p>
+                        </div>
+                    </div>
+                }
+            }
+        >
         // `base` is the mount path ("/ui/" or ""): the router strips it before
-        // matching, so /ui/month/2026-11 routes like /month/2026-11. Set by
-        // `config` (BASE_PATH, or inferred from the address bar).
-        <Router base=crate::config::router_base()>
+        // matching, so /ui/month/2026-11 routes like /month/2026-11.
+        <Router base=router_base.get_untracked().unwrap_or_default()>
             // The session signal — not a route guard — decides whether the app
             // or the login page is shown. This avoids a navigation race where
             // the Shell mounts before the just-set session is visible.
@@ -136,5 +159,6 @@ pub fn App() -> impl IntoView {
                 </Show>
             </Show>
         </Router>
+        </Show>
     }
 }

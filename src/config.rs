@@ -112,15 +112,13 @@ pub fn detect_base_path(pathname: &str) -> String {
     }
 }
 
-/// The router base: `/ui/` for a `/ui` mount, "" at the root. Leptos strips
-/// this prefix before matching routes.
+/// The router base: `/ui` for a `/ui` mount, "" at the root.
+///
+/// **No trailing slash**: Leptos joins it as `base + normalize(path)` without
+/// trimming, so `/ui/` would produce `/ui//month/2026-11`. It strips the prefix
+/// before matching routes.
 pub fn router_base() -> String {
-    let base = runtime().base_path;
-    if base.is_empty() {
-        String::new()
-    } else {
-        format!("{base}/")
-    }
+    runtime().base_path
 }
 
 /// URL for an asset that lives next to `index.html` (`logo.svg`, `fonts/…`).

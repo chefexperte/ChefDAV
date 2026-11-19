@@ -149,7 +149,9 @@ pub fn LoginPage() -> impl IntoView {
     // If the login route is visited while already logged in, go to the app.
     Effect::new(move |_| {
         if state.session.get().is_some() {
-            navigate("/", Default::default());
+            // "" is the route root; with a mount path ("/ui/") a leading "/"
+            // would produce "/ui//".
+            navigate("", Default::default());
         }
     });
 

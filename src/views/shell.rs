@@ -25,6 +25,26 @@ use crate::links;
 use crate::state::{AppState, CalendarAction, ModalState, ViewMode};
 use crate::store;
 
+/// Strip the mount path from a browser pathname, so it compares against the
+/// router's routes: `/ui/month/2026-11` → `/month/2026-11`, `/ui/` → `/`.
+/// At the root (`base_path == ""`) it only guarantees the leading slash.
+fn route_path(pathname: &str) -> String {
+    let base = crate::config::runtime().base_path;
+    if !base.is_empty() {
+        if pathname == base {
+            return "/".to_string();
+        }
+        if let Some(rest) = pathname.strip_prefix(&format!("{base}/")) {
+            return format!("/{}", rest.trim_start_matches('/'));
+        }
+    }
+    if pathname.starts_with('/') {
+        pathname.to_string()
+    } else {
+        format!("/{pathname}")
+    }
+}
+
 #[component]
 pub fn Shell() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
@@ -47,7 +67,7 @@ pub fn Shell() -> impl IntoView {
     {
         let location = use_location();
         Effect::new(move |_| {
-            let path = location.pathname.get();
+            let path = route_path(&location.pathname.get());
             let search = location.search.get();
             let link_active = state.link_active.get();
             // Track data loads so resolution re-runs once events/todos arrive.
@@ -168,7 +188,7 @@ pub fn Shell() -> impl IntoView {
         // address bar: return the address bar to the calendar view.
         Effect::new(move |_| {
             let _ = state.modal.get();
-            let path = location.pathname.get();
+            let path = route_path(&location.pathname.get());
             if links::parse_path(&path).is_some() {
                 state.close_linked_modal_url();
             }
@@ -177,9 +197,12 @@ pub fn Shell() -> impl IntoView {
         // View + date in the URL (/month/2026-11, /week/2026-11-09, …):
         // URL -> state, so a shared link restores the view. Only react to actual
         // path changes — otherwise this would stomp the user's own view clicks.
+            // The router matches routes relative to the mount path ("/ui"), but
+        // `location.pathname` is the full browser path; strip the prefix so
+        // "/ui/month/2026-11" and "/month/2026-11" compare equal.
         let last_view_path = RwSignal::new(String::new());
         Effect::new(move |_| {
-            let path = location.pathname.get();
+            let path = route_path(&location.pathname.get());
             if path == last_view_path.get() {
                 return;
             }
@@ -220,7 +243,7 @@ pub fn Shell() -> impl IntoView {
             let anchor = state.anchor.get();
             let url = links::view_path(view, anchor);
             state.base_url.set(url.clone());
-            let path = location.pathname.get();
+            let path = route_path(&location.pathname.get());
             if links::parse_path(&path).is_some() {
                 return; // a resource link is shown; don't override it
             }
@@ -408,7 +431,9 @@ pub fn Shell() -> impl IntoView {
                         let today = caldav::time::today(&state.tz, crate::browser::now_utc());
                         state.view.set(crate::state::ViewMode::Month);
                         state.anchor.set(today);
-                        go_home_nav("/", Default::default());
+                        // "" is the route root; a leading "/" would
+                        // become "/ui//" under a mount path.
+                        go_home_nav("", Default::default());
                     }
                 >
                     <img src=move || crate::config::asset_url("logo.svg") width="34" height="34" alt="ChefDAV logo" />
@@ -561,5 +586,44 @@ pub fn Shell() -> impl IntoView {
         <Show when=move || state.jump_open.get().map(|(k, _)| k) == Some("month") fallback=|| ()>
             <MonthMenu />
         </Show>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::route_path;
+    use crate::config::{set_runtime, Runtime};
+
+    fn with_base(base: &str) {
+        set_runtime(Runtime {
+            backend_url: None,
+            lock: false,
+            base_path: base.to_string(),
+        });
+    }
+
+    #[test]
+    fn at_the_root_the_path_is_unchanged() {
+        with_base("");
+        assert_eq!(route_path("/month/2026-11"), "/month/2026-11");
+        assert_eq!(route_path("/"), "/");
+        assert_eq!(route_path("/event/cal/uid"), "/event/cal/uid");
+    }
+
+    #[test]
+    fn a_mount_path_is_stripped() {
+        with_base("/ui");
+        assert_eq!(route_path("/ui/month/2026-11"), "/month/2026-11");
+        assert_eq!(route_path("/ui/week/2026-11-16"), "/week/2026-11-16");
+        assert_eq!(route_path("/ui/event/cal/uid"), "/event/cal/uid");
+        // the mount point itself is the app root, with or without a slash
+        assert_eq!(route_path("/ui"), "/");
+        assert_eq!(route_path("/ui/"), "/");
+    }
+
+    #[test]
+    fn a_deeper_mount_path_works_too() {
+        with_base("/calendar/ui");
+        assert_eq!(route_path("/calendar/ui/month/2026-11"), "/month/2026-11");
     }
 }
