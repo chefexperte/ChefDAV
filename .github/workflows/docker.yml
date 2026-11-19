@@ -82,13 +82,21 @@ jobs:
       - name: Smoke test — bundle, SPA fallback, cache headers
         run: |
           pages=$(curl -sf http://127.0.0.1:18080/)
-          # the entry document imports the trunk-generated JS glue
-          js=$(echo "$pages" | grep -o 'chef-dav[a-zA-Z0-9_]*\.js' | head -1)
-          test -n "$js"
+          # The entry document imports the trunk-generated JS glue (relative,
+          # "./chef-dav-<hash>.js"). The rancless class keeps this stable across
+          # locales — "[a-zA-Z0-9_]" silently matches nothing under a UTF-8
+          # collation, which is how an earlier version of this step passed an
+          # empty name to curl.
+          js=$(printf '%s' "$pages" | grep -oE 'chef-dav[-a-z0-9_]*\.js' | head -1)
+          test -n "$js" || { echo "no bundle reference in index.html"; exit 1; }
           curl -sf -o /dev/null "http://127.0.0.1:18080/$js"
-          # …which loads the wasm bundle next to it (`init` on the hashed name)
-          wasm=$(echo "$js" | sed 's/\.js$/_bg.wasm/')
+          # …which loads the wasm bundle next to it
+          wasm=$(printf '%s' "$js" | sed 's/\.js$/_bg.wasm/')
           curl -sf -o /dev/null "http://127.0.0.1:18080/$wasm"
+          # the extension is served with the right type (a misrouted file_server
+          # answers text/html here and the browser refuses to run it)
+          curl -sfI "http://127.0.0.1:18080/$js" | grep -qi 'content-type: text/javascript'
+          curl -sfI "http://127.0.0.1:18080/$wasm" | grep -qi 'content-type: application/wasm'
           # deep links fall back to index.html so reloads work
           curl -sf "http://127.0.0.1:18080/week/2026-11-16" | grep -q "$js"
           # hashed assets are immutable, the entry document is revalidated
@@ -129,6 +137,39 @@ jobs:
           start_with
           config | grep -q '"backend_url": ""'
           config | grep -q '"lock": false'
+
+      # The setup this image is meant for: a reverse proxy publishes the app
+      # under a path (calendar.example.com/ui) while the CalDAV server owns the
+      # root. Traefik may or may not strip the prefix; both must work, and a
+      # deep link must serve the entry document (not HTML for the JS module).
+      - name: Smoke test — mounted under a path prefix
+        run: |
+          docker rm -f chefdav-ci >/dev/null
+          docker run -d --name chefdav-ci -p 18080:80 \
+            -e BASE_PATH=/ui -e BACKEND_URL=https://dav.example.org chefdav:ci >/dev/null
+          for i in $(seq 1 30); do
+            curl -sf -o /dev/null http://127.0.0.1:18080/ui/healthz && break
+            sleep 1
+          done
+
+          # the app, its config and its bundle answer under the prefix
+          curl -sf http://127.0.0.1:18080/ui/config.json | grep -q '"base_path": "/ui"'
+          js=$(curl -sf http://127.0.0.1:18080/ui/ | grep -oE 'chef-dav[-a-z0-9_]*\.js' | head -1)
+          test -n "$js" || { echo "no bundle reference under /ui"; exit 1; }
+          curl -sfI "http://127.0.0.1:18080/ui/$js" | grep -qi 'content-type: text/javascript'
+
+          # deep links: the entry document must carry the <base href> that keeps
+          # the bundle's relative URLs correct, or the app never boots
+          curl -sf http://127.0.0.1:18080/ui/month/2026-11 | grep -q '<base href="/ui/"'
+          curl -sf http://127.0.0.1:18080/ui/month/2026-11 | grep -q "$js"
+
+          # the bare prefix redirects to the app
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/ui)" = "308"
+
+          # …and the same image still answers at the root, so a proxy that
+          # strips the prefix also works
+          curl -sf -o /dev/null http://127.0.0.1:18080/
+          curl -sf http://127.0.0.1:18080/config.json | grep -q '"base_path": "/ui"'
 
       - name: Smoke test — read-only root filesystem
         run: |
