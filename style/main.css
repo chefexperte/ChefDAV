@@ -1665,7 +1665,7 @@ input[type="checkbox"]:focus-visible {
   padding-right: 24px;
 }
 
-.modal > :not(.modal-actions):not(.modal-close):first-child {
+.modal:not(.shortcuts-dialog) > :not(.modal-actions):not(.modal-close):first-child {
   padding-top: 22px;
 }
 
@@ -1718,7 +1718,13 @@ input[type="checkbox"]:focus-visible {
 }
 
 .modal.shortcuts-dialog h3 {
+  padding-top: 16px;
   margin-bottom: 8px;
+}
+
+.modal.shortcuts-dialog .modal-close {
+  top: 16px;
+  right: 16px;
 }
 
 .shortcut-section {
