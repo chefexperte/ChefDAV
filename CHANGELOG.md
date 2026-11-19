@@ -60,6 +60,11 @@ libadwaita's stylesheet.
   characters to search." instead of "No matching events".
 - Dialogs follow AdwDialog: padded header, scrollable content and a footer
   action row separated by a hairline.
+- The sidebar has a Shortcuts button with a keyboard icon. It opens an
+  AdwShortcutsDialog-style list of the keyboard shortcuts, grouped into General,
+  Views and Navigation. Escape or a click outside closes it.
+- The light/dark toggle shows a sun or moon icon, and the language toggle spells
+  out English and German instead of EN and DE.
 
 ### Re-skin to GNOME libadwaita
 

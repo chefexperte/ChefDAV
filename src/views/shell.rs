@@ -17,6 +17,7 @@ use crate::components::event_modal::EventModal;
 use crate::components::jump::{MonthMenu, YearMenu};
 use crate::components::new_calendar::NewCalendarModal;
 use crate::components::prefs::PrefsRow;
+use crate::components::shortcuts::{ShortcutsButton, ShortcutsDialog};
 use crate::components::slot_popup::SlotPopup;
 use crate::components::todo_modal::TodoModal;
 use crate::components::toolbar::Toolbar;
@@ -370,6 +371,7 @@ pub fn Shell() -> impl IntoView {
                             st.week_more.set(None);
                             st.search_open.set(false);
                             st.jump_open.set(None);
+                            st.shortcuts_open.set(false);
                         }
                         _ => {}
                     }
@@ -547,6 +549,7 @@ pub fn Shell() -> impl IntoView {
                             {move || format!("{} {}", state.pending.get(), crate::i18n::t(state.lang.get(), "changes_pending"))}
                         </span>
                     </Show>
+                    <ShortcutsButton />
                     <PrefsRow />
                     <button class="btn btn-danger btn-block" on:click=logout>
                         {move || crate::i18n::t(state.lang.get(), "log_out")}
@@ -558,6 +561,9 @@ pub fn Shell() -> impl IntoView {
                 <Outlet />
             </main>
         </div>
+        <Show when=move || state.shortcuts_open.get() fallback=|| ()>
+            <ShortcutsDialog />
+        </Show>
         <Show when=move || state.modal.get().is_some() fallback=|| ()>
             {move || match state.modal.get() {
                 Some(ModalState::NewTodo { .. } | ModalState::EditTodo { .. }) => view! { <TodoModal /> }.into_any(),

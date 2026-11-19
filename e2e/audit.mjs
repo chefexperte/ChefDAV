@@ -120,7 +120,7 @@ const loginTheme = await page.evaluate(() => document.documentElement.getAttribu
 check("login page applies the dark theme", loginTheme === "dark", loginTheme ?? "(none)");
 await shot("login-dark");
 await page.click('.login-prefs .prefs-row button:has-text("Light")');
-await page.click('.login-prefs .prefs-row button:has-text("EN")');
+await page.click('.login-prefs .prefs-row button:has-text("English")');
 await page.waitForTimeout(300);
 const deLoginText = await page.evaluate(() => {
   const parts = [".login-brand", ".login-card form", ".login-prefs"];
@@ -129,7 +129,7 @@ const deLoginText = await page.evaluate(() => {
 const loginEnglish = englishIn(deLoginText);
 check("German login page has no English labels", loginEnglish.length === 0, loginEnglish.join(", "));
 await shot("login-de");
-await page.click('.login-prefs .prefs-row button:has-text("DE")');
+await page.click('.login-prefs .prefs-row button:has-text("Deutsch")');
 await page.waitForTimeout(300);
 
 await page.fill('input[type="url"]', DAV);
@@ -316,7 +316,7 @@ await page.click('.prefs-row button:has-text("Light")');
 await page.waitForTimeout(300);
 
 // ---------- German ----------
-await page.click('.prefs-row button:has-text("EN")');
+await page.click('.prefs-row button:has-text("English")');
 await page.waitForTimeout(500);
 await shot("month-de");
 await page.locator(".chip", { hasText: "Lunch with Sam" }).first().click();

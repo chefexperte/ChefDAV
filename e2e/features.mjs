@@ -633,7 +633,7 @@ check("dark theme applied", (await page.getAttribute("html", "data-theme")) === 
 await page.click('.prefs-row button:has-text("Light")');
 await page.waitForTimeout(300);
 check("light theme applied", (await page.getAttribute("html", "data-theme")) === "light");
-await page.click('.prefs-row button:has-text("EN")');
+await page.click('.prefs-row button:has-text("English")');
 await page.waitForTimeout(300);
 check("language toggle (DE)", (await page.textContent("button.new-event")).includes("Neuer"));
 await page.click('.segmented-btn:has-text("Tag")');
@@ -641,7 +641,7 @@ await page.waitForTimeout(400);
 const deTitle = await page.textContent(".month-title");
 check("German date label", deTitle.includes(". November"), deTitle);
 await page.click('.segmented-btn:has-text("Monat")');
-await page.click('.prefs-row button:has-text("DE")');
+await page.click('.prefs-row button:has-text("Deutsch")');
 await page.waitForTimeout(300);
 check("language toggle (EN)", (await page.textContent("button.new-event")).includes("New event"));
 
@@ -652,6 +652,39 @@ check("keyboard 'n' opens new event", true);
 await page.keyboard.press("Escape");
 await page.waitForSelector(".modal", { state: "detached" });
 check("Escape closes modal", true);
+
+// ---------- shortcuts dialog ----------
+const themeButton = page.locator('.prefs-row button').first();
+check("theme button has an SVG icon", (await themeButton.locator("svg").count()) === 1);
+check(
+  "language button names the language",
+  (await page.locator('.prefs-row button').nth(1).innerText()).trim() === "English"
+);
+await page.click(".shortcuts-open");
+await page.waitForSelector(".shortcuts-dialog", { timeout: 5000 });
+check("shortcuts dialog opens", (await page.locator(".shortcuts-dialog").count()) === 1);
+// A fixed overlay inside the sidebar paints below the main grid, so hit-test
+// the dialog itself (a plain visibility check would still pass).
+check(
+  "shortcuts dialog sits above the calendar",
+  await page.evaluate(() => {
+    const r = document.querySelector(".shortcuts-dialog").getBoundingClientRect();
+    const hit = document.elementFromPoint(r.x + r.width / 2, r.bottom - 10);
+    return !!hit && !!hit.closest(".shortcuts-dialog");
+  })
+);
+check(
+  "shortcuts dialog lists keycaps",
+  (await page.locator(".shortcut-keys kbd").count()) >= 8,
+  String(await page.locator(".shortcut-keys kbd").count())
+);
+check(
+  "shortcuts dialog has section headings",
+  (await page.locator(".shortcut-section h4").count()) === 3
+);
+await page.keyboard.press("Escape");
+await page.waitForSelector(".shortcuts-dialog", { state: "detached", timeout: 5000 });
+check("Escape closes the shortcuts dialog", true);
 
 // ---------- offline outbox ----------
 const offlineTitle = `Offline ${run}`;

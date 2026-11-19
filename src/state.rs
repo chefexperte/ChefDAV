@@ -228,6 +228,8 @@ pub struct AppState {
     /// menu is centred under exactly the field that was clicked.
     pub jump_open: RwSignal<Option<(&'static str, (f64, f64, f64))>>,
     pub new_calendar: RwSignal<bool>,
+    /// The AdwShortcutsDialog-style keyboard shortcut list in the sidebar.
+    pub shortcuts_open: RwSignal<bool>,
     pub calendar_action: RwSignal<Option<CalendarAction>>,
     /// Event hrefs selected for bulk operations.
     pub selected: RwSignal<Vec<String>>,
@@ -281,6 +283,7 @@ impl AppState {
             week_more: RwSignal::new(None),
             jump_open: RwSignal::new(None),
             new_calendar: RwSignal::new(false),
+            shortcuts_open: RwSignal::new(false),
             calendar_action: RwSignal::new(None),
             selected: RwSignal::new(Vec::new()),
             search_query: RwSignal::new(String::new()),

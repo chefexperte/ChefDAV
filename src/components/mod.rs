@@ -7,6 +7,7 @@ pub mod jump;
 pub mod new_calendar;
 pub mod popover_pos;
 pub mod prefs;
+pub mod shortcuts;
 pub mod slot_popup;
 pub mod todo_modal;
 pub mod toolbar;

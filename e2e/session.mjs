@@ -61,10 +61,10 @@ const dark = await page.evaluate(() => document.documentElement.getAttribute("da
 check("login page dark theme applies", dark === "dark", dark ?? "(none)");
 await page.click('.login-prefs .prefs-row button:has-text("Light")');
 
-await page.click('.login-prefs .prefs-row button:has-text("EN")');
+await page.click('.login-prefs .prefs-row button:has-text("English")');
 const deSubmit = (await page.textContent('button[type="submit"]')).trim();
 check("login page switches to German", deSubmit === "Anmelden", deSubmit);
-await page.click('.login-prefs .prefs-row button:has-text("DE")');
+await page.click('.login-prefs .prefs-row button:has-text("Deutsch")');
 const enSubmit = (await page.textContent('button[type="submit"]')).trim();
 check("login page switches back to English", enSubmit === "Log in", enSubmit);
 
@@ -76,7 +76,7 @@ check("reload auto-logs in", (await page.locator(".login-card form").count()) ==
 
 // theme + language persist across the auto-login
 await page.click('.prefs-row button:has-text("Dark")');
-await page.click('.prefs-row button:has-text("EN")');
+await page.click('.prefs-row button:has-text("English")');
 await page.waitForTimeout(600);
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForSelector(".month-grid", { timeout: 20000 });

@@ -121,6 +121,56 @@ volumes:
   radicale-data:
 ```
 
+#### Radicale files
+
+The compose file mounts two files under `./radicale/`. Create them before the
+first start. If the source path is missing, Docker creates a directory instead,
+and Radicale fails with `not a directory: Are you trying to mount a directory
+onto a file`. If that already happened, delete the `radicale/config` directory
+and create the file.
+
+From a checkout:
+
+```sh
+mkdir -p radicale
+cp docker/radicale/config radicale/config
+cp docker/radicale/users radicale/users
+```
+
+Without a checkout, `radicale/config` needs at least this:
+
+```ini
+[server]
+hosts = 0.0.0.0:5232
+
+[auth]
+type = htpasswd
+htpasswd_filename = /config/users
+htpasswd_encryption = bcrypt
+
+[storage]
+filesystem_folder = /data/collections
+
+[rights]
+type = owner_only
+
+[web]
+type = none
+```
+
+`radicale/users` is an htpasswd file with one line per account. This line is
+`alice` / `secret`; replace it:
+
+```text
+alice:$2b$12$C.CsCg8m8yoNV/SIK6/J7eKLsIVmDuu/d2wQzHrHD4KsekSp0/HF6
+```
+
+Generate a new hash with:
+
+```sh
+docker run --rm httpd:alpine htpasswd -nbB <user> <password>
+```
+
 Run `docker compose up -d`, then open `https://calendar.example.com/ui/` once
 that name points at the machine. For a local test, map the name to `127.0.0.1`
 and use port 8080. Log in with your CalDAV credentials.

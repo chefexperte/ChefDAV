@@ -3,6 +3,7 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
+use crate::components::icons::{IconMoon, IconSun};
 use crate::state::{AppState, Lang, Theme};
 use crate::store;
 
@@ -38,16 +39,31 @@ pub fn PrefsRow() -> impl IntoView {
         });
     };
 
+    // The label names the action, so the icon shows the theme you switch to.
+    let theme_label = move || match state.theme.get() {
+        Theme::Light => crate::i18n::t(state.lang.get(), "dark"),
+        Theme::Dark => crate::i18n::t(state.lang.get(), "light"),
+    };
+
     view! {
         <div class="prefs-row linked">
-            <button class="btn" on:click=toggle_theme>
+            <button class="btn" on:click=toggle_theme title=theme_label aria-label=theme_label>
                 {move || match state.theme.get() {
-                    Theme::Light => crate::i18n::t(state.lang.get(), "dark"),
-                    Theme::Dark => crate::i18n::t(state.lang.get(), "light"),
+                    Theme::Light => view! { <IconMoon /> }.into_any(),
+                    Theme::Dark => view! { <IconSun /> }.into_any(),
                 }}
+                <span>{theme_label}</span>
             </button>
-            <button class="btn" on:click=toggle_lang>
-                {move || state.lang.get().code().to_uppercase()}
+            <button
+                class="btn"
+                on:click=toggle_lang
+                title=move || crate::i18n::t(state.lang.get(), "language")
+                aria-label=move || crate::i18n::t(state.lang.get(), "language")
+            >
+                {move || match state.lang.get() {
+                    Lang::En => crate::i18n::t(state.lang.get(), "english"),
+                    Lang::De => crate::i18n::t(state.lang.get(), "german"),
+                }}
             </button>
         </div>
     }
