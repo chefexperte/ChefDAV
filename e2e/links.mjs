@@ -92,24 +92,34 @@ const eventUrl = page.url();
 
 // ---------- reload: the link re-opens the event (auto-login) ----------
 await page.reload({ waitUntil: "networkidle" });
-await page.waitForSelector(".details-modal", { timeout: 30000 });
-const h3 = (await page.textContent(".details-modal h3")).trim();
+// A direct link has no click position, so it opens the full dialog, not the
+// click popover.
+await page.waitForSelector(".details-dialog", { timeout: 30000 });
+const h3 = (await page.textContent(".details-dialog h3")).trim();
 check(
   "deep link reopens the event after reload",
   page.url() === eventUrl && h3 === EVENT,
   `url=${page.url()} h3=${JSON.stringify(h3)} expected=${EVENT}`
 );
+const linkBox = await page.locator(".details-dialog").boundingBox();
+check(
+  "deep link uses the wide dialog",
+  (await page.locator(".modal.details-dialog").count()) === 1 && linkBox.width > 500,
+  `width=${Math.round(linkBox.width)}`
+);
 
 // ---------- back / forward ----------
+const detailsClosed = () =>
+  page.waitForFunction(() => !document.querySelector(".details-dialog, .details-modal"), null, { timeout: 10000 });
 await page.goBack();
-await page.waitForSelector(".details-modal", { state: "detached", timeout: 10000 });
+await detailsClosed();
 check(
   "back closes the resource view (returns to the view URL)",
   /^\/(month|week|day|list|tasks)/.test(new URL(page.url()).pathname),
   page.url()
 );
 await page.goForward();
-await page.waitForSelector(".details-modal", { timeout: 10000 });
+await page.waitForSelector(".details-dialog", { timeout: 10000 });
 check(
   "forward reopens the resource view",
   new URL(page.url()).pathname.startsWith("/event/"),
@@ -117,8 +127,8 @@ check(
 );
 
 // ---------- closing the modal returns to the view URL ----------
-await page.click('.details-modal .modal-close');
-await page.waitForSelector(".details-modal", { state: "detached", timeout: 10000 });
+await page.click('.details-dialog .modal-close');
+await detailsClosed();
 await page.waitForTimeout(300);
 check(
   "close returns the address bar to the view URL",

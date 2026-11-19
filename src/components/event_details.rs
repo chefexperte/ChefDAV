@@ -87,22 +87,25 @@ pub fn EventDetails() -> impl IntoView {
     };
     let event = move || state.events.get().get(index).cloned();
 
-    // Popover anchored at the click position; deep links / search results
-    // (no click) open centred near the top. The size is measured after render
-    // (a guessed height pushed the card away from the cursor lower down).
+    // A click opens a popover at the pointer. A direct resource link
+    // (`/event/…` in a fresh tab, a reload, or back/forward) has no pointer, so
+    // it opens the same details as a full, wider dialog instead.
+    let is_link = anchor.is_none();
     let panel: NodeRef<leptos::html::Div> = NodeRef::new();
-    crate::components::popover_pos::use_place(
-        panel,
-        match anchor {
-            Some((x, y)) => crate::components::popover_pos::Anchor::Cursor(x as f64, y as f64),
-            None => crate::components::popover_pos::Anchor::Centered,
-        },
-    );
+    if let Some((x, y)) = anchor {
+        crate::components::popover_pos::use_place(
+            panel,
+            crate::components::popover_pos::Anchor::Cursor(x as f64, y as f64),
+        );
+    }
 
     view! {
-        <div class="popover-backdrop" on:click=move |_| state.modal.set(None)>
+        <div
+            class=if is_link { "modal-overlay" } else { "popover-backdrop" }
+            on:click=move |_| state.modal.set(None)
+        >
             <div
-                class="popover details-modal"
+                class=if is_link { "modal details-dialog" } else { "popover details-modal" }
                 node_ref=panel
                 on:click=move |e| e.stop_propagation()
                 role="dialog"

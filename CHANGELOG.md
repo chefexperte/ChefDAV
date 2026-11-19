@@ -4,12 +4,20 @@ All notable, user-visible changes to ChefDAV.
 
 ## Unreleased
 
+### Changes
+
+- Opening an event through its resource link (`/event/<calendar>/<uid>`, also
+  after a reload or back/forward) shows a full 620px dialog instead of the small
+  click popover. Clicking an event still opens the popover at the pointer.
+
 ### Fixes
+
 
 - Under a mount path such as `/ui`, the startup splash requested `/logo.svg`
   from the origin root. Radicale answered 401 and the browser opened its own
   Basic auth dialog. The splash now loads the logo under the mount path.
-- The shortcuts dialog has proper top padding and a round close button.
+- The shortcuts dialog has proper top padding and a round close button, and
+  dialog close buttons sit 16px from the top and right edges.
 
 ## 0.3.0 — 2026-11-19
 

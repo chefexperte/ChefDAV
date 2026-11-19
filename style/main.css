@@ -1677,8 +1677,8 @@ input[type="checkbox"]:focus-visible {
 /* × close button in the top-right corner (replaces the old text "Close") */
 .modal-close {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 16px;
+  right: 16px;
   width: 30px;
   height: 30px;
   padding: 0;
@@ -1720,11 +1720,6 @@ input[type="checkbox"]:focus-visible {
 .modal.shortcuts-dialog h3 {
   padding-top: 16px;
   margin-bottom: 8px;
-}
-
-.modal.shortcuts-dialog .modal-close {
-  top: 16px;
-  right: 16px;
 }
 
 .shortcut-section {
@@ -1833,6 +1828,16 @@ input[type="checkbox"]:focus-visible {
 
 .details-modal {
   max-width: 430px;
+}
+
+/* direct link: the full dialog instead of the click popover */
+.details-dialog {
+  max-width: 620px;
+  padding-top: 16px;
+}
+
+.details-dialog .details-head {
+  padding-right: 40px;
 }
 
 .details-head {
