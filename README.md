@@ -3,7 +3,8 @@
 A **calendar web app that runs entirely in your browser** — written in **Rust,
 compiled to WebAssembly**, talking directly to a **CalDAV server (Radicale)**.
 There is no application backend: the only server-side pieces you operate are
-Radicale itself plus a tiny reverse proxy that adds CORS headers.
+Radicale itself plus a reverse proxy in front of it (TLS, and CORS when the app
+is served from another origin).
 
 All static assets — **fonts included** — are bundled and served same-origin:
 nothing is loaded from Google, Facebook or any other third-party CDN. The app
@@ -100,38 +101,93 @@ GNOME Adwaita looks, Rust reliability.
 - All protocol, ICS and recurrence logic lives in a **pure-Rust crate**
   (`crates/caldav`) with native unit tests — the browser code is only glue + UI.
 
-## Quick start with Docker / Podman
+## Deploy with Docker Compose
 
-The published image is **just the calendar frontend**: the static Rust/WASM app
-served by Caddy's file server. It contains no CalDAV server — the browser talks
-straight to *your* Radicale / CalDAV server, exactly like a locally hosted build.
+The published image `ghcr.io/chefexperte/chefdav` contains **only the calendar
+frontend**: the static Rust/WASM app on a small Caddy file server. There is no
+CalDAV server inside it — the browser talks straight to *your* Radicale, so the
+proxy in front of Radicale must answer CORS preflights.
 
-```sh
-docker run -d --name chefdav -p 8080:80 \
-  -e BACKEND_URL=https://dav.example.org \
-  ghcr.io/chefexperte/chefdav:latest
+The stack below is complete: **Traefik** routes by host and path and adds the
+CORS headers, **Radicale** serves CalDAV at the site root, and **ChefDAV** is
+published under `/ui` on the same host.
+
+```yaml
+name: chefdav
+
+services:
+  traefik:
+    image: traefik:v3
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+    ports:
+      - "8080:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  radicale:
+    image: tomsquest/docker-radicale:3.9.0.0
+    volumes:
+      - ./radicale/config:/config/config:ro
+      - ./radicale/users:/config/users:ro
+      - radicale-data:/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.radicale.rule=Host(`calendar.example.com`)
+      - traefik.http.routers.radicale.entrypoints=web
+      - traefik.http.services.radicale.loadbalancer.server.port=5232
+      # CORS for the app's origin (see the note below).
+      - traefik.http.routers.radicale.middlewares=caldav-cors
+      - traefik.http.middlewares.caldav-cors.headers.accesscontrolalloworiginlist=https://calendar.example.com
+      - traefik.http.middlewares.caldav-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,PROPFIND,PROPPATCH,REPORT,MKCOL,MKCALENDAR,OPTIONS
+      - traefik.http.middlewares.caldav-cors.headers.accesscontrolallowheaders=Authorization,Content-Type,Depth,If-Match,If-None-Match,Overwrite
+      - traefik.http.middlewares.caldav-cors.headers.accesscontrolexposeheaders=ETag,DAV,Content-Length
+      - traefik.http.middlewares.caldav-cors.headers.accesscontrolmaxage=600
+
+  chefdav:
+    image: ghcr.io/chefexperte/chefdav:latest
+    environment:
+      BACKEND_URL: https://calendar.example.com
+      BASE_PATH: /ui
+    read_only: true
+    tmpfs:
+      - /srv-runtime
+      - /tmp
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ui.rule=Host(`calendar.example.com`) && PathPrefix(`/ui`)
+      - traefik.http.routers.ui.entrypoints=web
+      - traefik.http.routers.ui.middlewares=ui-strip
+      - traefik.http.services.ui.loadbalancer.server.port=80
+      # The container answers both the prefixed and the stripped path, so
+      # removing this middleware works too.
+      - traefik.http.middlewares.ui-strip.stripprefix.prefixes=/ui
+
+volumes:
+  radicale-data:
 ```
 
-Open <http://localhost:8080> and log in with your credentials. Or use compose
-(reads the same variables from a `.env` file):
+`docker compose up -d`, then open `https://calendar.example.com/ui/` once that
+name points at the machine (for a local test, map it to `127.0.0.1` and use port
+8080). Log in with your CalDAV credentials.
 
-```sh
-cp .env.example .env          # set BACKEND_URL, or leave it empty
-docker compose -f docker/docker-compose.prod.yml up -d     # → :8080
-```
+- **Radicale config** — `./radicale/config` and `./radicale/users` are its
+  configuration and htpasswd file; [`docker/radicale/`](docker/radicale/) has
+  working examples (dev login `alice` / `secret`).
+- **CORS** — if the app and the CalDAV server share an origin (same host and
+  port, as above), the browser does not need CORS at all. The middleware is
+  required when the app is served from another origin, and harmless otherwise.
+- **TLS** — the example uses Traefik's plain `web` entrypoint on port 8080. Add
+  a `websecure` entrypoint and a certificate resolver for HTTPS.
+- **Serving the app at the root** — drop `BASE_PATH`, the `ui-strip` middleware
+  and the `PathPrefix` rule, and give Radicale its own host.
 
-From a checkout, build the same image yourself (a cold build compiles the WASM
-app: a few minutes on a desktop, ~10 min on a 2-core CI runner):
+### What the image does
 
-```sh
-docker build -f docker/Dockerfile -t chefdav .
-docker run -d -p 8080:80 -e BACKEND_URL=https://dav.example.org chefdav
-```
-
-What the image does:
-
-- **Serves the app** (`/srv`) with an SPA fallback, so deep links and reloads
-  (`/month/2026-11`, `/week/2026-11-16`, `/event/<calendar>/<uid>`) work.
+- **Serves the app** with an SPA fallback, so deep links and reloads
+  (`/ui/month/2026-11`, `/week/2026-11-16`, `/event/<calendar>/<uid>`) work.
   Content-hashed bundle files are cached immutably; `index.html` and the runtime
   config are not.
 - **No state** — no volumes; calendars live in your CalDAV server and the
@@ -140,7 +196,7 @@ What the image does:
   (Caddy, nginx, Traefik …), which then also handles your domain.
 - **`/healthz`** — for container healthchecks / load balancers.
 
-### Choosing the server at start-up (`BACKEND_URL`)
+### Choosing the server at start-up
 
 One image works for every deployment — the backend is a **runtime** environment
 variable, not something baked in at build time:
@@ -151,13 +207,14 @@ variable, not something baked in at build time:
 | *(unset or empty)* | the login screen asks for the server URL |
 | `BACKEND_LOCK=true` | server field is read-only (default when `BACKEND_URL` is set) |
 | `BACKEND_LOCK=false` | pre-filled but the user may change it |
+| `BASE_PATH=/ui` | the app is published under that path (assets, router, deep links) |
 
-Change the value and restart the container (`docker compose up -d` recreates it)
+Change a value and restart the container (`docker compose up -d` recreates it)
 — no rebuild needed.
 
 > **How it works:** a static app cannot read environment variables, so on every
-> start the entrypoint writes `/srv/config.json` from these variables and the app
-> fetches that file before it renders (see `src/config.rs`). Removing
+> start the entrypoint writes `/srv-runtime/config.json` from these variables and
+> the app fetches that file before it renders (see `src/config.rs`). Removing
 > `BACKEND_URL` on a later start returns the app to an editable server field.
 
 ### Image tags
@@ -171,37 +228,65 @@ and how to add arm64.
 > **GHCR visibility** — new packages start private. After the first run, set the
 > `chefdav` package to public (otherwise pull as a user with `read:packages`).
 
-## Setup without Docker (bring your own server)
+### Alternative: Caddy instead of Traefik
 
-You need three things: a CalDAV server, a reverse proxy with CORS, and a static
-host for the app.
+Caddy can do the routing and the CORS handling by itself. Replace the `traefik`
+service with the one below and mount this `Caddyfile` — the `radicale` and
+`chefdav` services stay as they are:
 
-1. **Radicale** — any self-hosted Radicale works (e.g. the Docker image
-   `tomsquest/docker-radicale`), configured with your auth backend (htpasswd or
-   LDAP) and `[rights]`.
-2. **Caddy** in front of it, adding CORS headers (see `docker/caddy/Caddyfile`
-   for a ready-made config):
-   ```caddy
-   your-caldav.example.com {
-       reverse_proxy radicale:5232
-       header Access-Control-Allow-Origin "https://your-app.example.com"
-       header Access-Control-Allow-Methods "PROPFIND, REPORT, PUT, DELETE, MKCALENDAR, OPTIONS"
-       header Access-Control-Allow-Headers "Authorization, Content-Type, Depth"
-   }
-   ```
-3. **The app** — use the container above, or build and serve the static bundle:
-   ```sh
-   cargo install trunk          # once
-   trunk build --release        # output in dist/
-   # serve dist/ from any static host. To lock every visitor to one server,
-   # copy .env.example to .env and set BACKEND_URL=https://your-caldav.example.com
-   # before building (see "Locking it to your server" above).
-   ```
-   Then open the app, log in with server URL + your CalDAV credentials, and go.
-   "Stay logged in" keeps you signed in across reloads on that device.
+```yaml
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+```
 
-A single static file server is enough — no Node, no PHP, no app server. The
-release bundle is ~3.5 MB wasm (~1.1 MB gzipped, mostly the timezone database).
+Add `caddy-data:` next to `radicale-data:` under `volumes:`. Unlike the Traefik
+example, Caddy listens on the standard ports, so the app is at
+`https://calendar.example.com/ui/`.
+
+```caddy
+calendar.example.com {
+	# Answer preflights and expose the headers the app reads.
+	@preflight method OPTIONS
+	handle @preflight {
+		header {
+			Access-Control-Allow-Origin "https://calendar.example.com"
+			Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, REPORT, MKCOL, MKCALENDAR, OPTIONS"
+			Access-Control-Allow-Headers "Authorization, Content-Type, Depth, If-Match, If-None-Match, Overwrite"
+			Access-Control-Expose-Headers "ETag, DAV, Content-Length"
+			Access-Control-Max-Age "600"
+			Vary "Origin"
+		}
+		respond 204
+	}
+
+	# ChefDAV under /ui (the prefix is stripped before the container sees it).
+	redir /ui /ui/ 308
+	handle_path /ui/* {
+		reverse_proxy chefdav:80
+	}
+
+	# Radicale at the site root.
+	handle {
+		header {
+			Access-Control-Allow-Origin "https://calendar.example.com"
+			Access-Control-Expose-Headers "ETag, DAV, Content-Length"
+			Vary "Origin"
+		}
+		reverse_proxy radicale:5232
+	}
+}
+```
+
+Caddy obtains TLS certificates automatically. If you built the bundle yourself
+instead of using the image, Caddy can serve `dist/` from the site root with
+`root * /srv/dist`, `try_files {path} /index.html` and `file_server`; keep it at
+the root, because the container is what makes a path prefix (`BASE_PATH`) work.
 
 ## Development setup
 
@@ -277,12 +362,15 @@ ChefDAV/
 
 ## Licensing / credits
 
-See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md). ChefDAV itself (all code and
-assets) is **MIT** — but note it was **generated entirely by AI**, so review
-before relying on it. AgenDAV is AGPL-3.0 — we take inspiration from it
-only, no code copied; if any of its code is ever ported verbatim, this project
-must be relicensed AGPL-3.0 accordingly. Dependencies are permissive crates
-(MIT/Apache-2.0/BSD/CC0/Zlib/Unicode-3.0 — see NOTICE.md); fonts are
-**bundled** — Montserrat under the SIL OFL, Klarissa under the 1001Fonts
-FFC license (EULA in `public/fonts/`) — and nothing is loaded from
-third-party CDNs.
+ChefDAV (all code and assets in this repository) is **MIT** — see
+[LICENSE](LICENSE). Third-party components and bundled files are listed in
+[NOTICE.md](NOTICE.md).
+
+- **[AgenDAV](https://github.com/agendav/agendav)** (AGPL-3.0) — ChefDAV is
+  inspired by it; no AgenDAV code is used.
+- **Fonts** — bundled and served same-origin: **Montserrat** under the SIL OFL
+  and **Klarissa** under the 1001Fonts FFC license (EULA in `public/fonts/`).
+- **Rust dependencies** — permissive crates (MIT / Apache-2.0 / BSD / CC0 /
+  Zlib / Unicode-3.0); the exact set is in `NOTICE.md`.
+
+Nothing is loaded from a third-party CDN.

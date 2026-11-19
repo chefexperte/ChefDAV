@@ -21,7 +21,8 @@ name: chefdav
 #   CHEFDAV_IMAGE image[:tag]     (default ghcr.io/chefexperte/chefdav:latest)
 #
 # Your CalDAV server must send CORS headers for this origin (see README →
-# "Setup"), unless you serve the app from the same host as the CalDAV server.
+# "Deploy with Docker Compose"), unless you serve the app from the same host as
+# the CalDAV server.
 #
 # Behind your own TLS proxy (recommended): point it at this container's port 80
 # and delete `ports:` below.
