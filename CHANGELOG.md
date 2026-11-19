@@ -1,9 +1,12 @@
 # Changelog
 
-All notable, user-visible changes to ChefDAV. The login screen shows the latest
-section of this file, baked into each build.
+All notable, user-visible changes to ChefDAV.
 
 ## Unreleased
+
+Nothing yet.
+
+## 0.3.0 — 2026-11-19
 
 ### Fixes
 
@@ -73,6 +76,16 @@ libadwaita's stylesheet.
   Views and Navigation. Escape or a click outside closes it.
 - The light/dark toggle shows a sun or moon icon, and the language toggle spells
   out English and German instead of EN and DE.
+- The theme and language toggles use the same raised surface as the Shortcuts
+  button, in both themes, instead of the darker opaque mix.
+- Day cards in the leftmost and rightmost month columns keep their shadow; the
+  scroll container no longer clips it.
+- The month and year title buttons keep their hover background inside the title
+  box, so it is no longer cut off next to the next-arrow button.
+- The login page no longer shows the IndexedDB warning or the changelog. The
+  changelog lives in `CHANGELOG.md`.
+- Creating an event with no calendar says "Please create a calendar first"
+  instead of "This calendar is read-only".
 
 ### Re-skin to GNOME libadwaita
 

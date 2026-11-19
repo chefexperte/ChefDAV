@@ -13,75 +13,6 @@ use crate::components::prefs::PrefsRow;
 use crate::state::AppState;
 use crate::store::{self, LastLogin, StoredCreds};
 
-const CHANGELOG: &str = include_str!("../../CHANGELOG.md");
-
-
-
-/// Latest changelog section: (title, bullet items).
-fn latest_changelog() -> (String, Vec<String>) {
-    parse_latest_changelog(CHANGELOG)
-}
-
-fn parse_latest_changelog(text: &str) -> (String, Vec<String>) {
-    let mut title = String::new();
-    let mut items = Vec::new();
-    let mut current: Option<String> = None;
-    let mut in_section = false;
-    for line in text.lines() {
-        let line = line.trim_end();
-        if line.starts_with("## ") {
-            if in_section {
-                break;
-            }
-            in_section = true;
-            title = line.trim_start_matches("## ").to_string();
-            continue;
-        }
-        if !in_section {
-            continue;
-        }
-        if let Some(item) = line.strip_prefix("- ").or_else(|| line.strip_prefix("* ")) {
-            if let Some(prev) = current.take() {
-                items.push(prev);
-            }
-            current = Some(item.trim().to_string());
-        } else if line.starts_with('#') {
-            // subheadings (### …) are not list items; close the current one
-            if let Some(prev) = current.take() {
-                items.push(prev);
-            }
-        } else if line.trim().is_empty() {
-            if let Some(prev) = current.take() {
-                items.push(prev);
-            }
-        } else if let Some(cur) = current.as_mut() {
-            // wrapped continuation of the current bullet
-            cur.push(' ');
-            cur.push_str(line.trim());
-        }
-    }
-    if let Some(prev) = current {
-        items.push(prev);
-    }
-    (title, items)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::parse_latest_changelog;
-
-    #[test]
-    fn latest_section_joins_wrapped_bullets_and_skips_subheadings() {
-        let text = "# Changelog\n\n## Unreleased\n\n### Redesign\n\n- First bullet\n  continues here.\n\n- Second *bullet*\n\n## 0.1.0 — yesterday\n\n- Old item\n";
-        let (title, items) = parse_latest_changelog(text);
-        assert_eq!(title, "Unreleased");
-        assert_eq!(
-            items,
-            vec!["First bullet continues here.", "Second *bullet*"]
-        );
-    }
-}
-
 #[component]
 pub fn LoginPage() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
@@ -105,7 +36,6 @@ pub fn LoginPage() -> impl IntoView {
     let error = RwSignal::new(None::<String>);
     // Extra context for a failed connection (e.g. "this looks like CORS").
     let hint = RwSignal::new(None::<String>);
-    let (changelog_title, changelog_items) = latest_changelog();
 
     // Prefill the last used server/username (and the password when it was
     // saved). The checkbox mirrors the persisted "stay logged in" choice.
@@ -274,22 +204,6 @@ pub fn LoginPage() -> impl IntoView {
                         {move || if busy.get() { crate::i18n::t(state.lang.get(), "connecting") } else { crate::i18n::t(state.lang.get(), "login") }}
                     </button>
                 </form>
-                <p class="login-hint">
-                    {move || crate::i18n::t(state.lang.get(), "login_hint")}
-                </p>
-                <details class="changelog">
-                    <summary>
-                        {move || crate::i18n::t(state.lang.get(), "whats_new")} 
-                        <span class="changelog-version">{changelog_title}</span>
-                    </summary>
-                    <ul>
-                        <For
-                            each=move || changelog_items.clone()
-                            key=|item| item.clone()
-                            children=|item| view! { <li>{item}</li> }
-                        />
-                    </ul>
-                </details>
                 <div class="login-prefs">
                     <PrefsRow />
                 </div>

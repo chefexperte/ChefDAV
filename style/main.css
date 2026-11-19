@@ -219,54 +219,6 @@ button {
   padding: 28px 28px 22px;
 }
 
-.changelog {
-  margin-top: 14px;
-  border-top: 1px solid var(--line);
-  padding-top: 12px;
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-
-.changelog summary {
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--ink-soft);
-  list-style: none;
-}
-
-.changelog summary::-webkit-details-marker {
-  display: none;
-}
-
-.changelog summary::before {
-  content: "▸ ";
-  color: var(--accent);
-}
-
-.changelog[open] summary::before {
-  content: "▾ ";
-}
-
-.changelog-version {
-  color: var(--ink-faint);
-  font-weight: 500;
-  margin-left: 4px;
-}
-
-.changelog ul {
-  margin: 8px 0 0;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  max-height: 160px;
-  overflow-y: auto;
-}
-
-.changelog li {
-  line-height: 1.35;
-}
-
 .login-brand {
   text-align: center;
   margin-bottom: 22px;
@@ -556,13 +508,6 @@ input[type="checkbox"]:focus-visible {
   padding: 0 16px;
 }
 
-.login-hint {
-  margin: 16px 0 0;
-  font-size: 12px;
-  color: var(--ink-faint);
-  text-align: center;
-}
-
 /* ---------- app shell ---------- */
 
 .app-shell {
@@ -784,8 +729,8 @@ input[type="checkbox"]:focus-visible {
   color: inherit;
   background: transparent;
   border: none;
-  padding: 0 4px;
-  margin: 0 -4px;
+  padding: 2px 6px;
+  margin: 0;
   border-radius: var(--radius-xs);
   cursor: pointer;
   font-family: var(--font-display);
@@ -954,6 +899,8 @@ input[type="checkbox"]:focus-visible {
 .month-scroll {
   width: 100%;
   overflow-x: auto;
+  /* room for the day cards' shadow; overflow-x clips it at the edges */
+  padding: 3px 6px;
 }
 
 .weekdays {
@@ -2585,11 +2532,10 @@ input[type="checkbox"]:focus-visible {
   color: var(--ink);
 }
 
-/* linked buttons (Adw linked box) — the footer's Dark/Light and DE/EN
-   toggles. They sit on the *sidebar*, where the 10 % raised tint is
-   invisible, so they use libadwaita's opaque standalone surface
-   (`--btn-bg-solid`, = window_bg 85 % + window_fg) plus a hairline, and the
-   two halves share one border the way Adwaita's `.linked` does. */
+/* linked buttons (Adw linked box) — the footer's theme and language
+   toggles. They use the same raised surface as the standalone sidebar
+   buttons (`--btn-bg`), plus a hairline so the two halves read as one
+   control the way Adwaita's `.linked` does. */
 .prefs-row {
   display: flex;
   gap: 0;
@@ -2603,7 +2549,7 @@ input[type="checkbox"]:focus-visible {
   font-size: 13px;
   font-weight: 600;
   border-radius: 0;
-  background: var(--btn-bg-solid);
+  background: var(--btn-bg);
   color: var(--ink);
   box-shadow: inset 0 0 0 1px var(--line);
 }
@@ -2625,12 +2571,12 @@ input[type="checkbox"]:focus-visible {
 }
 
 .prefs-row .btn:hover {
-  background: var(--btn-bg-solid-hover);
+  background: var(--btn-bg-hover);
   z-index: 1;
 }
 
 .prefs-row .btn:active {
-  background: var(--btn-bg-solid-active);
+  background: var(--btn-bg-active);
 }
 
 .prefs-row .btn:focus-visible {

@@ -290,6 +290,12 @@ pub fn EventModal() -> impl IntoView {
     let saving = RwSignal::new(false);
     let error = RwSignal::new(None::<String>);
 
+    // A new event with no writable calendar is not "read-only"; there is
+    // simply nowhere to put it yet.
+    let no_calendar = Memo::new(move |_| {
+        existing.get().is_none() && state.first_writable_event_calendar().is_none()
+    });
+
     let read_only = Memo::new(move |_| {
         existing
             .get()
@@ -520,7 +526,10 @@ pub fn EventModal() -> impl IntoView {
         <div class="modal-overlay" on:click=close>
             <div class="modal" on:click=move |e| e.stop_propagation() role="dialog" aria-modal="true">
                 <h3>{move || if is_edit { crate::i18n::t(state.lang.get(), "edit_event") } else { crate::i18n::t(state.lang.get(), "new_event") }}</h3>
-                <Show when=move || read_only.get() fallback=|| ()>
+                <Show when=move || no_calendar.get() fallback=|| ()>
+                    <p class="banner-info">{move || crate::i18n::t(state.lang.get(), "create_calendar_first")}</p>
+                </Show>
+                <Show when=move || read_only.get() && !no_calendar.get() fallback=|| ()>
                     <p class="banner-info">{move || crate::i18n::t(state.lang.get(), "read_only_calendar")}</p>
                 </Show>
                 <fieldset class="modal-fields" disabled=move || read_only.get()>

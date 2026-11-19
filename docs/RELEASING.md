@@ -3,8 +3,7 @@
 Each tag produces a Docker image (`ghcr.io/chefexperte/chefdav`) and, if you
 want one, a GitHub release.
 
-1. **Version.** The login screen shows the newest section of `CHANGELOG.md`, so
-   that section has to be the release. Rename `## Unreleased` to
+1. **Version.** Rename `## Unreleased` in `CHANGELOG.md` to
    `## X.Y.Z — YYYY-MM-DD` and add a fresh `## Unreleased` above it.
 2. **Checks.** `.github/workflows/ci.yml` has to be green: `cargo test -p caldav`,
    `cargo test -p chef-dav --lib` and the e2e suites.
