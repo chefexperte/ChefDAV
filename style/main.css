@@ -1660,17 +1660,17 @@ input[type="checkbox"]:focus-visible {
   animation: pop 0.14s ease;
 }
 
-.modal > :not(.modal-actions) {
+.modal > :not(.modal-actions):not(.modal-close) {
   padding-left: 24px;
   padding-right: 24px;
 }
 
-.modal > :not(.modal-actions):first-child {
+.modal > :not(.modal-actions):not(.modal-close):first-child {
   padding-top: 22px;
 }
 
 /* the last content element needs breathing room above the action row */
-.modal > :not(.modal-actions):last-of-type:not(.modal-actions) {
+.modal > :not(.modal-actions):not(.modal-close):last-of-type:not(.modal-actions) {
   padding-bottom: 4px;
 }
 
@@ -1681,6 +1681,7 @@ input[type="checkbox"]:focus-visible {
   right: 10px;
   width: 30px;
   height: 30px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1716,8 +1717,8 @@ input[type="checkbox"]:focus-visible {
   max-width: 460px;
 }
 
-.shortcuts-dialog h3 {
-  margin-bottom: 4px;
+.modal.shortcuts-dialog h3 {
+  margin-bottom: 8px;
 }
 
 .shortcut-section {

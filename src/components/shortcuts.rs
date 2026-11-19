@@ -51,6 +51,7 @@ pub fn ShortcutsDialog() -> impl IntoView {
                 aria-label=move || t("shortcuts")
                 on:click=move |ev| ev.stop_propagation()
             >
+                <h3>{move || t("shortcuts")}</h3>
                 <button
                     class="modal-close"
                     title=move || t("close")
@@ -59,7 +60,6 @@ pub fn ShortcutsDialog() -> impl IntoView {
                 >
                     <IconClose />
                 </button>
-                <h3>{move || t("shortcuts")}</h3>
 
                 <div class="shortcut-section">
                     <h4>{move || t("shortcuts_general")}</h4>

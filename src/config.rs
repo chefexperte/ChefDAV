@@ -122,6 +122,19 @@ pub fn router_base() -> String {
     runtime().base_path
 }
 
+/// Asset URL for the startup splash, before `/config.json` has been read:
+/// the mount path is inferred from the address bar. A root-absolute
+/// `/logo.svg` on a `/ui` mount would otherwise hit the CalDAV server at the
+/// origin root, which answers 401 and makes the browser open its Basic auth
+/// dialog.
+pub fn splash_asset_url(file: &str) -> String {
+    let base = web_sys::window()
+        .and_then(|w| w.location().pathname().ok())
+        .map(|path| detect_base_path(&path))
+        .unwrap_or_default();
+    format!("{base}/{}", file.trim_start_matches('/'))
+}
+
 /// URL for an asset that lives next to `index.html` (`logo.svg`, `fonts/…`).
 ///
 /// Anchored at the mount path, not at the current route: a relative `logo.svg`

@@ -4,7 +4,12 @@ All notable, user-visible changes to ChefDAV.
 
 ## Unreleased
 
-Nothing yet.
+### Fixes
+
+- Under a mount path such as `/ui`, the startup splash requested `/logo.svg`
+  from the origin root. Radicale answered 401 and the browser opened its own
+  Basic auth dialog. The splash now loads the logo under the mount path.
+- The shortcuts dialog has proper top padding and a round close button.
 
 ## 0.3.0 — 2026-11-19
 

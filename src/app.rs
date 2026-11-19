@@ -100,11 +100,12 @@ pub fn App() -> impl IntoView {
         <Show
             when=move || router_base.get().is_some()
             fallback=move || {
+                let logo = crate::config::splash_asset_url("logo.svg");
                 view! {
                     <div class="login-page">
                         <div class="login-card">
                             <div class="login-brand">
-                                <img src=move || crate::config::asset_url("logo.svg") width="64" height="64" alt="ChefDAV logo" />
+                                <img src=logo width="64" height="64" alt="ChefDAV logo" />
                                 <h1>"ChefDAV"</h1>
                             </div>
                             <p class="restoring">
