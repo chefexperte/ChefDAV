@@ -8,16 +8,17 @@
 //!    start against any backend, or with no backend at all:
 //!
 //!    ```json
-//!    { "backend_url": "https://dav.example.org", "lock": true }
+//!    { "backend_url": "https://dav.example.org", "base_path": "/ui" }
 //!    ```
 //!
-//!    The image writes this file from the `BACKEND_URL` / `BACKEND_LOCK`
+//!    The image writes this file from the `BACKEND_URL` / `BASE_PATH`
 //!    environment variables on every start. A missing file (404) simply means
 //!    "no runtime configuration" — e.g. plain static hosting.
 //!
 //! 2. **Build-time fallback** for self-hosted `dist/` builds: trunk loads a
 //!    `.env` file, and `CHEFDAV_DAV_URL` (or `BACKEND_URL`) becomes the server
-//!    URL. `CHEFDAV_DAV_URL` pre-fills an editable field; `BACKEND_URL` locks.
+//!    URL. `CHEFDAV_DAV_URL` pre-fills an editable field; `BACKEND_URL` is a
+//!    deployment setting, so the login screen shows no server field at all.
 //!
 //! Precedence: runtime file → build-time value → the local dev stack.
 
@@ -28,8 +29,10 @@ use std::cell::RefCell;
 pub struct Runtime {
     /// The CalDAV server URL to use; `None` lets the user type one.
     pub backend_url: Option<String>,
-    /// Read-only server field (only meaningful when a URL is set).
-    pub lock: bool,
+    /// The URL comes from the deployment (`BACKEND_URL` / `config.json`), so
+    /// the login screen does not offer a server field. A build-time
+    /// `CHEFDAV_DAV_URL` is only a prefill and leaves the field editable.
+    pub server_fixed: bool,
     /// URL path the app is mounted under, e.g. `/ui` when a reverse proxy maps
     /// `calendar.example.org/ui/*` here. Empty means "served at the root".
     /// The asset URLs are relative, so this only tells the router where its
@@ -41,7 +44,7 @@ thread_local! {
     /// Installed once during startup (see `app::App`).
     static RUNTIME: RefCell<Runtime> = const { RefCell::new(Runtime {
         backend_url: None,
-        lock: false,
+        server_fixed: false,
         base_path: String::new(),
     }) };
 }
@@ -57,14 +60,13 @@ pub fn runtime() -> Runtime {
 }
 
 /// Parse a `/config.json` body. Unknown keys are ignored; a malformed document
-/// yields the default (no URL, unlocked) rather than breaking the app.
+/// yields the default (no URL, user picks the server) rather than breaking the
+/// app.
 pub fn parse_runtime(json: &str) -> Runtime {
     #[derive(serde::Deserialize)]
     struct Doc {
         #[serde(default)]
         backend_url: Option<String>,
-        #[serde(default)]
-        lock: Option<bool>,
         #[serde(default)]
         base_path: Option<String>,
     }
@@ -72,12 +74,11 @@ pub fn parse_runtime(json: &str) -> Runtime {
         return Runtime::default();
     };
     let backend_url = clean(doc.backend_url.as_deref().unwrap_or(""));
-    // A configured URL is locked unless the file explicitly says otherwise:
-    // the safe default for a deployment.
-    let lock = doc.lock.unwrap_or(true) && backend_url.is_some();
     Runtime {
+        // A URL from the deployment is used as given: the login screen does
+        // not offer a server field at all.
+        server_fixed: backend_url.is_some(),
         backend_url,
-        lock,
         base_path: normalize_base_path(doc.base_path.as_deref().unwrap_or("")),
     }
 }
@@ -139,15 +140,15 @@ fn effective() -> Runtime {
     if let Some(url) = cfg_value(option_env!("BACKEND_URL")) {
         return Runtime {
             backend_url: Some(url),
-            lock: true,
-            base_path: runtime().base_path,
+            server_fixed: true,
+            base_path: rt.base_path,
         };
     }
     if let Some(url) = cfg_value(option_env!("CHEFDAV_DAV_URL")) {
         return Runtime {
             backend_url: Some(url),
-            lock: false,
-            base_path: runtime().base_path,
+            server_fixed: false,
+            base_path: rt.base_path,
         };
     }
     // Nothing configured at all (e.g. the container started without
@@ -168,9 +169,10 @@ pub fn initial_server() -> String {
     effective().backend_url.unwrap_or_default()
 }
 
-/// When locked, the app never asks for (or accepts) another server.
-pub fn is_locked() -> bool {
-    effective().lock
+/// The server is part of the deployment: the login screen shows no server
+/// field, and the user only enters a username and password.
+pub fn server_is_fixed() -> bool {
+    effective().server_fixed
 }
 
 fn cfg_value(value: Option<&'static str>) -> Option<String> {
@@ -195,25 +197,27 @@ mod tests {
     }
 
     #[test]
-    fn a_url_in_config_json_locks_by_default() {
+    fn a_url_in_config_json_is_a_fixed_deployment_setting() {
         let r = parse_runtime(r#"{"backend_url":"https://dav.example.org"}"#);
         assert_eq!(r.backend_url.as_deref(), Some("https://dav.example.org"));
-        assert!(r.lock);
+        assert!(r.server_fixed);
     }
 
     #[test]
-    fn lock_can_be_turned_off_explicitly() {
+    fn a_legacy_lock_key_is_ignored() {
+        // config.json used to carry `"lock"`; an old file must not make the
+        // server editable again — a configured URL always hides the field.
         let r = parse_runtime(r#"{"backend_url":"https://dav.example.org","lock":false}"#);
-        assert!(!r.lock);
         assert_eq!(r.backend_url.as_deref(), Some("https://dav.example.org"));
+        assert!(r.server_fixed);
     }
 
     #[test]
-    fn blank_url_means_unlocked_and_user_entered() {
+    fn blank_url_means_the_user_enters_it() {
         for doc in [r#"{"backend_url":""}"#, r#"{"backend_url":"   "}"#] {
             let r = parse_runtime(doc);
             assert_eq!(r.backend_url, None, "{doc}");
-            assert!(!r.lock, "{doc}");
+            assert!(!r.server_fixed, "{doc}");
         }
     }
 
@@ -254,12 +258,14 @@ mod tests {
 
     #[test]
     fn runtime_config_drives_the_login_screen() {
-        // what the container writes when BACKEND_URL is set …
-        set_runtime(parse_runtime(r#"{"backend_url":"https://a.example","lock":true}"#));
+        // what the container writes when BACKEND_URL is set: the server is
+        // fixed and the field is not offered …
+        set_runtime(parse_runtime(r#"{"backend_url":"https://a.example"}"#));
         assert_eq!(initial_server(), "https://a.example");
-        assert!(is_locked());
-        // … and when it is not: an editable field, nothing locked.
+        assert!(server_is_fixed());
+        // … and when it is not: the user types the server themselves.
         set_runtime(parse_runtime(r#"{"backend_url":""}"#));
-        assert!(!is_locked());
+        assert_eq!(initial_server(), "");
+        assert!(!server_is_fixed());
     }
 }

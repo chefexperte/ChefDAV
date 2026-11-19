@@ -15,8 +15,6 @@ name: chefdav
 # ../.env.example for local builds):
 #   BACKEND_URL   CalDAV server, e.g. https://dav.example.org
 #                 empty/unset → users type the server on the login screen
-#   BACKEND_LOCK  true (default when BACKEND_URL is set) → login field is
-#                 read-only; false → pre-filled but editable
 #   CHEFDAV_PORT  host port                            (default 8080)
 #   CHEFDAV_IMAGE image[:tag]     (default ghcr.io/chefexperte/chefdav:latest)
 #
@@ -39,7 +37,6 @@ services:
     restart: unless-stopped
     environment:
       BACKEND_URL: ${BACKEND_URL:-}
-      BACKEND_LOCK: ${BACKEND_LOCK:-}
     ports:
       - "${CHEFDAV_PORT:-8080}:80"
     # No persistent state: the calendar data lives in your CalDAV server and

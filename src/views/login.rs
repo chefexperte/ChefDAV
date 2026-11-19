@@ -87,15 +87,16 @@ pub fn LoginPage() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let navigate = use_navigate();
 
-    // A deployment with a locked backend (BACKEND_URL / config.json) never
-    // takes a server from the user or from previously stored logins.
+    // A deployment that sets BACKEND_URL (or ships it in /config.json) fixes
+    // the server: the login screen shows no server field at all and only asks
+    // for the credentials.
     //
     // This page can render before `/config.json` has been fetched (App fetches
     // it in an effect, and the login page is also reachable directly), so the
     // configuration is re-read whenever it arrives: `config_ready` flips once,
     // and the effect below applies it.
     let config_ready = RwSignal::new(false);
-    let locked = RwSignal::new(crate::config::is_locked());
+    let fixed_server = RwSignal::new(crate::config::server_is_fixed());
     let server = RwSignal::new(crate::config::initial_server());
     let username = RwSignal::new(String::new());
     let password = RwSignal::new(String::new());
@@ -108,8 +109,8 @@ pub fn LoginPage() -> impl IntoView {
 
     // Prefill the last used server/username (and the password when it was
     // saved). The checkbox mirrors the persisted "stay logged in" choice.
-    // With a locked backend the server stays as configured — only the
-    // username/password are restored.
+    // When the deployment fixes the server, only username/password are
+    // restored.
     // The last server this browser logged in to (None on a first visit). Read
     // together with the rest of the preferences.
     let last_server = RwSignal::new(None::<String>);
@@ -130,13 +131,13 @@ pub fn LoginPage() -> impl IntoView {
         config_ready.set(true);
     });
 
-    // Settle the server field against the runtime configuration, which may
-    // arrive after this page rendered. A locked deployment always wins over a
-    // stored login; an unlocked one prefers the server this browser used last.
+    // Settle the server against the runtime configuration, which may arrive
+    // after this page rendered. A fixed deployment always wins over a stored
+    // login; otherwise the field prefers the server this browser used last.
     Effect::new(move |_| {
-        let is_locked = crate::config::is_locked();
-        locked.set(is_locked);
-        if is_locked {
+        let fixed = crate::config::server_is_fixed();
+        fixed_server.set(fixed);
+        if fixed {
             server.set(crate::config::initial_server());
         } else if config_ready.get() {
             server.set(match last_server.get() {
@@ -223,35 +224,23 @@ pub fn LoginPage() -> impl IntoView {
                     <p class="tagline">{move || crate::i18n::t(state.lang.get(), "tagline")}</p>
                 </div>
                 <form on:submit=submit>
-                    <label class="field has-icon">
-                        <span>{move || crate::i18n::t(state.lang.get(), "server")}</span>
-                        <span class="field-icon" aria-hidden="true">
-                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
-                                <circle cx="8" cy="8" r="6" />
-                                <path d="M2 8h12M8 2c1.8 1.8 2.7 3.8 2.7 6S9.8 12.2 8 14c-1.8-1.8-2.7-3.8-2.7-6S6.2 3.8 8 2z" />
-                            </svg>
-                        </span>
-                        <input type="url" required placeholder="http://127.0.0.1:8080"
-                            // Locked deployment (BACKEND_URL): read-only. The
-                            // attribute (not just the property) so it is
-                            // reflected in the DOM for a11y and tests; the
-                            // value still submits.
-                            readonly=move || locked.get().then_some("")
-                            class:locked=move || locked.get()
-                            title=move || {
-                                if locked.get() {
-                                    crate::i18n::t(state.lang.get(), "server_locked").to_string()
-                                } else {
-                                    String::new()
-                                }
-                            }
-                            prop:value=move || server.get()
-                            on:input=move |ev| {
-                                if !locked.get_untracked() {
-                                    server.set(event_target_value(&ev));
-                                }
-                            } />
-                    </label>
+                    // No field when the deployment fixes the server
+                    // (BACKEND_URL / config.json): the app only asks for the
+                    // credentials.
+                    <Show when=move || !fixed_server.get()>
+                        <label class="field has-icon">
+                            <span>{move || crate::i18n::t(state.lang.get(), "server")}</span>
+                            <span class="field-icon" aria-hidden="true">
+                                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+                                    <circle cx="8" cy="8" r="6" />
+                                    <path d="M2 8h12M8 2c1.8 1.8 2.7 3.8 2.7 6S9.8 12.2 8 14c-1.8-1.8-2.7-3.8-2.7-6S6.2 3.8 8 2z" />
+                                </svg>
+                            </span>
+                            <input type="url" required placeholder="http://127.0.0.1:8080"
+                                prop:value=move || server.get()
+                                on:input=move |ev| server.set(event_target_value(&ev)) />
+                        </label>
+                    </Show>
                     <label class="field">
                         <span>{move || crate::i18n::t(state.lang.get(), "username")}</span>
                         <input type="text" required autocomplete="username"

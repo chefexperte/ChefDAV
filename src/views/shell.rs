@@ -597,7 +597,7 @@ mod tests {
     fn with_base(base: &str) {
         set_runtime(Runtime {
             backend_url: None,
-            lock: false,
+            server_fixed: false,
             base_path: base.to_string(),
         });
     }

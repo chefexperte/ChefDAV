@@ -120,23 +120,23 @@ jobs:
           }
           config() { curl -sf http://127.0.0.1:18080/config.json; }
 
-          # a URL locks the server field by default and is never cached
+          # a URL from the deployment is written to the config and never cached
           start_with -e BACKEND_URL=https://dav.example.org
           config | grep -q '"backend_url": "https://dav.example.org"'
-          config | grep -q '"lock": true'
+          # the app hides the server field whenever backend_url is set, so the
+          # config carries nothing else (a legacy "lock" key must not come back)
+          ! config | grep -q '"lock"'
           curl -sfI http://127.0.0.1:18080/config.json | grep -qi 'cache-control: no-cache'
 
-          # …the same image can start unlocked
+          # …the same image can start against a different server
           docker rm -f chefdav-ci >/dev/null
-          start_with -e BACKEND_URL=https://other.example -e BACKEND_LOCK=false
+          start_with -e BACKEND_URL=https://other.example
           config | grep -q '"backend_url": "https://other.example"'
-          config | grep -q '"lock": false'
 
           # …and with no backend at all: the login screen asks for one
           docker rm -f chefdav-ci >/dev/null
           start_with
           config | grep -q '"backend_url": ""'
-          config | grep -q '"lock": false'
 
       # The setup this image is meant for: a reverse proxy publishes the app
       # under a path (calendar.example.com/ui) while the CalDAV server owns the

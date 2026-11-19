@@ -10,10 +10,11 @@
 #     -e BACKEND_URL=https://dav.example.org \
 #     ghcr.io/chefexperte/chefdav:latest
 #
-# BACKEND_URL (and BACKEND_LOCK) are **runtime** environment variables: on every
-# start the entrypoint writes them into /srv/config.json, which the app reads
-# before it renders. Omit BACKEND_URL and users type their server at login. The
-# image is therefore deployment-agnostic — no rebuild to change servers.
+# BACKEND_URL and BASE_PATH are **runtime** environment variables: on every
+# start the entrypoint writes them into /srv-runtime/config.json, which the app
+# reads before it renders. With BACKEND_URL set, the login screen asks only for
+# credentials; without it, users type their server too. The image is therefore
+# deployment-agnostic — no rebuild to change servers.
 
 # ---------------------------------------------------------------- build ------
 # Rust → WebAssembly with trunk. rust:1-alpine is rustup + musl and much
@@ -72,8 +73,7 @@ COPY --chmod=0755 docker/container-entrypoint.sh /usr/local/bin/chefdav-start
 # nothing worth persisting.
 VOLUME ["/srv-runtime"]
 
-ENV BACKEND_URL="" \
-    BACKEND_LOCK=""
+ENV BACKEND_URL=""
 
 EXPOSE 80
 

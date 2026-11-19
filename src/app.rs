@@ -58,7 +58,15 @@ pub fn App() -> impl IntoView {
             if settings.stay_logged_in {
                 if let Ok(Some(creds)) = store::kv_get::<StoredCreds>("creds").await {
                     let lang = state.lang.get_untracked();
-                    match api::login_classified(&creds.server, &creds.username, &creds.password, lang).await {
+                    // A deployment that sets BACKEND_URL is authoritative: the
+                    // saved session is restored against it, never against a
+                    // server the user once typed.
+                    let server = if crate::config::server_is_fixed() {
+                        crate::config::initial_server()
+                    } else {
+                        creds.server.clone()
+                    };
+                    match api::login_classified(&server, &creds.username, &creds.password, lang).await {
                         Ok(session) => state.session.set(Some(session)),
                         Err((_, DavError::Unauthorized)) => {
                             // The saved password no longer works: forget it but

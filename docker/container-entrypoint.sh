@@ -5,7 +5,7 @@
 # itself. This script turns them into
 #
 #   * /srv-runtime/config.json — fetched by the app at startup (src/config.rs):
-#     BACKEND_URL / BACKEND_LOCK / BASE_PATH;
+#     BACKEND_URL / BASE_PATH;
 #   * /srv-runtime/Caddyfile   — the site config, with the path prefix mounted
 #     when BASE_PATH is set.
 #
@@ -13,10 +13,9 @@
 # a read-only root filesystem is fine.
 #
 # Environment:
-#   BACKEND_URL    CalDAV server (e.g. https://dav.example.org). Empty -> users
-#                  type the server on the login screen.
-#   BACKEND_LOCK   true (default when BACKEND_URL is set) -> read-only server
-#                  field; false -> prefilled but editable.
+#   BACKEND_URL    CalDAV server (e.g. https://dav.example.org). When set, the
+#                  login screen asks only for credentials; when empty, the user
+#                  also types the server.
 #   BASE_PATH      e.g. /ui when a reverse proxy publishes the app under a path
 #                  (calendar.example.com/ui) while the CalDAV server sits at the
 #                  site root. Works with or without StripPrefix at the proxy.
@@ -27,22 +26,7 @@ CONFIG="$RUNTIME_DIR/config.json"
 CADDYFILE="$RUNTIME_DIR/Caddyfile"
 
 url="${BACKEND_URL:-}"
-lock="${BACKEND_LOCK:-}"
 base="${BASE_PATH:-}"
-
-if [ -z "$lock" ]; then
-    if [ -n "$url" ]; then lock=true; else lock=false; fi
-fi
-
-# Only true/false are meaningful; anything else would silently unlock a
-# deployment, so refuse to start instead.
-case "$lock" in
-    true|false) ;;
-    *)
-        echo "chefdav: ERROR — BACKEND_LOCK must be 'true' or 'false' (got '$lock')." >&2
-        exit 1
-        ;;
-esac
 
 # Trim whitespace and trailing slashes: the CalDAV client appends its own paths,
 # and a trailing slash would produce `//`.
@@ -68,7 +52,6 @@ mkdir -p "$RUNTIME_DIR"
 cat > "$CONFIG" <<EOF
 {
   "backend_url": "$(json_escape "$url")",
-  "lock": $lock,
   "base_path": "$(json_escape "$base")"
 }
 EOF
@@ -168,7 +151,7 @@ EOF
 } > "$CADDYFILE"
 
 if [ -n "$url" ]; then
-    echo "chefdav: backend $url (lock: $lock)"
+    echo "chefdav: backend $url"
 else
     echo "chefdav: no BACKEND_URL — users choose their calendar server at login"
 fi
