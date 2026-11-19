@@ -24,9 +24,18 @@ pub fn App() -> impl IntoView {
     // that a locked deployment (`/config.json`) would make read-only.
     Effect::new(move |_| {
         spawn_local(async move {
-            crate::config::set_runtime(crate::config::parse_runtime(
-                &crate::api::fetch_runtime_config().await,
-            ));
+            let mut runtime =
+                crate::config::parse_runtime(&crate::api::fetch_runtime_config().await);
+            if runtime.base_path.is_empty() {
+                // Not configured: infer it from the address bar, so an app
+                // mounted under /ui works even if the operator set nothing.
+                if let Some(path) = web_sys::window()
+                    .and_then(|w| w.location().pathname().ok())
+                {
+                    runtime.base_path = crate::config::detect_base_path(&path);
+                }
+            }
+            crate::config::set_runtime(runtime);
 
             let settings = store::settings_load().await;
             state.theme.set(if settings.theme == "dark" {
@@ -74,7 +83,10 @@ pub fn App() -> impl IntoView {
     });
 
     view! {
-        <Router>
+        // `base` is the mount path ("/ui/" or ""): the router strips it before
+        // matching, so /ui/month/2026-11 routes like /month/2026-11. Set by
+        // `config` (BASE_PATH, or inferred from the address bar).
+        <Router base=crate::config::router_base()>
             // The session signal — not a route guard — decides whether the app
             // or the login page is shown. This avoids a navigation race where
             // the Shell mounts before the just-set session is visible.
@@ -85,7 +97,7 @@ pub fn App() -> impl IntoView {
                         <div class="login-page">
                             <div class="login-card">
                                 <div class="login-brand">
-                                    <img src="/logo.svg" width="64" height="64" alt="ChefDAV logo" />
+                                    <img src=move || crate::config::asset_url("logo.svg") width="64" height="64" alt="ChefDAV logo" />
                                     <h1>"ChefDAV"</h1>
                                 </div>
                                 <p class="restoring">

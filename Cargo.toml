@@ -82,3 +82,20 @@ debug = "line-tables-only"
 opt-level = 'z'
 lto = true
 codegen-units = 1
+
+# Container/CI builds only, selected by `cargo_profile = "ci"` in
+# Trunk.release.toml (docker/Dockerfile). Same bundle as [profile.release]
+# (opt-level "z", LTO) with parallel codegen, so the image build is not serial.
+#
+# Measured on this project (12 cores): a cold wasm build is ~6 min either way —
+# the cost is optimising the ~200-crate dependency graph, which LTO/profile
+# tweaks do not change. What actually made rebuilds slow was the Docker
+# dependency layer compiling under `--release` while trunk built `ci`, so nothing
+# was ever reused; docker/Dockerfile now passes the same profile and a
+# source-only change recompiles 15 crates instead of 205.
+#
+# Dev (`trunk serve`, `trunk build`), `cargo test` and the release bundle in
+# Cargo.toml above are untouched by this profile.
+[profile.ci]
+inherits = "release"
+codegen-units = 16

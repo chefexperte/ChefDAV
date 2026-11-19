@@ -2,6 +2,9 @@
 [build]
 target = "index.html"
 dist = "dist"
+# Relative asset URLs: the bundle works at "/" as well as under a path
+# prefix (/ui/) behind a reverse proxy — see docker/frontend/Caddyfile.
+public_url = "./"
 
 # Dev server:  trunk serve --address 127.0.0.1 --port 3100
 [serve]

@@ -1,15 +1,22 @@
 # Release build settings for the container image (docker/Dockerfile).
 # Copied over Trunk.toml inside the build stage; the repo keeps the dev one.
-# Inherits [profile.release] from Cargo.toml (opt-level "z", LTO, 1 codegen
-# unit — small bundle, slow cold build; the image cache absorbs that).
+# Same optimizer settings as [profile.release] (opt-level "z", LTO) but with
+# parallel codegen — see [profile.ci] in Cargo.toml.
 [build]
 target = "index.html"
 dist = "dist"
 release = true
+# Fast CI/container builds: [profile.ci] in Cargo.toml (parallel codegen).
+# The dev profile and `cargo test` are unaffected.
+cargo_profile = "ci"
 # Content-hashed file names (chef-dav-<hash>.js/.wasm, main-<hash>.css), which
 # docker/frontend/Caddyfile caches immutably.
 filehash = true
+# Relative asset URLs ("./chef-dav-….js"): the same bundle works at "/",
+# "/ui/" or any other path, so a reverse proxy may mount the app wherever.
+public_url = "./"
 
 [serve]
 address = "127.0.0.1"
 port = 3100
+

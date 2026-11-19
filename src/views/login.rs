@@ -15,6 +15,8 @@ use crate::store::{self, LastLogin, StoredCreds};
 
 const CHANGELOG: &str = include_str!("../../CHANGELOG.md");
 
+
+
 /// Latest changelog section: (title, bullet items).
 fn latest_changelog() -> (String, Vec<String>) {
     parse_latest_changelog(CHANGELOG)
@@ -86,8 +88,13 @@ pub fn LoginPage() -> impl IntoView {
     let navigate = use_navigate();
 
     // A deployment with a locked backend (BACKEND_URL / config.json) never
-    // takes a server from the user or from previously stored logins. The value
-    // is a signal because it is only final after `/config.json` was loaded.
+    // takes a server from the user or from previously stored logins.
+    //
+    // This page can render before `/config.json` has been fetched (App fetches
+    // it in an effect, and the login page is also reachable directly), so the
+    // configuration is re-read whenever it arrives: `config_ready` flips once,
+    // and the effect below applies it.
+    let config_ready = RwSignal::new(false);
     let locked = RwSignal::new(crate::config::is_locked());
     let server = RwSignal::new(crate::config::initial_server());
     let username = RwSignal::new(String::new());
@@ -103,30 +110,39 @@ pub fn LoginPage() -> impl IntoView {
     // saved). The checkbox mirrors the persisted "stay logged in" choice.
     // With a locked backend the server stays as configured — only the
     // username/password are restored.
+    // The last server this browser logged in to (None on a first visit). Read
+    // together with the rest of the preferences.
+    let last_server = RwSignal::new(None::<String>);
+
     spawn_local(async move {
         let settings = store::settings_load().await;
         stay.set(settings.stay_logged_in);
-        // Read the configuration now that `/config.json` is loaded (App only
-        // renders this page afterwards); keep the signal in sync with it.
-        let is_locked = crate::config::is_locked();
-        locked.set(is_locked);
-        if !is_locked {
-            server.set(crate::config::initial_server());
-        }
         if let Ok(Some(last)) = store::kv_get::<LastLogin>("last_login").await {
-            if !is_locked {
-                server.set(last.server);
-            }
+            last_server.set(Some(last.server));
             username.set(last.username);
         }
         if settings.stay_logged_in {
             if let Ok(Some(creds)) = store::kv_get::<StoredCreds>("creds").await {
-                if !is_locked {
-                    server.set(creds.server);
-                }
                 username.set(creds.username);
                 password.set(creds.password);
             }
+        }
+        config_ready.set(true);
+    });
+
+    // Settle the server field against the runtime configuration, which may
+    // arrive after this page rendered. A locked deployment always wins over a
+    // stored login; an unlocked one prefers the server this browser used last.
+    Effect::new(move |_| {
+        let is_locked = crate::config::is_locked();
+        locked.set(is_locked);
+        if is_locked {
+            server.set(crate::config::initial_server());
+        } else if config_ready.get() {
+            server.set(match last_server.get() {
+                Some(saved) => saved,
+                None => crate::config::initial_server(),
+            });
         }
     });
 
@@ -199,7 +215,7 @@ pub fn LoginPage() -> impl IntoView {
         <div class="login-page">
             <div class="login-card">
                 <div class="login-brand">
-                    <img src="/logo.svg" width="64" height="64" alt="ChefDAV logo" />
+                    <img src=move || crate::config::asset_url("logo.svg") width="64" height="64" alt="ChefDAV logo" />
                     <h1>"ChefDAV"</h1>
                     <p class="tagline">{move || crate::i18n::t(state.lang.get(), "tagline")}</p>
                 </div>
@@ -213,8 +229,11 @@ pub fn LoginPage() -> impl IntoView {
                             </svg>
                         </span>
                         <input type="url" required placeholder="http://127.0.0.1:8080"
-                            // Locked deployment (BACKEND_URL): read-only.
-                            prop:readonly=move || locked.get()
+                            // Locked deployment (BACKEND_URL): read-only. The
+                            // attribute (not just the property) so it is
+                            // reflected in the DOM for a11y and tests; the
+                            // value still submits.
+                            readonly=move || locked.get().then_some("")
                             class:locked=move || locked.get()
                             title=move || {
                                 if locked.get() {

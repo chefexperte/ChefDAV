@@ -29,13 +29,21 @@ use crate::store::{self, CachedEvent, CachedTodo, CalendarCache, OutboxOp};
 /// configuration", never a failure: the app then falls back to its build-time
 /// default and an editable server field.
 pub async fn fetch_runtime_config() -> String {
-    // An absolute URL: reqwest on wasm resolves relative paths against nothing,
-    // and a builder error there would be indistinguishable from "no config".
-    // `origin` keeps it same-origin even when the app is hosted under a path.
-    let origin = web_sys::window()
+    // An absolute URL (reqwest on wasm cannot resolve a relative path, and the
+    // builder error would look like "no config"). `index.html` sits at the
+    // mount path, which is not known yet — the address bar is the only source
+    // of truth here, so a `/ui/month/2026-11` deep link still finds
+    // `/ui/config.json`.
+    let win = web_sys::window();
+    let origin = win
+        .as_ref()
         .and_then(|w| w.location().origin().ok())
         .unwrap_or_default();
-    let url = format!("{origin}/config.json");
+    let path = win
+        .as_ref()
+        .and_then(|w| w.location().pathname().ok())
+        .unwrap_or_default();
+    let url = format!("{origin}{}/config.json", runtime_config_dir(&path));
     match reqwest::Client::new().get(&url).send().await {
         Ok(resp) if resp.status().is_success() => resp.text().await.unwrap_or_default(),
         Ok(_) => String::new(), // 404: plain static hosting, no runtime config
@@ -43,6 +51,20 @@ pub async fn fetch_runtime_config() -> String {
             eprintln!("chefdav: no runtime config ({url}): {e}");
             String::new()
         }
+    }
+}
+
+/// Directory the app is mounted in, from a page path: `/ui/month/2026-11` →
+/// `/ui`, `/month/2026-11` → `""`, `/ui/` → `/ui`.
+fn runtime_config_dir(pathname: &str) -> String {
+    let trimmed = pathname.trim_start_matches('/');
+    let mut parts = trimmed.split('/');
+    let first = parts.next().unwrap_or("");
+    // A known route at the root means the app is not mounted under a prefix.
+    if crate::config::detect_base_path(pathname).is_empty() {
+        String::new()
+    } else {
+        format!("/{first}")
     }
 }
 

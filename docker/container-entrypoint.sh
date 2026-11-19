@@ -2,23 +2,33 @@
 # Container entrypoint (docker/Dockerfile).
 #
 # The app is a static WASM bundle, so it cannot read environment variables by
-# itself. This script turns them into /srv/config.json, which the app fetches
-# once at startup (see src/config.rs), and then starts Caddy.
+# itself. This script turns them into
 #
-# /srv/config.json lives on a tmpfs mount of its own (/srv-runtime), so writing
-# it works even with a read-only root filesystem; Caddy reads it from there.
+#   * /srv-runtime/config.json — fetched by the app at startup (src/config.rs):
+#     BACKEND_URL / BACKEND_LOCK / BASE_PATH;
+#   * /srv-runtime/Caddyfile   — the site config, with the path prefix mounted
+#     when BASE_PATH is set.
+#
+# Both go to a tmpfs on every start, so the same image serves any deployment and
+# a read-only root filesystem is fine.
 #
 # Environment:
-#   BACKEND_URL    CalDAV server the app talks to, e.g. https://dav.example.org
-#                  Unset/empty → users type the server on the login screen.
-#   BACKEND_LOCK   true (default when BACKEND_URL is set) → read-only server
-#                  field; false → pre-filled but editable.
+#   BACKEND_URL    CalDAV server (e.g. https://dav.example.org). Empty -> users
+#                  type the server on the login screen.
+#   BACKEND_LOCK   true (default when BACKEND_URL is set) -> read-only server
+#                  field; false -> prefilled but editable.
+#   BASE_PATH      e.g. /ui when a reverse proxy publishes the app under a path
+#                  (calendar.example.com/ui) while the CalDAV server sits at the
+#                  site root. Works with or without StripPrefix at the proxy.
 set -eu
 
 RUNTIME_DIR=/srv-runtime
 CONFIG="$RUNTIME_DIR/config.json"
+CADDYFILE="$RUNTIME_DIR/Caddyfile"
+
 url="${BACKEND_URL:-}"
 lock="${BACKEND_LOCK:-}"
+base="${BASE_PATH:-}"
 
 if [ -z "$lock" ]; then
     if [ -n "$url" ]; then lock=true; else lock=false; fi
@@ -38,8 +48,18 @@ esac
 # and a trailing slash would produce `//`.
 url=$(printf '%s' "$url" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's:/*$::')
 
-# Escape the two characters that can break a JSON string (URLs cannot contain
-# raw control characters, so this is sufficient).
+# Mount path: "ui", "/ui", "ui/" -> "/ui"; "" or "/" -> root mount.
+base=$(printf '%s' "$base" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's:^/*::' -e 's:/*$::')
+base="/$base"
+[ "$base" = "/" ] && base=""
+case "$base" in
+    *[!A-Za-z0-9/_.-]*)
+        echo "chefdav: ERROR — BASE_PATH may only contain URL path characters (got '$base')." >&2
+        exit 1
+        ;;
+esac
+
+# Escape the characters that can break a JSON string or a Caddyfile snippet.
 json_escape() {
     printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
 }
@@ -48,14 +68,110 @@ mkdir -p "$RUNTIME_DIR"
 cat > "$CONFIG" <<EOF
 {
   "backend_url": "$(json_escape "$url")",
-  "lock": $lock
+  "lock": $lock,
+  "base_path": "$(json_escape "$base")"
 }
 EOF
+
+# When mounted under a path, the bundle's relative URLs ("./chef-dav-….js", from
+# public_url = "./" in Trunk.release.toml) must resolve against the mount point,
+# not against the current route: on /ui/month/2026-11 "./x.js" would otherwise
+# become /ui/month/x.js — the SPA fallback would answer with HTML and the app
+# would never boot.
+#
+# The patched copy goes to the tmpfs (not /srv), so a read-only root filesystem
+# keeps working; Caddy serves it with higher priority than the bundle's own.
+rm -f "$RUNTIME_DIR/index.html"
+if [ -n "$base" ]; then
+    sed "s|<head>|<head>\\n    <base href=\"$base/\" />|" /srv/index.html \
+        > "$RUNTIME_DIR/index.html"
+fi
+
+# The part of the site that is identical at every mount point. `handle_path`
+# strips the prefix before these directives run, so /ui/config.json and /ui/
+# behave exactly like /config.json and /. The proxy may therefore forward the
+# prefix unchanged (Traefik with only PathPrefix) or strip it (PathPrefix +
+# StripPrefix) — both work.
+# Routes shared by every mount point. Real files come from the bundle; every
+# other path — each SPA route — gets the entry document from $entry_root, which
+# on a path mount is the patched copy (with its <base href>) in the tmpfs.
+site_routes() {
+    entry_root="$1"
+    # Named matchers must be unique within the site, and these routes can be
+    # inlined twice (root + path prefix).
+    suffix="$2"
+    cat <<EOF
+	handle /healthz {
+		respond 200
+	}
+
+	handle /config.json {
+		root * /srv-runtime
+		file_server
+	}
+
+	root * /srv
+
+	@file_$suffix file
+	handle @file_$suffix {
+		file_server
+
+		@hashed_$suffix path /chef-dav*.js /chef-dav*.wasm /main-*.css
+		header @hashed_$suffix Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	handle {
+		rewrite * /index.html
+		root * $entry_root
+		file_server
+	}
+
+	@revalidate_$suffix {
+		not path /chef-dav*.js /chef-dav*.wasm /main-*.css
+	}
+	header @revalidate_$suffix Cache-Control "no-cache"
+
+	encode zstd gzip
+EOF
+}
+
+{
+    cat <<'EOF'
+# Generated by docker/container-entrypoint.sh — do not edit.
+# No admin API: the container has nothing to manage at runtime.
+{
+	admin off
+}
+
+:80 {
+EOF
+
+    # Root mount. The entry document is the bundle's own copy unless the app is
+    # also mounted under a path, in which case the patched copy serves both
+    # (same bytes apart from <base href>, which is harmless at the root).
+    if [ -n "$base" ]; then
+        site_routes /srv-runtime root
+        cat <<EOF
+
+	# Path-prefix mount ($base). The proxy may forward /ui/... unchanged
+	# (Traefik with only PathPrefix) or stripped (PathPrefix + StripPrefix);
+	# handle_path strips it here, so the routes are the same as at the root.
+	handle_path $base/* {
+EOF
+        site_routes /srv-runtime ui
+        printf '\t}\n\n\tredir %s %s/ 308\n' "$base" "$base"
+    else
+        site_routes /srv root
+    fi
+
+    printf '}\n'
+} > "$CADDYFILE"
 
 if [ -n "$url" ]; then
     echo "chefdav: backend $url (lock: $lock)"
 else
     echo "chefdav: no BACKEND_URL — users choose their calendar server at login"
 fi
+echo "chefdav: app mounted at ${base:-/}"
 
-exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+exec caddy run --config "$CADDYFILE" --adapter caddyfile

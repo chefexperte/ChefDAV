@@ -411,7 +411,7 @@ pub fn Shell() -> impl IntoView {
                         go_home_nav("/", Default::default());
                     }
                 >
-                    <img src="/logo.svg" width="34" height="34" alt="ChefDAV logo" />
+                    <img src=move || crate::config::asset_url("logo.svg") width="34" height="34" alt="ChefDAV logo" />
                     <span class="brand-name">"ChefDAV"</span>
                 </a>
                 <button

@@ -33,15 +33,16 @@ RUN apk add --no-cache build-base wget libstdc++ \
 WORKDIR /src
 
 # Dependency layer: re-runs only when the manifests change, so source edits
-# reuse the compiled dependency graph from the layer cache.
+# reuse the compiled dependency graph from the layer cache. It must use the
+# SAME profile as the real build below (`ci`, from Trunk.release.toml) — a
+# different profile would compile every crate again and leave the cache empty.
 COPY Cargo.toml Cargo.lock ./
 COPY crates/caldav/Cargo.toml crates/caldav/Cargo.toml
 RUN mkdir -p src crates/caldav/src \
- && printf '' > src/lib.rs \
- && printf '' > src/main.rs \
- && printf '#[cfg(target_arch = "wasm32")] compile_error!("deps-layer stub");\n' \
-      > crates/caldav/src/lib.rs \
- && cargo build --release --target wasm32-unknown-unknown || true
+ && printf '#[cfg(target_arch = "wasm32")] compile_error!("stub");\n' > src/lib.rs \
+ && printf 'fn main() {}\n' > src/main.rs \
+ && printf '#[cfg(target_arch = "wasm32")] compile_error!("stub");\n' > crates/caldav/src/lib.rs \
+ && cargo build --profile ci --target wasm32-unknown-unknown 2>/dev/null || true
 
 # Real sources. Trunk.release.toml (content-hashed file names, so they can be
 # cached immutably) replaces the dev Trunk.toml inside the build only.
@@ -61,8 +62,8 @@ LABEL org.opencontainers.image.title="ChefDAV" \
       org.opencontainers.image.licenses="MIT"
 
 # Site only: Caddy serves /srv and falls back to index.html for client-side
-# routes (/week/2026-11-16 …). No API, no admin listener.
-COPY docker/frontend/Caddyfile /etc/caddy/Caddyfile
+# routes (/week/2026-11-16 …). No API, no admin listener. The Caddyfile is
+# generated at start by the entrypoint (mount path is a runtime setting).
 COPY --from=builder /src/dist/ /srv/
 COPY --chmod=0755 docker/container-entrypoint.sh /usr/local/bin/chefdav-start
 
