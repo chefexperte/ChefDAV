@@ -286,6 +286,10 @@ pub fn MonthView() -> impl IntoView {
         spawn_local(async move {
             match api::move_event(&st, &href, delta).await {
                 Ok(_) => api::refresh_events(&st).await,
+                Err(e) if api::backend_unavailable(&e) => {
+                    st.backend_down.set(true);
+                    st.error.set(None);
+                }
                 Err(e) => st.error.set(Some(format!("{e}"))),
             }
         });

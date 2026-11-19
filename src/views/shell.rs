@@ -558,6 +558,11 @@ pub fn Shell() -> impl IntoView {
             </aside>
             <main class="main">
                 <Toolbar />
+                <Show when=move || state.backend_down.get() fallback=|| ()>
+                    <p class="banner-error backend-banner" role="status">
+                        {move || crate::i18n::t(state.lang.get(), "backend_unavailable")}
+                    </p>
+                </Show>
                 <Outlet />
             </main>
         </div>

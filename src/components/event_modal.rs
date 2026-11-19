@@ -450,6 +450,14 @@ pub fn EventModal() -> impl IntoView {
                             st.new_event_all_day.set(false);
                             st.modal.set(None);
                         }
+                        Err(e) if api::backend_unavailable(&e) => {
+                            st.backend_down.set(true);
+                            error.set(Some(
+                                crate::i18n::t(st.lang.get_untracked(), "server_backend_down")
+                                    .to_string(),
+                            ));
+                            saving.set(false);
+                        }
                         Err(e) => {
                             error.set(Some(format!("{e}")));
                             saving.set(false);

@@ -132,7 +132,13 @@ pub fn LoginPage() -> impl IntoView {
                     state.session.set(Some(session));
                 }
                 Err((reason, e)) => {
-                    error.set(Some(e.to_string()));
+                    // The backend-unavailable text is already the full message;
+                    // do not wrap it in the transport-error prefix.
+                    error.set(Some(if reason == api::Unreachable::Backend {
+                        api::error_text(reason, state.lang.get_untracked()).to_string()
+                    } else {
+                        e.to_string()
+                    }));
                     if reason == api::Unreachable::Cors {
                         hint.set(Some(
                             crate::i18n::t(state.lang.get_untracked(), "server_cors_hint")

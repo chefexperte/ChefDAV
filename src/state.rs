@@ -240,6 +240,9 @@ pub struct AppState {
     /// Number of writes waiting in the offline outbox.
     pub pending: RwSignal<usize>,
     pub online: RwSignal<bool>,
+    /// The CalDAV endpoint is missing or failing (404/5xx/transport), not just
+    /// a single resource. Drives the global "backend not available" banner.
+    pub backend_down: RwSignal<bool>,
     pub theme: RwSignal<Theme>,
     pub lang: RwSignal<Lang>,
     /// True while the app is trying to restore a saved session at startup.
@@ -292,6 +295,7 @@ impl AppState {
             searching: RwSignal::new(false),
             pending: RwSignal::new(0),
             online: RwSignal::new(true),
+            backend_down: RwSignal::new(false),
             theme: RwSignal::new(Theme::Light),
             lang: RwSignal::new(Lang::En),
             restoring: RwSignal::new(true),

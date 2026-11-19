@@ -125,6 +125,9 @@ pub enum Unreachable {
     Cors,
     /// Any other network/DNS/TLS failure.
     Network,
+    /// The endpoint answered as a whole is unavailable (404 from a proxy
+    /// without a backend, 5xx from a stopped server).
+    Backend,
 }
 
 impl Unreachable {
@@ -137,6 +140,7 @@ impl Unreachable {
         match self {
             Unreachable::Cors => "server_cors_blocked",
             Unreachable::Network => "server_unreachable",
+            Unreachable::Backend => "server_backend_down",
         }
     }
 }
@@ -144,6 +148,17 @@ impl Unreachable {
 /// Translated one-line explanation for a failed connection.
 pub fn error_text(reason: Unreachable, lang: crate::state::Lang) -> &'static str {
     crate::i18n::t(lang, reason.i18n_key())
+}
+
+/// A failure of the endpoint as a whole: no response at all, or an HTTP
+/// 404/5xx answer (a proxy without a backend, a stopped server). A 401/403 is
+/// a login problem and is handled on the login page, not as an outage.
+pub fn backend_unavailable(e: &DavError) -> bool {
+    match e {
+        DavError::Transport(_) => true,
+        DavError::Http { status, .. } => *status == 404 || *status >= 500,
+        _ => false,
+    }
 }
 
 /// Verify credentials against the server and discover principal + home.
@@ -180,6 +195,11 @@ pub async fn login_classified(
             DavError::Transport(_) => (
                 Unreachable::Cors,
                 Unreachable::Cors.into_error(lang),
+            ),
+            // A proxy without a backend (404) or a stopped server (5xx).
+            DavError::Http { status, .. } if status == 404 || status >= 500 => (
+                Unreachable::Backend,
+                Unreachable::Backend.into_error(lang),
             ),
             // The server answered. A 401/403 is a real login failure and must
             // keep its own message ("check username/password"), not be
@@ -231,7 +251,13 @@ pub async fn refresh_calendars(state: &AppState) {
                 .collect();
             let infos: Vec<CalendarInfo> = new.iter().map(|c| c.info.clone()).collect();
             state.calendars.set(new);
+            state.backend_down.set(false);
             let _ = store::kv_set("cache_calendars", &infos).await;
+        }
+        Err(e) if backend_unavailable(&e) => {
+            // The banner in the shell explains what still works.
+            state.backend_down.set(true);
+            state.error.set(None);
         }
         Err(e) => state
             .error
@@ -295,6 +321,7 @@ pub async fn refresh_events(state: &AppState) {
         .map(|c| (c.calendar_href.clone(), c))
         .collect();
     let mut all: Vec<DisplayEvent> = Vec::new();
+    let mut any_ok = false;
     for (cal, color) in &visible {
         let Ok(url) = Url::parse(&cal.href) else { continue };
         let mut cache = caches.remove(&cal.href).unwrap_or_else(|| CalendarCache {
@@ -311,6 +338,7 @@ pub async fn refresh_events(state: &AppState) {
         if let Some(tok) = token {
             match c.sync_collection(&url, Some(&tok)).await {
                 Ok(sync) => {
+                    any_ok = true;
                     cache.events.retain(|e| !sync.deleted.contains(&e.href));
                     if !sync.changed.is_empty() {
                         match c.multiget_events(&url, &sync.changed, &state.tz).await {
@@ -338,6 +366,10 @@ pub async fn refresh_events(state: &AppState) {
                                     });
                                 }
                             }
+                            Err(e) if backend_unavailable(&e) => {
+                                state.backend_down.set(true);
+                                state.error.set(None);
+                            }
                             Err(e) => state.error.set(Some(format!(
                                 "{}: could not fetch changes: {e}",
                                 cal.display_name
@@ -357,6 +389,7 @@ pub async fn refresh_events(state: &AppState) {
         if !refreshed {
             match c.query_all_events(&url, &state.tz).await {
                 Ok(evs) => {
+                    any_ok = true;
                     let mut by_href: HashMap<String, (Option<String>, Vec<VEvent>)> = HashMap::new();
                     for e in evs {
                         let entry = by_href
@@ -381,6 +414,10 @@ pub async fn refresh_events(state: &AppState) {
                         .collect();
                     cache.sync_token = cal.ctag.clone();
                 }
+                Err(e) if backend_unavailable(&e) => {
+                    state.backend_down.set(true);
+                    state.error.set(None);
+                }
                 Err(e) => {
                     state
                         .error
@@ -392,6 +429,9 @@ pub async fn refresh_events(state: &AppState) {
         caches.insert(cal.href.clone(), cache);
     }
     state.loading.set(false);
+    if any_ok {
+        state.backend_down.set(false);
+    }
     state.remap_open_modal(Some(&all), None);
     state.events.set(all);
     store::cache_save(&caches.into_values().collect::<Vec<_>>()).await;
@@ -437,6 +477,10 @@ pub async fn refresh_todos(state: &AppState) {
                         read_only: cal.read_only,
                     });
                 }
+            }
+            Err(e) if backend_unavailable(&e) => {
+                state.backend_down.set(true);
+                state.error.set(None);
             }
             Err(e) => state
                 .error
@@ -992,9 +1036,12 @@ pub async fn flush_outbox(state: &AppState) {
             },
         };
         match result {
-            Ok(()) => {}
-            Err(DavError::Transport(_)) => {
+            Ok(()) => state.backend_down.set(false),
+            Err(e) if backend_unavailable(&e) => {
+                // Keep the write queued until the backend is back; do not drop
+                // it just because a proxy answered 404/5xx in the meantime.
                 network_down = true;
+                state.backend_down.set(true);
                 remaining.push(op);
             }
             Err(e) => {

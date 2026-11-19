@@ -173,8 +173,22 @@ await page.waitForSelector(".form-error", { timeout: 15000 });
 const err = (await page.textContent(".form-error")).trim();
 check("wrong password rejected", err.toLowerCase().includes("unauthorized"), err);
 
+// A missing backend (404/5xx from the proxy) gets its own explanation instead
+// of a generic HTTP error.
+await page.fill('input[type="url"]', `${DAV}/alice/definitely-missing`);
+await page.fill('input[autocomplete="current-password"]', PASS);
+await page.click('button[type="submit"]');
+await page.waitForTimeout(1500);
+const down = (await page.textContent(".form-error").catch(() => "")).trim();
+check(
+  "missing backend is explained",
+  down.toLowerCase().includes("not available") && down.toLowerCase().includes("created"),
+  down
+);
+
 // the wrong-password check intentionally triggers a 401 resource error
-const unexpectedErrors = consoleErrors.filter((e) => !e.includes("401 (Unauthorized)"));
+// the wrong-password 401 and the missing-backend 404 are intentional
+const unexpectedErrors = consoleErrors.filter((e) => !e.includes("401 (Unauthorized)") && !e.includes("404"));
 check("no console errors", unexpectedErrors.length === 0, unexpectedErrors.join(" | "));
 
 await browser.close();
