@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tiny static server with SPA fallback (for the stable ChefDAV instance)."""
+"""Tiny static server with SPA fallback, for local builds and e2e runs."""
 import http.server
 import os
 import sys
@@ -18,7 +18,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 3200
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 3100
     directory = sys.argv[2] if len(sys.argv) > 2 else "."
     os.chdir(directory)
     http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()

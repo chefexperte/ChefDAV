@@ -3,7 +3,7 @@
 target = "index.html"
 dist = "dist"
 # Root-absolute asset URLs ("/chef-dav-<hash>.js"). This is what the dev
-# server, scripts/serve.py, the stable instance and the e2e suites rely on:
+# server, scripts/serve.py and the e2e suites rely on:
 # with relative URLs a deep link (/month/2026-11) would resolve "./x.js" to
 # "/month/x.js", and the SPA fallback would answer it with index.html, so the
 # module never loads.
