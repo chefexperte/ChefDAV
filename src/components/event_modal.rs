@@ -18,6 +18,8 @@ use crate::state::{AppState, DisplayEvent, ModalState};
 /// UTC offset, which covers every part of the world without 600 entries.
 const COMMON_ZONES: &[&str] = &[
     "Europe/London",
+    "Europe/Dublin",
+    "Atlantic/Reykjavik",
     "Europe/Paris",
     "Europe/Berlin",
     "Europe/Madrid",
@@ -40,6 +42,10 @@ const COMMON_ZONES: &[&str] = &[
     "America/Vancouver",
     "America/Mexico_City",
     "America/Bogota",
+    "America/Lima",
+    "America/Halifax",
+    "America/Caracas",
+    "America/Noronha",
     "America/Sao_Paulo",
     "America/Argentina/Buenos_Aires",
     "America/Santiago",
@@ -51,6 +57,10 @@ const COMMON_ZONES: &[&str] = &[
     "Asia/Seoul",
     "Asia/Kolkata",
     "Asia/Kathmandu",
+    "Asia/Dhaka",
+    "Asia/Bishkek",
+    "Asia/Yangon",
+    "Asia/Tehran",
     "Asia/Dubai",
     "Asia/Bangkok",
     "Asia/Jakarta",
@@ -64,6 +74,10 @@ const COMMON_ZONES: &[&str] = &[
     "Australia/Perth",
     "Australia/Adelaide",
     "Pacific/Auckland",
+    "Pacific/Fiji",
+    "Pacific/Tarawa",
+    "Pacific/Chatham",
+    "Pacific/Marquesas",
     "Pacific/Honolulu",
     "Pacific/Kiritimati",
     "Pacific/Pago_Pago",
@@ -91,7 +105,13 @@ fn zone_label(zone: Tz, now: chrono::DateTime<chrono::Utc>) -> String {
     } else {
         format!("UTC{sign}{h}:{m:02}")
     };
-    format!("{} ({offset})", zone.name())
+    // The only zone at UTC-12 is `Etc/GMT+12` (IANA inverts the sign there).
+    let name = if zone.name() == "Etc/GMT+12" {
+        "UTC-12"
+    } else {
+        zone.name()
+    };
+    format!("{name} ({offset})")
 }
 
 fn weekday_code(d: NaiveDate) -> String {
@@ -167,12 +187,10 @@ pub fn EventModal() -> impl IntoView {
             }
             top.push((zone, label));
         }
-        let mut more: Vec<(Tz, String)> = Vec::new();
-        let mut per_offset: HashMap<i32, usize> = HashMap::new();
-        for name in COMMON_ZONES {
-            let Ok(zone) = name.parse::<Tz>() else {
-                continue;
-            };
+        // Two representatives for EVERY current UTC offset, so no offset is
+        // missing. Well-known names win over obscure ones.
+        let mut buckets: HashMap<i32, Vec<Tz>> = HashMap::new();
+        for zone in chrono_tz::TZ_VARIANTS {
             if top.iter().any(|(z, _)| *z == zone) {
                 continue;
             }
@@ -181,16 +199,26 @@ pub fn EventModal() -> impl IntoView {
                 .offset()
                 .fix()
                 .local_minus_utc();
-            let count = per_offset.entry(secs).or_insert(0);
-            if *count >= 2 {
-                continue;
-            }
-            *count += 1;
-            more.push((zone, zone_label(zone, now)));
+            buckets.entry(secs).or_default().push(zone);
         }
-        more.sort_by_key(|(zone, _)| {
-            (now.with_timezone(zone).offset().fix().local_minus_utc(), zone.name())
-        });
+        let preference = |zone: &Tz| -> (usize, bool, &'static str) {
+            let rank = COMMON_ZONES
+                .iter()
+                .position(|name| *name == zone.name())
+                .unwrap_or(usize::MAX);
+            let obscure = zone.name().starts_with("Etc/") || zone.name().contains("GMT");
+            (rank, obscure, zone.name())
+        };
+        let mut offsets: Vec<i32> = buckets.keys().copied().collect();
+        offsets.sort();
+        let mut more: Vec<(Tz, String)> = Vec::new();
+        for offset in offsets {
+            let mut zones = buckets.remove(&offset).unwrap_or_default();
+            zones.sort_by_key(|z| preference(z));
+            for zone in zones.into_iter().take(2) {
+                more.push((zone, zone_label(zone, now)));
+            }
+        }
         (top, more)
     });
     let is_recurring = existing

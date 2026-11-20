@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::{JsCast, JsValue};
 
 pub fn window() -> web_sys::Window {
     web_sys::window().expect("running in a browser window")
@@ -26,6 +26,65 @@ pub fn random_hex(nbytes: usize) -> String {
 /// A fresh RFC-5545 UID.
 pub fn new_uid() -> String {
     format!("{}@chef-dav", random_hex(16))
+}
+
+/// Copy text to the clipboard.
+///
+/// `navigator.clipboard` only exists in a secure context (HTTPS or localhost),
+/// so a phone opening the LAN preview over plain HTTP falls back to a hidden
+/// textarea and `document.execCommand("copy")`.
+pub async fn copy_text(text: &str) -> bool {
+    if let Some(win) = web_sys::window() {
+        let clipboard = js_sys::Reflect::get(
+            win.navigator().as_ref(),
+            &JsValue::from_str("clipboard"),
+        );
+        if let Ok(clipboard) = clipboard {
+            if !clipboard.is_undefined() && !clipboard.is_null() {
+                let clipboard: &web_sys::Clipboard = clipboard.unchecked_ref();
+                if clipboard.write_text(text).await.is_ok() {
+                    return true;
+                }
+            }
+        }
+        return legacy_copy(text);
+    }
+    false
+}
+
+fn legacy_copy(text: &str) -> bool {
+    let Some(doc) = web_sys::window().and_then(|w| w.document()) else {
+        return false;
+    };
+    let Ok(el) = doc.create_element("textarea") else {
+        return false;
+    };
+    let Ok(area) = el.dyn_into::<web_sys::HtmlTextAreaElement>() else {
+        return false;
+    };
+    area.set_value(text);
+    let _ = area.set_attribute("readonly", "");
+    let style = area.style();
+    let _ = style.set_property("position", "fixed");
+    let _ = style.set_property("left", "-9999px");
+    let _ = style.set_property("top", "0");
+    let Some(body) = doc.body() else {
+        return false;
+    };
+    if body.append_child(&area).is_err() {
+        return false;
+    }
+    area.focus().ok();
+    area.select();
+    // `Document.execCommand` is not in web-sys (deprecated), so call it via JS.
+    let ok = js_sys::Reflect::get(doc.as_ref(), &JsValue::from_str("execCommand"))
+        .ok()
+        .and_then(|f| f.dyn_into::<js_sys::Function>().ok())
+        .and_then(|f| f.call1(doc.as_ref(), &JsValue::from_str("copy")).ok())
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let _ = body.remove_child(&area);
+    ok
 }
 
 /// Current instant (from the JS clock, which works on wasm).

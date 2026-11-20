@@ -66,9 +66,8 @@ pub fn EventDetails() -> impl IntoView {
     let copy_link = move |_| {
         if let Some(win) = web_sys::window() {
             if let Ok(href) = win.location().href() {
-                let clipboard = win.navigator().clipboard();
                 wasm_bindgen_futures::spawn_local(async move {
-                    if clipboard.write_text(&href).await.is_ok() {
+                    if crate::browser::copy_text(&href).await {
                         copied.set(true);
                     }
                 });

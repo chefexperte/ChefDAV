@@ -36,9 +36,10 @@ pub fn CalendarActionModal() -> impl IntoView {
             .unwrap_or_default()
     });
     let copy_url = move |_| {
-        if let Some(win) = web_sys::window() {
-            let _ = win.navigator().clipboard().write_text(&href_sig.get());
-        }
+        let href = href_sig.get();
+        leptos::task::spawn_local(async move {
+            let _ = crate::browser::copy_text(&href).await;
+        });
     };
     let close = move |_| state.calendar_action.set(None);
 

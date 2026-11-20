@@ -751,6 +751,13 @@ check(
     tzOptions.some((t) => /\(UTC[+-]/.test(t)),
   `${tzOptions.length} options, first: ${tzOptions[0] || "none"}`
 );
+const covered = ["UTC-12", "UTC-11", "UTC-4", "UTC-2", "UTC+2", "UTC+6", "UTC+12", "UTC+14"];
+const missingOffsets = covered.filter((o) => !tzOptions.some((t) => t.includes(`(${o})`)));
+check(
+  "time zone picker has a zone for every offset",
+  missingOffsets.length === 0,
+  missingOffsets.join(", ")
+);
 await page.fill('.modal input[type="text"]', tzTitle);
 await page.fill('.modal input[type="date"]', "2026-11-21");
 await page.fill('.modal input[type="time"] >> nth=0', "10:00");
