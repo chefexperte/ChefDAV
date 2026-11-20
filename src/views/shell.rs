@@ -329,6 +329,7 @@ pub fn Shell() -> impl IntoView {
                             let date = caldav::time::today(&st.tz, crate::browser::now_utc());
                             st.new_event_time.set(None);
                             st.new_event_end_time.set(None);
+                            st.new_event_end_date.set(None);
                             st.new_event_all_day.set(false);
                             st.modal.set(Some(ModalState::New { date }));
                         }
@@ -447,6 +448,7 @@ pub fn Shell() -> impl IntoView {
                         let date = caldav::time::today(&state.tz, crate::browser::now_utc());
                         state.new_event_time.set(None);
                         state.new_event_end_time.set(None);
+                        state.new_event_end_date.set(None);
                         state.new_event_all_day.set(false);
                         state.modal.set(Some(ModalState::New { date }));
                     }

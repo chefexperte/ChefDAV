@@ -216,6 +216,8 @@ pub struct AppState {
     /// from an existing event ("New event" in the details popover), so it
     /// takes over the selected event's time slot.
     pub new_event_end_time: RwSignal<Option<(u32, u32)>>,
+    /// End date handed over by a multi-day drag (timed or all-day).
+    pub new_event_end_date: RwSignal<Option<chrono::NaiveDate>>,
     /// True when the new event was started from the all-day row.
     pub new_event_all_day: RwSignal<bool>,
     /// Events hidden behind a "+N more" badge in the week/day view — as
@@ -286,6 +288,7 @@ impl AppState {
             slot_popup: RwSignal::new(None),
             new_event_time: RwSignal::new(None),
             new_event_end_time: RwSignal::new(None),
+            new_event_end_date: RwSignal::new(None),
             new_event_all_day: RwSignal::new(false),
             week_more: RwSignal::new(None),
             jump_open: RwSignal::new(None),

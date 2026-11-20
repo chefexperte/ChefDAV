@@ -32,6 +32,7 @@ pub fn SlotPopup() -> impl IntoView {
     let close = move |_| state.slot_popup.set(None);
     let new_event = move |_| {
         state.slot_popup.set(None);
+        state.new_event_end_date.set(None);
         if all_day {
             state.new_event_all_day.set(true);
             state.new_event_time.set(None);

@@ -207,7 +207,12 @@ pub fn EventModal() -> impl IntoView {
                 .map(|(h, m)| format!("{h:02}:{m:02}"))
                 .unwrap_or_else(|| def_end.clone()),
             state.new_event_all_day.get(),
-            default_date.format("%Y-%m-%d").to_string(),
+            state
+                .new_event_end_date
+                .get_untracked()
+                .unwrap_or(default_date)
+                .format("%Y-%m-%d")
+                .to_string(),
             state
                 .first_writable_event_calendar()
                 .map(|c| c.info.href)
@@ -337,6 +342,7 @@ pub fn EventModal() -> impl IntoView {
     let close = move |_| {
         state.new_event_time.set(None);
         state.new_event_end_time.set(None);
+        state.new_event_end_date.set(None);
         state.new_event_all_day.set(false);
         state.modal.set(None);
     };
@@ -470,6 +476,7 @@ pub fn EventModal() -> impl IntoView {
                             }
                             st.new_event_time.set(None);
                             st.new_event_end_time.set(None);
+                            st.new_event_end_date.set(None);
                             st.new_event_all_day.set(false);
                             st.modal.set(None);
                         }

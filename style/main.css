@@ -1304,6 +1304,18 @@ input[type="checkbox"]:focus-visible {
   min-height: 30px;
 }
 
+/* drag-to-create across the all-day row */
+.allday-drag-ghost {
+  position: absolute;
+  top: 3px;
+  height: 22px;
+  z-index: 5;
+  border: 1px dashed color-mix(in srgb, var(--accent-bg) 75%, transparent);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--accent-bg) 28%, transparent);
+  pointer-events: none;
+}
+
 .allday-cell {
   border-left: 1px solid var(--line);
   padding: 3px;

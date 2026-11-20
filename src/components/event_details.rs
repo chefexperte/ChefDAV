@@ -200,6 +200,7 @@ pub fn EventDetails() -> impl IntoView {
                             let span = start
                                 .map(|s| (s.with_timezone(&tz), (s + dur).with_timezone(&tz)));
                             state.new_event_all_day.set(all_day);
+                            state.new_event_end_date.set(None);
                             state.new_event_time.set(span.map(|(a, _)| {
                                 (a.hour() as u32, a.minute() as u32)
                             }));

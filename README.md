@@ -25,7 +25,9 @@ Adwaita as the visual language and the protocol logic in Rust.
 - **Month, week, day and list views**, plus a tasks view, all behind one
   toolbar with prev, today, next and a view switcher. In the week and day
   timeline, drag across empty space to create an event with that start and end
-  time; a translucent card shows the range while you drag.
+  time; dragging into another day selects the rest of the first day, the days
+  in between and up to the drop point, and the all-day row supports the same
+  drag for all-day events.
 - **Recurring events.** RRULE, RDATE and EXDATE are expanded in the event's own
   timezone, with DST handled. There is an RRULE editor and per-instance
   exceptions (*this event*, *this and following*, *all events*).

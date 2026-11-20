@@ -654,6 +654,59 @@ check("drop uses the dragged day", dragDate === "2026-11-09", dragDate);
 await page.click('.modal button:has-text("Cancel")');
 await page.waitForSelector(".modal", { state: "detached" });
 
+// ---------- drag across days creates a multi-day event ----------
+const mon = await page.locator(".day-column").nth(0).boundingBox();
+const tue = await page.locator(".day-column").nth(1).boundingBox();
+const mx1 = Math.round(mon.x + mon.width / 2);
+const mx2 = Math.round(tue.x + tue.width / 2);
+const my1 = Math.round(mon.y + 6 * 42);
+const my2 = Math.round(tue.y + 8 * 42);
+await page.mouse.move(mx1, my1);
+await page.mouse.down();
+await page.mouse.move(mx2, my2, { steps: 8 });
+check(
+  "multi-day drag shows a staircase ghost",
+  (await page.locator(".drag-ghost").count()) === 2,
+  String(await page.locator(".drag-ghost").count())
+);
+await page.mouse.up();
+await page.waitForSelector(".modal", { timeout: 10000 });
+const multiStart = (await page.locator('.modal input[type="time"]').nth(0).inputValue());
+const multiEnd = (await page.locator('.modal input[type="time"]').nth(1).inputValue());
+const multiStartDate = await page.locator('.modal input[type="date"]').first().inputValue();
+const multiEndDate = await page.locator('.modal input[type="date"]').nth(1).inputValue();
+check(
+  "multi-day drop keeps both days",
+  multiStart === "06:00" && multiEnd === "08:00" && multiStartDate === "2026-11-09" && multiEndDate === "2026-11-10",
+  `${multiStartDate} ${multiStart} → ${multiEndDate} ${multiEnd}`
+);
+await page.click('.modal button:has-text("Cancel")');
+await page.waitForSelector(".modal", { state: "detached" });
+
+// ---------- drag across the all-day row creates an all-day event ----------
+const allday = await page.locator(".week-allday-cols").boundingBox();
+const ady = Math.round(allday.y + allday.height - 5);
+const adx1 = Math.round(allday.x + (allday.width * 2.5) / 7);
+const adx2 = Math.round(allday.x + (allday.width * 4.5) / 7);
+await page.mouse.move(adx1, ady);
+await page.mouse.down();
+await page.mouse.move(adx2, ady, { steps: 6 });
+check(
+  "all-day drag shows a bar ghost",
+  (await page.locator(".allday-drag-ghost").count()) === 1
+);
+await page.mouse.up();
+await page.waitForSelector(".modal", { timeout: 10000 });
+const adStart = await page.locator('.modal input[type="date"]').first().inputValue();
+const adEnd = await page.locator('.modal input[type="date"]').nth(1).inputValue();
+check(
+  "all-day drop spans the dragged days",
+  adStart === "2026-11-11" && adEnd === "2026-11-13" && (await page.isChecked('.modal .switch input[type="checkbox"]')),
+  `${adStart} → ${adEnd}`
+);
+await page.click('.modal button:has-text("Cancel")');
+await page.waitForSelector(".modal", { state: "detached" });
+
 // ---------- theme + language ----------
 // the app now defaults to the dark lacquer theme; force dark if a previous
 // step left another theme, then verify both directions
