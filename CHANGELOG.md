@@ -22,6 +22,12 @@ All notable, user-visible changes to ChefDAV.
   Basic auth dialog. The splash now loads the logo under the mount path.
 - The shortcuts dialog has proper top padding and a round close button, and
   dialog close buttons sit 16px from the top and right edges.
+- Boxed notices in dialogs (create a calendar first, read-only, backend down)
+  keep the dialog's 24px inset instead of running into the left and right
+  edges.
+- Opening the event editor before the calendar list has loaded no longer shows
+  a wrong notice or an empty calendar picker; the default calendar is filled in
+  when the list arrives.
 
 ## 0.3.0 — 2026-11-19
 

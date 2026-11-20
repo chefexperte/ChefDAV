@@ -270,6 +270,17 @@ pub fn EventModal() -> impl IntoView {
     let uid = RwSignal::new(uid0);
     let existing = RwSignal::new(existing);
 
+    // The editor can open before the calendar list has been read (cache paint,
+    // then a network refresh). Fill the default calendar once it arrives, or
+    // the modal would stay on an empty selection and claim it is read-only.
+    Effect::new(move |_| {
+        if existing.get().is_none() && cal_href.get().is_empty() {
+            if let Some(c) = state.first_writable_event_calendar() {
+                cal_href.set(c.info.href);
+            }
+        }
+    });
+
     let freq = RwSignal::new(freq0);
     let interval = RwSignal::new(interval0);
     let byday = RwSignal::new(byday0);
@@ -293,7 +304,10 @@ pub fn EventModal() -> impl IntoView {
     // A new event with no writable calendar is not "read-only"; there is
     // simply nowhere to put it yet.
     let no_calendar = Memo::new(move |_| {
-        existing.get().is_none() && state.first_writable_event_calendar().is_none()
+        existing.get().is_none()
+            && state.calendars_loaded.get()
+            && !state.backend_down.get()
+            && state.first_writable_event_calendar().is_none()
     });
 
     let read_only = Memo::new(move |_| {
@@ -309,6 +323,15 @@ pub fn EventModal() -> impl IntoView {
                     .map(|c| c.read_only())
                     .unwrap_or(true)
             })
+    });
+
+    // Hide the read-only notice while the calendar list is still loading: the
+    // empty selection only means "not loaded yet", and the effect above fills
+    // it as soon as the list arrives.
+    let show_read_only = Memo::new(move |_| {
+        read_only.get()
+            && !no_calendar.get()
+            && (existing.get().is_some() || state.calendars_loaded.get())
     });
 
     let close = move |_| {
@@ -537,7 +560,7 @@ pub fn EventModal() -> impl IntoView {
                 <Show when=move || no_calendar.get() fallback=|| ()>
                     <p class="banner-info">{move || crate::i18n::t(state.lang.get(), "create_calendar_first")}</p>
                 </Show>
-                <Show when=move || read_only.get() && !no_calendar.get() fallback=|| ()>
+                <Show when=move || show_read_only.get() fallback=|| ()>
                     <p class="banner-info">{move || crate::i18n::t(state.lang.get(), "read_only_calendar")}</p>
                 </Show>
                 <fieldset class="modal-fields" disabled=move || read_only.get()>

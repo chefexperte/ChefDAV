@@ -243,6 +243,10 @@ pub struct AppState {
     /// The CalDAV endpoint is missing or failing (404/5xx/transport), not just
     /// a single resource. Drives the global "backend not available" banner.
     pub backend_down: RwSignal<bool>,
+    /// The calendar list has been read from the server at least once. Until
+    /// then an empty list only means "not loaded", so the editor must not claim
+    /// that the user has no calendar.
+    pub calendars_loaded: RwSignal<bool>,
     pub theme: RwSignal<Theme>,
     pub lang: RwSignal<Lang>,
     /// True while the app is trying to restore a saved session at startup.
@@ -296,6 +300,7 @@ impl AppState {
             pending: RwSignal::new(0),
             online: RwSignal::new(true),
             backend_down: RwSignal::new(false),
+            calendars_loaded: RwSignal::new(false),
             theme: RwSignal::new(Theme::Light),
             lang: RwSignal::new(Lang::En),
             restoring: RwSignal::new(true),

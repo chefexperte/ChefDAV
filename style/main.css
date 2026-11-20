@@ -885,6 +885,10 @@ input[type="checkbox"]:focus-visible {
   font-style: italic;
 }
 
+.backend-banner {
+  margin: 0 0 14px;
+}
+
 .banner-error {
   background: var(--danger-soft);
   border: 1px solid var(--danger-line);
@@ -1660,9 +1664,17 @@ input[type="checkbox"]:focus-visible {
   animation: pop 0.14s ease;
 }
 
-.modal > :not(.modal-actions):not(.modal-close) {
+.modal > :not(.modal-actions):not(.modal-close):not(.banner-info):not(.banner-error) {
   padding-left: 24px;
   padding-right: 24px;
+}
+
+/* boxed notices keep their own padding and get the dialog inset as margin, so
+   the background no longer runs into the dialog edges */
+.modal > .banner-info,
+.modal > .banner-error {
+  margin-left: 24px;
+  margin-right: 24px;
 }
 
 .modal:not(.shortcuts-dialog) > :not(.modal-actions):not(.modal-close):first-child {

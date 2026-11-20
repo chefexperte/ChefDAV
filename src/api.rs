@@ -251,6 +251,7 @@ pub async fn refresh_calendars(state: &AppState) {
                 .collect();
             let infos: Vec<CalendarInfo> = new.iter().map(|c| c.info.clone()).collect();
             state.calendars.set(new);
+            state.calendars_loaded.set(true);
             state.backend_down.set(false);
             let _ = store::kv_set("cache_calendars", &infos).await;
         }
