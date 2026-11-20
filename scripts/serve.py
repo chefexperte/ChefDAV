@@ -20,8 +20,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 3100
     directory = sys.argv[2] if len(sys.argv) > 2 else "."
+    # Bind loopback by default; pass 0.0.0.0 to test from another device.
+    host = sys.argv[3] if len(sys.argv) > 3 else "127.0.0.1"
     os.chdir(directory)
-    http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    http.server.ThreadingHTTPServer((host, port), Handler).serve_forever()
 
 
 if __name__ == "__main__":

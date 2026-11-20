@@ -698,6 +698,20 @@ input[type="checkbox"]:focus-visible {
   margin-bottom: 14px;
 }
 
+.toolbar-search {
+  display: flex;
+  align-items: center;
+}
+
+/* Mobile NavigationSplitView: the sidebar collapses behind this button. */
+.sidebar-toggle {
+  display: none;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
 .toolbar-left {
   display: flex;
   gap: 7px;
@@ -2827,20 +2841,37 @@ input[type="checkbox"]:focus-visible {
     flex-wrap: wrap;
   }
 
+  /* Row 1: title. Row 2: navigation + search. Row 3: view switcher. */
   .month-title {
     flex: 1 0 100%;
-    order: -1;
+    order: 1;
     font-size: 23px;
   }
 
-  .toolbar-right {
-    flex-wrap: wrap;
-    justify-content: flex-start;
+  .toolbar-left {
+    order: 2;
+  }
+
+  .toolbar-search {
+    order: 3;
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  .toolbar-search .search-box {
+    width: 100%;
   }
 
   .search-box input,
   .search-box input:focus {
-    width: 150px;
+    width: 100%;
+  }
+
+  .toolbar-right {
+    order: 4;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .search-panel {
@@ -2855,66 +2886,74 @@ input[type="checkbox"]:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  /* NavigationSplitView, collapsed: the sidebar slides in over the content. */
   .sidebar {
-    position: static;
-    height: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    padding: 12px;
-    border-right: none;
-    border-bottom: 1px solid var(--line);
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 45;
+    width: min(84vw, 320px);
+    height: 100vh;
+    overflow-y: auto;
+    padding: 16px;
+    border-right: 1px solid var(--line);
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
   }
 
-  .brand {
-    flex: 1 1 auto;
+  .sidebar.open {
+    transform: none;
   }
 
-  .new-event {
-    width: auto;
-    padding: 8px 14px;
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    background: var(--overlay);
   }
 
-  .sidebar-heading-row,
-  .cal-list {
-    flex: 1 0 100%;
+  .sidebar-toggle {
+    display: inline-flex;
   }
 
-  .cal-list {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 4px;
+  /* Explicit rows: menu + title, navigation + search, view switcher. */
+  .toolbar {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px 12px;
   }
 
-  .cal-item {
-    border: 1px solid var(--line);
-    border-radius: var(--radius-pill);
-    padding: 2px 4px 2px 8px;
+  .sidebar-toggle {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
   }
 
-  .cal-item label {
-    padding: 4px 2px;
+  .month-title {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 18px;
+  }
+
+  .toolbar-left {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .toolbar-search {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .toolbar-right {
+    grid-column: 1 / -1;
+    grid-row: 3;
   }
 
   .cal-menu-btn {
     opacity: 1;
-  }
-
-  .sidebar-footer {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-top: 0;
-    flex: 1 0 100%;
-  }
-
-  .session-info {
-    flex: 1 0 100%;
-  }
-
-  .prefs-row {
-    flex: 0 0 auto;
   }
 
   .main {
@@ -2934,6 +2973,17 @@ input[type="checkbox"]:focus-visible {
   .week-allday,
   .week-timeline {
     min-width: 620px;
+  }
+
+  /* Day view is a single column: it fits without horizontal scrolling. */
+  .week-view.single-day {
+    overflow-x: visible;
+  }
+
+  .week-view.single-day .week-head,
+  .week-view.single-day .week-allday,
+  .week-view.single-day .week-timeline {
+    min-width: 0;
   }
 
   .chip-title {

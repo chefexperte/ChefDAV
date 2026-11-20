@@ -156,6 +156,16 @@ pub fn Toolbar() -> impl IntoView {
     view! {
         <div class="toolbar-wrap">
             <div class="toolbar">
+                <button
+                    class="btn btn-icon sidebar-toggle"
+                    on:click=move |_| state.sidebar_open.set(true)
+                    title=move || crate::i18n::t(state.lang.get(), "menu")
+                    aria-label=move || crate::i18n::t(state.lang.get(), "menu")
+                >
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+                        <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" />
+                    </svg>
+                </button>
                 <div class="toolbar-left">
                     <button
                         class="btn btn-icon"
@@ -192,15 +202,7 @@ pub fn Toolbar() -> impl IntoView {
                         >{year_part}</button>
                     </h2>
                 </Show>
-                <div class="toolbar-right">
-                    <Show when=move || (state.pending.get() > 0) fallback=|| ()>
-                        <span class="pending-badge" title="Changes waiting to sync">
-                            {move || format!("{} {}", state.pending.get(), crate::i18n::t(state.lang.get(), "pending"))}
-                        </span>
-                    </Show>
-                    <Show when=move || state.loading.get() fallback=|| ()>
-                        <span class="loading">{move || crate::i18n::t(state.lang.get(), "syncing")}</span>
-                    </Show>
+                <div class="toolbar-search">
                     <div class="search-box">
                         <input
                             node_ref=search_input
@@ -215,6 +217,16 @@ pub fn Toolbar() -> impl IntoView {
                             </button>
                         </Show>
                     </div>
+                </div>
+                <div class="toolbar-right">
+                    <Show when=move || (state.pending.get() > 0) fallback=|| ()>
+                        <span class="pending-badge" title="Changes waiting to sync">
+                            {move || format!("{} {}", state.pending.get(), crate::i18n::t(state.lang.get(), "pending"))}
+                        </span>
+                    </Show>
+                    <Show when=move || state.loading.get() fallback=|| ()>
+                        <span class="loading">{move || crate::i18n::t(state.lang.get(), "syncing")}</span>
+                    </Show>
                     <div class="segmented" role="tablist">
                         <For
                             each=|| [ViewMode::Month, ViewMode::Week, ViewMode::Day, ViewMode::Agenda, ViewMode::Tasks].to_vec()

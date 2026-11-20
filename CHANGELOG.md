@@ -6,6 +6,12 @@ All notable, user-visible changes to ChefDAV.
 
 ### Changes
 
+- On phones the sidebar collapses like an AdwNavigationSplitView: a menu button
+  in the toolbar opens it over the content, and a tap on the backdrop (or
+  Escape) closes it. The toolbar wraps as menu + title, navigation + search,
+  then the view switcher.
+- Day view fits the phone width without horizontal scrolling.
+
 - Opening an event through its resource link (`/event/<calendar>/<uid>`, also
   after a reload or back/forward) shows a full 620px dialog instead of the small
   click popover. Clicking an event still opens the popover at the pointer.

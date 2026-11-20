@@ -551,7 +551,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
     };
 
     view! {
-        <div class="week-view" style=format!("--cols:{n_days}")>
+        <div class="week-view" class:single-day=n_days == 1 style=format!("--cols:{n_days}")>
             // Day view: no day header — the toolbar title already shows the date.
             <Show when=move || n_days == 7 fallback=|| ()>
             <div class="week-head">

@@ -232,6 +232,8 @@ pub struct AppState {
     pub new_calendar: RwSignal<bool>,
     /// The AdwShortcutsDialog-style keyboard shortcut list in the sidebar.
     pub shortcuts_open: RwSignal<bool>,
+    /// Mobile: the collapsed navigation sidebar is open over the content.
+    pub sidebar_open: RwSignal<bool>,
     pub calendar_action: RwSignal<Option<CalendarAction>>,
     /// Event hrefs selected for bulk operations.
     pub selected: RwSignal<Vec<String>>,
@@ -294,6 +296,7 @@ impl AppState {
             jump_open: RwSignal::new(None),
             new_calendar: RwSignal::new(false),
             shortcuts_open: RwSignal::new(false),
+            sidebar_open: RwSignal::new(false),
             calendar_action: RwSignal::new(None),
             selected: RwSignal::new(Vec::new()),
             search_query: RwSignal::new(String::new()),

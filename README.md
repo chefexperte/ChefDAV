@@ -40,6 +40,8 @@ Adwaita as the visual language and the protocol logic in Rust.
   `#3584e4`, flat raised buttons, a segmented view switcher, GTK checkbuttons
   and a pill search entry. Light is the default; dark follows Adwaita. Klarissa
   sets the wordmark and headings, Montserrat the body text, both self-hosted.
+  On phones the sidebar collapses behind a menu button and the day view fits
+  the screen without horizontal scrolling.
 
 | Week | List | Event details with map |
 | --- | --- | --- |

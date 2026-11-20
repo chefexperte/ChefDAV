@@ -373,6 +373,7 @@ pub fn Shell() -> impl IntoView {
                             st.search_open.set(false);
                             st.jump_open.set(None);
                             st.shortcuts_open.set(false);
+                            st.sidebar_open.set(false);
                         }
                         _ => {}
                     }
@@ -403,7 +404,7 @@ pub fn Shell() -> impl IntoView {
 
     view! {
         <div class="app-shell">
-            <aside class="sidebar">
+            <aside class="sidebar" class:open=move || state.sidebar_open.get()>
                 // The brand is a link home: month view, current month, nothing
                 // selected. A real <a> keeps middle-click / open-in-new-tab.
                 <a
@@ -427,6 +428,7 @@ pub fn Shell() -> impl IntoView {
                         state.search_open.set(false);
                         state.jump_open.set(None);
                         state.link_active.set(false);
+                        state.sidebar_open.set(false);
                         // Set the target state as well as the URL: navigating to
                         // "/" alone only rewrites the path, and the router's
                         // location effect does not re-apply "month view, today"
@@ -450,6 +452,7 @@ pub fn Shell() -> impl IntoView {
                         state.new_event_end_time.set(None);
                         state.new_event_end_date.set(None);
                         state.new_event_all_day.set(false);
+                        state.sidebar_open.set(false);
                         state.modal.set(Some(ModalState::New { date }));
                     }
                 >
@@ -465,7 +468,10 @@ pub fn Shell() -> impl IntoView {
                     <button
                         class="btn-icon-plain"
                         title=move || crate::i18n::t(state.lang.get(), "new_calendar")
-                        on:click=move |_| state.new_calendar.set(true)
+                        on:click=move |_| {
+                            state.sidebar_open.set(false);
+                            state.new_calendar.set(true);
+                        }
                     >
                         <crate::components::icons::IconPlus />
                     </button>
@@ -558,6 +564,9 @@ pub fn Shell() -> impl IntoView {
                     </button>
                 </div>
             </aside>
+            <Show when=move || state.sidebar_open.get() fallback=|| ()>
+                <div class="sidebar-backdrop" on:click=move |_| state.sidebar_open.set(false)></div>
+            </Show>
             <main class="main">
                 <Toolbar />
                 <Show when=move || state.backend_down.get() fallback=|| ()>

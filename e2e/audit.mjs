@@ -390,6 +390,32 @@ check(
   mobilePop && mobilePop.x >= 0 && mobilePop.y >= 0 && mobilePop.x + mobilePop.width <= 391 && mobilePop.y + mobilePop.height <= 845,
   JSON.stringify(mobilePop)
 );
+await page.keyboard.press("Escape");
+
+// The sidebar is a NavigationSplitView-style drawer on phones.
+const sideClosed = await page.locator(".sidebar").boundingBox();
+check("mobile sidebar is collapsed", sideClosed.x < -100, `x=${Math.round(sideClosed.x)}`);
+await page.click(".sidebar-toggle");
+await page.waitForTimeout(350);
+const sideOpen = await page.locator(".sidebar").boundingBox();
+check(
+  "mobile menu opens the sidebar over the content",
+  sideOpen.x >= -1 && (await page.locator(".sidebar-backdrop").count()) === 1,
+  `x=${Math.round(sideOpen.x)}`
+);
+await page.click(".sidebar-backdrop", { position: { x: 380, y: 400 } });
+await page.waitForTimeout(350);
+check("tapping the backdrop closes the sidebar", (await page.locator(".sidebar").boundingBox()).x < -100);
+
+// Day view is a single column and must not scroll horizontally on a phone.
+await page.goto(APP + "/day/2026-11-12", { waitUntil: "networkidle" });
+await page.waitForSelector(".week-view", { timeout: 20000 });
+await page.waitForTimeout(500);
+const dayWidth = await page.evaluate(() => {
+  const el = document.querySelector(".week-view");
+  return { scroll: el.scrollWidth, client: el.clientWidth };
+});
+check("mobile day view has no horizontal scroll", dayWidth.scroll <= dayWidth.client + 1, JSON.stringify(dayWidth));
 
 check("no console errors", errors.length === 0, errors.join(" | "));
 await browser.close();
