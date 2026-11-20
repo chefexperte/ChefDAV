@@ -11,16 +11,22 @@ All notable, user-visible changes to ChefDAV.
   loads no longer look like a blank page.
 - On phones the sidebar collapses like an AdwNavigationSplitView: a menu button
   in the toolbar opens it over the content, and a tap on the backdrop (or
-  Escape) closes it. The toolbar wraps as menu + title, navigation + search,
-  then the view switcher.
+  Escape) closes it.
+- Phone toolbar: menu, navigation buttons and the title on the first row,
+  search on its own row, and the view switcher on the third. The sync status
+  has a fixed-width slot on the right of the switcher, so appearing after a
+  save does not move anything. On desktop the same status sits left of the
+  search field with the same reserved space.
 - Day view fits the phone width without horizontal scrolling.
 
 - Opening an event through its resource link (`/event/<calendar>/<uid>`, also
   after a reload or back/forward) shows a full 620px dialog instead of the small
   click popover. Clicking an event still opens the popover at the pointer.
 - Drag across the week or day timeline to create an event. A translucent card
-  follows the pointer, and releasing opens the editor with the dragged start
-  and end in 15-minute steps. Dragging into another day keeps a staircase
+  follows the pointer once it actually moves (a click never shows it), and
+  releasing opens the editor with the dragged start and end in 15-minute steps.
+  Touch devices keep the click behaviour: a tap opens the time-slot popup and
+  never starts a drag, so scrolling stays natural. Dragging into another day keeps a staircase
   selection: to the end of the first day, full days in between, and to the drop
   point on the last day. A click without movement still opens the time-slot
   popup.

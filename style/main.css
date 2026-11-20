@@ -701,6 +701,26 @@ input[type="checkbox"]:focus-visible {
 .toolbar-search {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+
+/* Pending/syncing slot. It keeps its width so the search bar and the view
+   switcher never jump when the status appears. */
+.toolbar-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.toolbar-status-desktop {
+  min-width: 92px;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.toolbar-status-mobile {
+  display: none;
 }
 
 /* Mobile NavigationSplitView: the sidebar collapses behind this button. */
@@ -2875,6 +2895,19 @@ input[type="checkbox"]:focus-visible {
     justify-content: flex-start;
   }
 
+  .toolbar-status-desktop {
+    display: none;
+  }
+
+  /* Fixed slot so the views never move when the status appears. */
+  .toolbar-status-mobile {
+    display: flex;
+    flex: 0 0 90px;
+    width: 90px;
+    margin-left: auto;
+    overflow: hidden;
+  }
+
   .search-panel {
     left: 12px;
     right: 12px;
@@ -2919,10 +2952,10 @@ input[type="checkbox"]:focus-visible {
     display: inline-flex;
   }
 
-  /* Explicit rows: menu + title, navigation + search, view switcher. */
+  /* Explicit rows: menu + navigation + title, then search, then views. */
   .toolbar {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto auto 1fr;
     gap: 10px 12px;
   }
 
@@ -2932,19 +2965,25 @@ input[type="checkbox"]:focus-visible {
     justify-self: start;
   }
 
-  .month-title {
+  .toolbar-left {
     grid-column: 2;
     grid-row: 1;
-    font-size: 18px;
   }
 
-  .toolbar-left {
-    grid-column: 1;
-    grid-row: 2;
+  .month-title {
+    grid-column: 3;
+    grid-row: 1;
+    font-size: 16px;
+  }
+
+  /* keep the views and the status slot on one line on a 390px phone */
+  .segmented-btn {
+    padding: 0 7px;
+    font-size: 12px;
   }
 
   .toolbar-search {
-    grid-column: 2;
+    grid-column: 1 / -1;
     grid-row: 2;
   }
 

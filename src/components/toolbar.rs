@@ -11,6 +11,23 @@ use crate::api;
 use crate::browser;
 use crate::state::{AppState, ViewMode};
 
+/// Pending-write badge and the "syncing" text. Rendered in a fixed slot so
+/// their appearance does not shift the search bar or the view switcher.
+#[component]
+fn SyncStatus() -> impl IntoView {
+    let state = use_context::<AppState>().unwrap();
+    view! {
+        <Show when=move || (state.pending.get() > 0) fallback=|| ()>
+            <span class="pending-badge" title="Changes waiting to sync">
+                {move || format!("{} {}", state.pending.get(), crate::i18n::t(state.lang.get(), "pending"))}
+            </span>
+        </Show>
+        <Show when=move || state.loading.get() fallback=|| ()>
+            <span class="loading">{move || crate::i18n::t(state.lang.get(), "syncing")}</span>
+        </Show>
+    }
+}
+
 fn shift_month(date: NaiveDate, delta: i32) -> NaiveDate {
     let total = date.year() * 12 + (date.month() as i32 - 1) + delta;
     let y = total.div_euclid(12);
@@ -203,6 +220,9 @@ pub fn Toolbar() -> impl IntoView {
                     </h2>
                 </Show>
                 <div class="toolbar-search">
+                    <div class="toolbar-status toolbar-status-desktop">
+                        <SyncStatus />
+                    </div>
                     <div class="search-box">
                         <input
                             node_ref=search_input
@@ -219,14 +239,6 @@ pub fn Toolbar() -> impl IntoView {
                     </div>
                 </div>
                 <div class="toolbar-right">
-                    <Show when=move || (state.pending.get() > 0) fallback=|| ()>
-                        <span class="pending-badge" title="Changes waiting to sync">
-                            {move || format!("{} {}", state.pending.get(), crate::i18n::t(state.lang.get(), "pending"))}
-                        </span>
-                    </Show>
-                    <Show when=move || state.loading.get() fallback=|| ()>
-                        <span class="loading">{move || crate::i18n::t(state.lang.get(), "syncing")}</span>
-                    </Show>
                     <div class="segmented" role="tablist">
                         <For
                             each=|| [ViewMode::Month, ViewMode::Week, ViewMode::Day, ViewMode::Agenda, ViewMode::Tasks].to_vec()
@@ -243,6 +255,9 @@ pub fn Toolbar() -> impl IntoView {
                                 }
                             }
                         />
+                    </div>
+                    <div class="toolbar-status toolbar-status-mobile">
+                        <SyncStatus />
                     </div>
                 </div>
             </div>

@@ -58,9 +58,11 @@ struct AlldaySel {
 /// The all-day row geometry at the start of a drag.
 #[derive(Clone)]
 struct AlldayCtx {
+    row: web_sys::Element,
     days: Vec<NaiveDate>,
     left: f64,
     col_width: f64,
+    start_day: NaiveDate,
     start_x: f64,
 }
 
@@ -299,28 +301,17 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
     // the old slot popup.
     let drag = RwSignal::new(None::<DragSel>);
     let drag_ctx = RwSignal::new(None::<DragCtx>);
-    let finish_drag = move |ev: web_sys::PointerEvent| {
-        let Some(ctx) = drag_ctx.get_untracked() else {
+    // A completed drag is followed by a click; do not open the slot popup then.
+    let suppress_click = RwSignal::new(false);
+    let suppress_allday_click = RwSignal::new(false);
+    let finish_drag = move |_ev: web_sys::PointerEvent| {
+        drag_ctx.set(None);
+        let Some(sel) = drag.get_untracked() else {
+            // No movement: the click handler opens the popup.
             return;
         };
-        drag_ctx.set(None);
-        let picked = drag.get_untracked();
         drag.set(None);
-        let dx = (ev.client_x() as f64 - ctx.start_x).abs();
-        let dy = (ev.client_y() as f64 - ctx.start_y).abs();
-        if dx < 4.0 && dy < 4.0 {
-            // A click: the slot popup at the old 30-minute granularity.
-            let minutes = ((ctx.start_min as f64 / 30.0).round() as u32 * 30).min(23 * 60 + 30);
-            state.slot_popup.set(Some(SlotPopupState {
-                date: ctx.start_day,
-                minutes,
-                all_day: false,
-                x: ctx.click_x,
-                y: ctx.click_y,
-            }));
-            return;
-        }
-        let Some(sel) = picked else { return };
+        suppress_click.set(true);
         let days = days.get_untracked();
         let (a_day, a_min, b_day, b_min) = ordered_drag(&sel, &days);
         let start = a_min.min(23 * 60 + 45);
@@ -341,34 +332,22 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
     // event whose first and last day are the ones under the pointer.
     let allday_drag = RwSignal::new(None::<AlldaySel>);
     let allday_ctx = RwSignal::new(None::<AlldayCtx>);
-    let finish_allday = move |ev: web_sys::PointerEvent| {
-        let Some(ctx) = allday_ctx.get_untracked() else {
+    let finish_allday = move |_ev: web_sys::PointerEvent| {
+        allday_ctx.set(None);
+        let Some(sel) = allday_drag.get_untracked() else {
+            // No movement: the cell click opens the all-day popup.
             return;
         };
-        allday_ctx.set(None);
-        let picked = allday_drag.get_untracked();
         allday_drag.set(None);
-        let Some(sel) = picked else { return };
-        let moved = (ev.client_x() as f64 - ctx.start_x).abs() >= 4.0;
         let (a, b) = if sel.start <= sel.end {
             (sel.start, sel.end)
         } else {
             (sel.end, sel.start)
         };
-        if !moved {
-            // A click on an empty cell keeps the all-day slot popup.
-            state.slot_popup.set(Some(SlotPopupState {
-                date: a,
-                minutes: 0,
-                all_day: true,
-                x: ev.client_x() as f64,
-                y: ev.client_y() as f64,
-            }));
-            return;
-        }
         if a == b {
             return;
         }
+        suppress_allday_click.set(true);
         state.new_event_all_day.set(true);
         state.new_event_time.set(None);
         state.new_event_end_time.set(None);
@@ -597,8 +576,8 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                         else {
                             return;
                         };
-                        ev.prevent_default();
-                        let _ = el.set_pointer_capture(ev.pointer_id());
+                        // No pointer capture yet: a tap must be delivered to the
+                        // cell so its click handler can open the popup.
                         let rect = el.get_bounding_client_rect();
                         let ds = days.get_untracked();
                         let n = ds.len().max(1) as f64;
@@ -607,25 +586,35 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                             .clamp(0, ds.len() as i64 - 1) as usize;
                         let day = ds[idx];
                         allday_ctx.set(Some(AlldayCtx {
+                            row: el,
                             days: ds,
                             left: rect.left(),
                             col_width: rect.width() / n,
+                            start_day: day,
                             start_x: ev.client_x() as f64,
                         }));
-                        allday_drag.set(Some(AlldaySel { start: day, end: day }));
+                        suppress_allday_click.set(false);
+                        allday_drag.set(None);
                     }
                     on:pointermove=move |ev: web_sys::PointerEvent| {
                         let Some(ctx) = allday_ctx.get_untracked() else {
                             return;
                         };
+                        // Only a real drag shows the bar; a tap stays a click.
+                        if (ev.client_x() as f64 - ctx.start_x).abs() < 4.0 {
+                            return;
+                        }
+                        // From here on this is a drag: keep receiving the pointer
+                        // outside the row until it is released.
+                        let _ = ctx.row.set_pointer_capture(ev.pointer_id());
                         let idx = (((ev.client_x() as f64 - ctx.left) / ctx.col_width).floor()
                             as i64)
                             .clamp(0, ctx.days.len() as i64 - 1) as usize;
                         let day = ctx.days[idx];
-                        let Some(sel) = allday_drag.get_untracked() else {
-                            return;
-                        };
-                        allday_drag.set(Some(AlldaySel { start: sel.start, end: day }));
+                        allday_drag.set(Some(AlldaySel {
+                            start: ctx.start_day,
+                            end: day,
+                        }));
                     }
                     on:pointerup=move |ev| finish_allday(ev)
                     on:pointercancel=cancel_allday
@@ -695,6 +684,19 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                             <div
                                 class="allday-cell"
                                 style=move || format!("--bar-pad:{}px", bar_pad.get())
+                                on:click=move |ev| {
+                                    if suppress_allday_click.get_untracked() {
+                                        suppress_allday_click.set(false);
+                                        return;
+                                    }
+                                    state.slot_popup.set(Some(SlotPopupState {
+                                        date: d,
+                                        minutes: 0,
+                                        all_day: true,
+                                        x: ev.client_x() as f64,
+                                        y: ev.client_y() as f64,
+                                    }));
+                                }
                             >
                                 <For
                                     each=move || shown_allday.get()
@@ -913,7 +915,6 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                             else {
                                 return;
                             };
-                            ev.prevent_default();
                             let _ = el.set_pointer_capture(ev.pointer_id());
                             let Some(parent) = el.parent_element() else {
                                 return;
@@ -946,17 +947,19 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                 click_x: ev.client_x() as f64,
                                 click_y: ev.client_y() as f64,
                             }));
-                            drag.set(Some(DragSel {
-                                start_day: d,
-                                start_min: start,
-                                end_day: d,
-                                end_min: start,
-                            }));
+                            suppress_click.set(false);
+                            drag.set(None);
                         };
                         let move_drag = move |ev: web_sys::PointerEvent| {
                             let Some(ctx) = drag_ctx.get_untracked() else {
                                 return;
                             };
+                            // Only a real drag shows the ghost; a click stays a click.
+                            let dx = (ev.client_x() as f64 - ctx.start_x).abs();
+                            let dy = (ev.client_y() as f64 - ctx.start_y).abs();
+                            if dx < 4.0 && dy < 4.0 {
+                                return;
+                            }
                             let end_day = day_at_x(&ctx.cols, ev.client_x() as f64);
                             let end_min = snap_quarter(ev.client_y() as f64 - ctx.rect_top);
                             drag.set(Some(DragSel {
@@ -970,6 +973,29 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                             drag_ctx.set(None);
                             drag.set(None);
                         };
+                        let create_at = move |ev: leptos::ev::MouseEvent| {
+                            if suppress_click.get_untracked() {
+                                suppress_click.set(false);
+                                return;
+                            }
+                            let Some(el) = ev
+                                .current_target()
+                                .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+                            else {
+                                return;
+                            };
+                            let rect = el.get_bounding_client_rect();
+                            let y = ev.client_y() as f64 - rect.top();
+                            let minutes = ((y / HOUR_HEIGHT) * 60.0 / 30.0).round() as i64 * 30;
+                            let minutes = minutes.clamp(0, 23 * 60 + 30) as u32;
+                            state.slot_popup.set(Some(SlotPopupState {
+                                date: d,
+                                minutes,
+                                all_day: false,
+                                x: ev.client_x() as f64,
+                                y: ev.client_y() as f64,
+                            }));
+                        };
                         view! {
                             <div
                                 class="day-column"
@@ -978,6 +1004,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                 on:pointermove=move_drag
                                 on:pointerup=move |ev| finish_drag(ev)
                                 on:pointercancel=cancel_drag
+                                on:click=create_at
                             >
                                 <Show
                                     when=move || {
