@@ -1405,6 +1405,7 @@ input[type="checkbox"]:focus-visible {
   position: relative;
   border-left: 1px solid var(--line);
   height: calc(24 * var(--hour-height));
+  cursor: crosshair;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
@@ -1418,8 +1419,21 @@ input[type="checkbox"]:focus-visible {
   background-color: var(--accent-soft);
 }
 
+/* drag-to-create: the translucent card follows the pointer until release */
+.drag-ghost {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  z-index: 4;
+  border: 1px dashed color-mix(in srgb, var(--accent-bg) 75%, transparent);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--accent-bg) 28%, transparent);
+  pointer-events: none;
+}
+
 .timed-event {
   position: absolute;
+  cursor: pointer;
   background: var(--chip, var(--accent-bg));
   color: var(--gem-ink);
   border-radius: var(--radius-xs);

@@ -15,13 +15,39 @@ use caldav::recurrence::{expand_series, Occurrence};
 use caldav::time::{agenda_range, today, week_days, week_range};
 use chrono::{Datelike, Duration, NaiveDate, Timelike};
 use leptos::prelude::*;
+use wasm_bindgen::JsCast;
 
 use crate::browser;
-use crate::state::{AppState, SlotPopupState};
+use crate::state::{AppState, ModalState, SlotPopupState};
 
 const HOUR_HEIGHT: f64 = 42.0; // px per hour in the timeline
 const MAX_COLUMNS_WEEK: usize = 2;
 const MAX_COLUMNS_DAY: usize = 4;
+
+/// A drag in the timeline, snapped to 15 minutes.
+#[derive(Clone, Copy)]
+struct DragSel {
+    date: NaiveDate,
+    start: u32,
+    end: u32,
+}
+
+/// What a drag started from, so the pointer can leave the column.
+#[derive(Clone, Copy)]
+struct DragCtx {
+    date: NaiveDate,
+    rect_top: f64,
+    start_min: u32,
+    start_y: f64,
+    click_x: f64,
+    click_y: f64,
+}
+
+/// Timeline y position -> minutes after midnight, in 15-minute steps.
+fn snap_quarter(y: f64) -> u32 {
+    let minutes = (y / HOUR_HEIGHT) * 60.0;
+    (((minutes / 15.0).round() as i64) * 15).clamp(0, 24 * 60) as u32
+}
 
 fn minutes_of_day(t: chrono::DateTime<chrono_tz::Tz>, tz: &chrono_tz::Tz) -> f64 {
     let l = t.with_timezone(tz);
@@ -201,6 +227,40 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
     });
     let today_d = today(&tz, browser::now_utc());
     let hours: Vec<u32> = (0..24).collect();
+
+    // Drag on the timeline: a translucent card follows the pointer, and the
+    // release opens the editor with that range. A click without movement keeps
+    // the old slot popup.
+    let drag = RwSignal::new(None::<DragSel>);
+    let drag_ctx = RwSignal::new(None::<DragCtx>);
+    let finish_drag = move |ev: web_sys::PointerEvent| {
+        let Some(ctx) = drag_ctx.get_untracked() else {
+            return;
+        };
+        drag_ctx.set(None);
+        let picked = drag.get_untracked();
+        drag.set(None);
+        if (ev.client_y() as f64 - ctx.start_y).abs() < 4.0 {
+            // A click: the slot popup at the old 30-minute granularity.
+            let minutes = ((ctx.start_min as f64 / 30.0).round() as u32 * 30).min(23 * 60 + 30);
+            state.slot_popup.set(Some(SlotPopupState {
+                date: ctx.date,
+                minutes,
+                all_day: false,
+                x: ctx.click_x,
+                y: ctx.click_y,
+            }));
+            return;
+        }
+        let Some(sel) = picked else { return };
+        let (start, end) = (sel.start.min(sel.end), sel.start.max(sel.end));
+        let start = start.min(23 * 60 + 45);
+        let end = end.max(start + 15).min(23 * 60 + 59);
+        state.new_event_time.set(Some((start / 60, start % 60)));
+        state.new_event_end_time.set(Some((end / 60, end % 60)));
+        state.new_event_all_day.set(false);
+        state.modal.set(Some(ModalState::New { date: ctx.date }));
+    };
 
     let data = Memo::new(move |_| {
         let anchor = state.anchor.get();
@@ -646,24 +706,81 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                         });
                         let shown = Memo::new(move |_| laid_out.get().0);
                         let bars = Memo::new(move |_| laid_out.get().1);
-                        let create_at = move |ev: leptos::ev::MouseEvent| {
-                            let y = ev.offset_y() as f64;
-                            let minutes = ((y / HOUR_HEIGHT) * 60.0 / 30.0).round() as i64 * 30;
-                            let minutes = minutes.clamp(0, 23 * 60 + 30) as u32;
-                            state.slot_popup.set(Some(SlotPopupState {
+                        let start_drag = move |ev: web_sys::PointerEvent| {
+                            if ev.pointer_type() != "mouse" || ev.button() != 0 {
+                                return;
+                            }
+                            // Do not start a selection on an event or a "+N more" bar.
+                            let target = ev
+                                .target()
+                                .and_then(|t| t.dyn_into::<web_sys::Element>().ok());
+                            let on_control = target
+                                .and_then(|t| t.closest(".timed-event, .more-bar").ok().flatten())
+                                .is_some();
+                            if on_control {
+                                return;
+                            }
+                            let Some(el) = ev
+                                .current_target()
+                                .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+                            else {
+                                return;
+                            };
+                            ev.prevent_default();
+                            let _ = el.set_pointer_capture(ev.pointer_id());
+                            let rect = el.get_bounding_client_rect();
+                            let start = snap_quarter(ev.client_y() as f64 - rect.top());
+                            drag_ctx.set(Some(DragCtx {
                                 date: d,
-                                minutes,
-                                all_day: false,
-                                x: ev.client_x() as f64,
-                                y: ev.client_y() as f64,
+                                rect_top: rect.top(),
+                                start_min: start,
+                                start_y: ev.client_y() as f64,
+                                click_x: ev.client_x() as f64,
+                                click_y: ev.client_y() as f64,
                             }));
+                            drag.set(Some(DragSel { date: d, start, end: start }));
+                        };
+                        let move_drag = move |ev: web_sys::PointerEvent| {
+                            let Some(ctx) = drag_ctx.get_untracked() else {
+                                return;
+                            };
+                            let end = snap_quarter(ev.client_y() as f64 - ctx.rect_top);
+                            drag.set(Some(DragSel {
+                                date: ctx.date,
+                                start: ctx.start_min,
+                                end,
+                            }));
+                        };
+                        let cancel_drag = move |_| {
+                            drag_ctx.set(None);
+                            drag.set(None);
                         };
                         view! {
                             <div
                                 class="day-column"
                                 class:today=d == today_d
-                                on:click=create_at
+                                on:pointerdown=start_drag
+                                on:pointermove=move_drag
+                                on:pointerup=move |ev| finish_drag(ev)
+                                on:pointercancel=cancel_drag
                             >
+                                <Show
+                                    when=move || drag.get().map(|s| s.date == d).unwrap_or(false)
+                                    fallback=|| ()
+                                >
+                                    {move || {
+                                        let s = drag.get().unwrap_or(DragSel { date: d, start: 0, end: 0 });
+                                        let (a, b) = (s.start.min(s.end), s.start.max(s.end));
+                                        let top = a as f64 / 60.0 * HOUR_HEIGHT;
+                                        let height = (b.saturating_sub(a).max(15)) as f64 / 60.0 * HOUR_HEIGHT;
+                                        view! {
+                                            <div
+                                                class="drag-ghost"
+                                                style=format!("top:{top:.1}px;height:{height:.1}px")
+                                            ></div>
+                                        }
+                                    }}
+                                </Show>
                                 <For
                                     each=move || shown.get()
                                     // key must include the layout (col/cols): the children

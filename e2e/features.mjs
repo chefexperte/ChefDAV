@@ -621,6 +621,39 @@ await page.waitForSelector(".modal-small", { state: "detached", timeout: 15000 }
 await page.waitForTimeout(1500);
 check("calendar deleted", (await page.locator(".cal-name", { hasText: renamed }).count()) === 0);
 
+// ---------- drag on the week timeline creates an event ----------
+await page.goto(APP + "/week/2026-11-09", { waitUntil: "networkidle" });
+await page.waitForSelector(".week-timeline", { timeout: 20000 });
+await page.evaluate(() => window.scrollTo(0, 0));
+await page.waitForTimeout(600);
+const dayCol = page.locator(".day-column").first();
+const cb = await dayCol.boundingBox();
+const cx = Math.round(cb.x + cb.width / 2);
+const cy1 = Math.round(cb.y + 3 * 42);
+const cy2 = Math.round(cb.y + 5 * 42);
+await page.mouse.move(cx, cy1);
+await page.mouse.down();
+await page.mouse.move(cx, cy2, { steps: 6 });
+check("drag shows a ghost card", (await page.locator(".drag-ghost").count()) === 1);
+const ghostBox = await page.locator(".drag-ghost").boundingBox();
+check(
+  "drag ghost spans the dragged range",
+  !!ghostBox && Math.abs(ghostBox.height - 84) <= 2,
+  ghostBox ? `${Math.round(ghostBox.height)}px` : "missing"
+);
+await page.mouse.up();
+await page.waitForSelector(".modal", { timeout: 10000 });
+const dragTimes = await page.locator('.modal input[type="time"]').evaluateAll((els) => els.map((e) => e.value));
+const dragDate = await page.locator('.modal input[type="date"]').first().inputValue();
+check(
+  "drop opens the editor with the dragged times",
+  dragTimes[0] === "03:00" && dragTimes[1] === "05:00",
+  dragTimes.join(" – ")
+);
+check("drop uses the dragged day", dragDate === "2026-11-09", dragDate);
+await page.click('.modal button:has-text("Cancel")');
+await page.waitForSelector(".modal", { state: "detached" });
+
 // ---------- theme + language ----------
 // the app now defaults to the dark lacquer theme; force dark if a previous
 // step left another theme, then verify both directions

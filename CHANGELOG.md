@@ -9,6 +9,10 @@ All notable, user-visible changes to ChefDAV.
 - Opening an event through its resource link (`/event/<calendar>/<uid>`, also
   after a reload or back/forward) shows a full 620px dialog instead of the small
   click popover. Clicking an event still opens the popover at the pointer.
+- Drag across the week or day timeline to create an event. A translucent card
+  follows the pointer, and releasing opens the editor with the dragged start
+  and end in 15-minute steps. A click without movement still opens the
+  time-slot popup.
 - When the CalDAV endpoint answers with a proxy 404 or a 5xx, the app says that
   the calendar backend is not available instead of showing the raw HTTP error,
   and explains that browsing the cache works but creating, editing or deleting
