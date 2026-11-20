@@ -2697,7 +2697,8 @@ input[type="checkbox"]:focus-visible {
 .field-icon {
   position: absolute;
   left: 11px;
-  top: 31px;
+  /* centre against the 42px input at the bottom, not the label line above */
+  bottom: 13.5px;
   width: 15px;
   height: 15px;
   color: var(--ink-faint);
