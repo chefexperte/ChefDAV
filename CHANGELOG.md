@@ -32,6 +32,13 @@ All notable, user-visible changes to ChefDAV.
   popup.
 - Drag across the all-day row to create an all-day event spanning the dragged
   days. The same translucent bar follows the pointer.
+- Drag across day cells in the month grid to create a multi-day all-day event:
+  every selected day gets an accent tint, and releasing opens the editor with
+  the first and last day filled in. A click still opens the day popup; touch is
+  unaffected.
+- Timed events have a **time zone** picker in the editor (all IANA zones).
+  Existing events open in the zone they were saved in, and changing the picker
+  saves the event in the selected zone. All-day events hide the picker.
 - When the CalDAV endpoint answers with a proxy 404 or a 5xx, the app says that
   the calendar backend is not available instead of showing the raw HTTP error,
   and explains that browsing the cache works but creating, editing or deleting

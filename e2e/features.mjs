@@ -179,10 +179,10 @@ await page.waitForTimeout(800);
 const recTitle = `Recurring ${run}`;
 await openNewEventFromSidebar();
 await fillEvent(recTitle, "12:00", "13:00", "2026-11-15");
-await page.selectOption('.modal select >> nth=1', "WEEKLY");
+await page.selectOption(".modal .freq-select", "WEEKLY");
 await page.waitForTimeout(200);
 await page.fill('.modal input[type="number"] >> nth=0', "1");
-await page.selectOption('.modal select >> nth=2', "count");
+await page.selectOption(".modal .repeat-end-select", "count");
 await page.fill('.modal input[type="number"] >> nth=1', "3");
 await saveModal();
 await waitFor(
@@ -198,7 +198,7 @@ await page.waitForSelector(".details-modal", { timeout: 10000 });
 check("event click opens details first", (await page.locator(".details-modal").count()) === 1);
 await page.click('.details-modal button:has-text("Edit")');
 await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
-const freqVal = await page.locator('.modal select >> nth=1').inputValue();
+const freqVal = await page.locator(".modal .freq-select").inputValue();
 check("recurrence editor prefills RRULE", freqVal === "WEEKLY", freqVal);
 await page.click('.modal button:has-text("Cancel")');
 await page.waitForSelector(".modal", { state: "detached" });
@@ -706,6 +706,85 @@ check(
 );
 await page.click('.modal button:has-text("Cancel")');
 await page.waitForSelector(".modal", { state: "detached" });
+
+// ---------- month drag creates a multi-day all-day event ----------
+await page.goto(APP + "/month/2026-11", { waitUntil: "networkidle" });
+await page.waitForSelector(".month-grid", { timeout: 20000 });
+await page.waitForTimeout(500);
+const md11 = await page.locator('.day[data-date="2026-11-11"]').boundingBox();
+const md13 = await page.locator('.day[data-date="2026-11-13"]').boundingBox();
+await page.mouse.move(Math.round(md11.x + md11.width / 2), Math.round(md11.y + 15));
+await page.mouse.down();
+await page.mouse.move(Math.round(md13.x + md13.width / 2), Math.round(md13.y + 15), { steps: 8 });
+check(
+  "month drag highlights the selected days",
+  (await page.locator(".day.drag-selected").count()) === 3,
+  String(await page.locator(".day.drag-selected").count())
+);
+await page.mouse.up();
+await page.waitForSelector(".modal", { timeout: 10000 });
+const monthDates = await page.locator('.modal input[type="date"]').evaluateAll((els) => els.map((e) => e.value));
+check(
+  "month drag opens a multi-day all-day event",
+  monthDates[0] === "2026-11-11" &&
+    monthDates[1] === "2026-11-13" &&
+    (await page.isChecked('.modal .switch input[type="checkbox"]')),
+  monthDates.join(" → ")
+);
+await page.click('.modal button:has-text("Cancel")');
+await page.waitForSelector(".modal", { state: "detached" });
+
+// ---------- time zone picker stores the selected zone ----------
+const tzPuts = [];
+page.on("request", (r) => {
+  if (r.method() === "PUT" && r.url().endsWith(".ics")) tzPuts.push(r.postData() || "");
+});
+const tzTitle = `TZ ${run}`;
+await page.click("button.new-event");
+await page.waitForSelector(".modal");
+const tzSelect = page.locator(".modal .tz-select");
+check(
+  "time zone picker lists IANA zones",
+  (await tzSelect.locator("option").count()) > 100,
+  String(await tzSelect.locator("option").count())
+);
+await page.fill('.modal input[type="text"]', tzTitle);
+await page.fill('.modal input[type="date"]', "2026-11-21");
+await page.fill('.modal input[type="time"] >> nth=0', "10:00");
+await page.fill('.modal input[type="time"] >> nth=1', "11:00");
+await page.selectOption(".modal .tz-select", "America/New_York");
+await page.click('.modal button:has-text("Save")');
+await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
+await page.waitForTimeout(1200);
+check(
+  "event is saved with the chosen TZID",
+  tzPuts.some((body) => body.includes("DTSTART;TZID=America/New_York:20261121T100000")),
+  tzPuts.length ? (tzPuts[tzPuts.length - 1].match(/DTSTART[^\r\n]*/) || [""])[0] : "no PUT"
+);
+await page.locator(".chip", { hasText: tzTitle }).first().click();
+await page.waitForSelector(".details-modal");
+await page.click('.details-modal button:has-text("Edit")');
+await page.waitForSelector(".modal:not(.details-modal)");
+check(
+  "editing shows the event's own zone",
+  (await page.locator(".modal .tz-select").inputValue()) === "America/New_York"
+);
+await page.selectOption(".modal .tz-select", "Europe/London");
+await page.click('.modal button:has-text("Save")');
+await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
+await page.waitForTimeout(1200);
+check(
+  "changing the zone is saved",
+  tzPuts.some((body) => body.includes("DTSTART;TZID=Europe/London:20261121T100000"))
+);
+// remove the probe again
+await page.locator(".chip", { hasText: tzTitle }).first().click();
+await page.waitForSelector(".details-modal");
+await page.click('.details-modal button:has-text("Edit")');
+await page.waitForSelector(".modal:not(.details-modal)");
+await page.click('.modal button:has-text("Delete")');
+await page.waitForSelector(".modal", { state: "detached", timeout: 15000 });
+await page.waitForTimeout(800);
 
 // ---------- theme + language ----------
 // the app now defaults to the dark lacquer theme; force dark if a previous

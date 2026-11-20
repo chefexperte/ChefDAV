@@ -27,11 +27,15 @@ Adwaita as the visual language and the protocol logic in Rust.
   across empty timeline space to create an event with that start and end time;
   dragging into another day selects the rest of the first day, the days in
   between and up to the drop point, and the all-day row supports the same drag.
+  In the month grid, drag across day cells to create a multi-day all-day event.
   On touch screens a tap opens the time-slot popup instead, so scrolling stays
   natural.
 - **Recurring events.** RRULE, RDATE and EXDATE are expanded in the event's own
   timezone, with DST handled. There is an RRULE editor and per-instance
   exceptions (*this event*, *this and following*, *all events*).
+- **Time zones.** Events render in your browser's zone, and the editor can
+  store a timed event in any IANA zone. Existing events keep the zone they were
+  saved in.
 - **Multiple calendars.** Show or hide each one, give it a colour, and create or
   rename calendars from the sidebar.
 - **Search** across all visible calendars from the toolbar.

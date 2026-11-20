@@ -8,10 +8,11 @@ use caldav::time::{month_range, month_weeks, today};
 use chrono::{Datelike, Duration, NaiveDate};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use wasm_bindgen::JsCast;
 
 use crate::api;
 use crate::browser;
-use crate::state::{AppState, DayPopupState};
+use crate::state::{AppState, DayPopupState, ModalState};
 
 /// Max number of spanning-bar slots per week row in the month view. Kept at 2
 /// so a day cell still has room for at least one chip / the "Show all" entry
@@ -122,6 +123,20 @@ pub fn MonthView() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let tz = state.tz;
     let today_d = today(&tz, browser::now_utc());
+
+    // Drag across day cells to create a multi-day all-day event. A plain click
+    // still opens the day popup; touch only ever clicks (the grid scrolls).
+    let drag_start = RwSignal::new(None::<(NaiveDate, f64, f64)>);
+    let drag_range = RwSignal::new(None::<(NaiveDate, NaiveDate)>);
+    let suppress_click = RwSignal::new(false);
+    let day_under = move |x: f64, y: f64| -> Option<NaiveDate> {
+        let el = web_sys::window()?
+            .document()?
+            .element_from_point(x as f32, y as f32)?;
+        let cell = el.closest(".day").ok().flatten()?;
+        let s = cell.get_attribute("data-date")?;
+        NaiveDate::parse_from_str(&s, "%Y-%m-%d").ok()
+    };
 
     let weeks = Memo::new(move |_| {
         let d = state.anchor.get();
@@ -392,18 +407,104 @@ pub fn MonthView() -> impl IntoView {
                                     });
                                     // no "+N more" when the bars already fill all 3 slots
                                     let show_more = Memo::new(move |_| more_count.get() > 0 && chip_slots.get() >= 1);
+                                    let start_create = move |ev: web_sys::PointerEvent| {
+                                        if ev.pointer_type() != "mouse" || ev.button() != 0 {
+                                            return;
+                                        }
+                                        let target = ev
+                                            .target()
+                                            .and_then(|t| t.dyn_into::<web_sys::Element>().ok());
+                                        let on_control = target
+                                            .and_then(|t| {
+                                                t.closest(".chip, .span-bar, .more-chip, button, a")
+                                                    .ok()
+                                                    .flatten()
+                                            })
+                                            .is_some();
+                                        if on_control {
+                                            return;
+                                        }
+                                        let Some(el) = ev
+                                            .current_target()
+                                            .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+                                        else {
+                                            return;
+                                        };
+                                        let _ = el.set_pointer_capture(ev.pointer_id());
+                                        drag_start.set(Some((
+                                            day,
+                                            ev.client_x() as f64,
+                                            ev.client_y() as f64,
+                                        )));
+                                        drag_range.set(None);
+                                        suppress_click.set(false);
+                                    };
+                                    let move_create = move |ev: web_sys::PointerEvent| {
+                                        let Some((start_day, sx, sy)) = drag_start.get_untracked()
+                                        else {
+                                            return;
+                                        };
+                                        let x = ev.client_x() as f64;
+                                        let y = ev.client_y() as f64;
+                                        if (x - sx).abs() < 4.0 && (y - sy).abs() < 4.0 {
+                                            return;
+                                        }
+                                        let Some(end_day) = day_under(x, y) else {
+                                            return;
+                                        };
+                                        drag_range.set(Some((
+                                            start_day.min(end_day),
+                                            start_day.max(end_day),
+                                        )));
+                                    };
+                                    let end_create = move |_: web_sys::PointerEvent| {
+                                        drag_start.set(None);
+                                        let Some((a, b)) = drag_range.get_untracked() else {
+                                            return;
+                                        };
+                                        drag_range.set(None);
+                                        if a == b {
+                                            // not a multi-day drag: let the click popup open
+                                            return;
+                                        }
+                                        suppress_click.set(true);
+                                        state.new_event_all_day.set(true);
+                                        state.new_event_time.set(None);
+                                        state.new_event_end_time.set(None);
+                                        state.new_event_end_date.set(Some(b));
+                                        state.modal.set(Some(ModalState::New { date: a }));
+                                    };
+                                    let cancel_create = move |_| {
+                                        drag_start.set(None);
+                                        drag_range.set(None);
+                                    };
                                     view! {
                                         <div
                                             class="day"
                                             class:out=move || !in_month.get()
                                             class:today=is_today
+                                            class:drag-selected=move || {
+                                                drag_range
+                                                    .get()
+                                                    .map(|(a, b)| day >= a && day <= b)
+                                                    .unwrap_or(false)
+                                            }
+                                            data-date=day.format("%Y-%m-%d").to_string()
                                             on:click=move |ev| {
+                                                if suppress_click.get_untracked() {
+                                                    suppress_click.set(false);
+                                                    return;
+                                                }
                                                 state.day_popup.set(Some(DayPopupState {
                                                     date: day,
                                                     x: ev.client_x() as f64,
                                                     y: ev.client_y() as f64,
                                                 }))
                                             }
+                                            on:pointerdown=start_create
+                                            on:pointermove=move_create
+                                            on:pointerup=end_create
+                                            on:pointercancel=cancel_create
                                             on:dragover=move |ev| ev.prevent_default()
                                             on:drop=move |ev| on_drop(ev, day)
                                         >

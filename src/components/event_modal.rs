@@ -44,6 +44,22 @@ pub fn EventModal() -> impl IntoView {
         _ => (None, None, None),
     };
     let is_edit = existing.is_some();
+    // An existing event keeps the timezone it was saved in; a new one starts
+    // in the browser's zone. The date/time fields are wall-clock in this zone.
+    let initial_tz = existing
+        .as_ref()
+        .and_then(|e| e.event.dtstart.as_ref())
+        .and_then(|d| match d {
+            DtValue::DateTime(t) => Some(t.timezone()),
+            _ => None,
+        })
+        .unwrap_or(tz);
+    let event_tz = RwSignal::new(initial_tz);
+    let timezones = Memo::new(move |_| {
+        let mut zones = chrono_tz::TZ_VARIANTS.to_vec();
+        zones.sort_by_key(|z| z.name());
+        zones
+    });
     let is_recurring = existing
         .as_ref()
         .map(|e| e.event.rrule.is_some())
@@ -100,9 +116,9 @@ pub fn EventModal() -> impl IntoView {
                                 .unwrap_or(false);
                         if all_day {
                             (
-                                Some(DtValue::Date(display.with_timezone(&tz).date_naive())),
+                                Some(DtValue::Date(display.with_timezone(&initial_tz).date_naive())),
                                 Some(DtValue::Date(
-                                    (display + dur).with_timezone(&tz).date_naive(),
+                                    (display + dur).with_timezone(&initial_tz).date_naive(),
                                 )),
                             )
                         } else {
@@ -123,9 +139,9 @@ pub fn EventModal() -> impl IntoView {
                         .unwrap_or(false);
                     if all_day {
                         (
-                            Some(DtValue::Date(display.with_timezone(&tz).date_naive())),
+                            Some(DtValue::Date(display.with_timezone(&initial_tz).date_naive())),
                             Some(DtValue::Date(
-                                (display + dur).with_timezone(&tz).date_naive(),
+                                (display + dur).with_timezone(&initial_tz).date_naive(),
                             )),
                         )
                     } else {
@@ -154,12 +170,12 @@ pub fn EventModal() -> impl IntoView {
                     )
                 }
                 Some(DtValue::DateTime(t)) => {
-                    let lt = t.with_timezone(&tz);
+                    let lt = t.with_timezone(&initial_tz);
                     let le = dtend
                         .as_ref()
-                        .and_then(|x| x.to_datetime(&tz))
+                        .and_then(|x| x.to_datetime(&initial_tz))
                         .unwrap_or(lt + Duration::hours(1))
-                        .with_timezone(&tz);
+                        .with_timezone(&initial_tz);
                     (
                         lt.format("%Y-%m-%d").to_string(),
                         lt.format("%H:%M").to_string(),
@@ -358,13 +374,14 @@ pub fn EventModal() -> impl IntoView {
         let draft = (|| -> Result<EventDraft, String> {
             let date = date.map_err(|e| format!("{}{e}", crate::i18n::t(state.lang.get(), "bad_date")))?;
             let edate = edate.map_err(|e| format!("{}{e}", crate::i18n::t(state.lang.get(), "bad_date")))?;
+            let save_tz = event_tz.get_untracked();
             let (start, end) = if all_day.get() {
                 // all-day DTEND is stored exclusive (the day after the last shown day)
-                let s = tz
+                let s = save_tz
                     .from_local_datetime(&date.and_hms_opt(0, 0, 0).unwrap())
                     .single()
                     .ok_or(crate::i18n::t(state.lang.get(), "invalid_date"))?;
-                let e = tz
+                let e = save_tz
                     .from_local_datetime(&(edate + Duration::days(1)).and_hms_opt(0, 0, 0).unwrap())
                     .single()
                     .ok_or(crate::i18n::t(state.lang.get(), "invalid_date"))?;
@@ -372,11 +389,11 @@ pub fn EventModal() -> impl IntoView {
             } else {
                 let st = mk(&start_s.get()).map_err(|e| format!("{}{e}", crate::i18n::t(state.lang.get(), "bad_start")))?;
                 let et = mk(&end_s.get()).map_err(|e| format!("{}{e}", crate::i18n::t(state.lang.get(), "bad_end")))?;
-                let s = tz
+                let s = save_tz
                     .from_local_datetime(&date.and_time(st))
                     .single()
                     .ok_or(crate::i18n::t(state.lang.get(), "invalid_start"))?;
-                let e = tz
+                let e = save_tz
                     .from_local_datetime(&edate.and_time(et))
                     .single()
                     .ok_or(crate::i18n::t(state.lang.get(), "invalid_end"))?;
@@ -627,9 +644,30 @@ pub fn EventModal() -> impl IntoView {
                                 on:input=move |ev| end_s.set(event_target_value(&ev)) />
                         </label>
                     </div>
+                    <Show when=move || !all_day.get() fallback=|| ()>
+                        <label class="field">
+                            <span>{move || crate::i18n::t(state.lang.get(), "time_zone")}</span>
+                            <select
+                                class="tz-select"
+                                prop:value=move || event_tz.get().name().to_string()
+                                on:change=move |ev| {
+                                    if let Ok(zone) = event_target_value(&ev).parse::<chrono_tz::Tz>() {
+                                        event_tz.set(zone);
+                                    }
+                                }
+                            >
+                                <For
+                                    each=move || timezones.get()
+                                    key=|z| z.name()
+                                    children=|z| view! { <option value=z.name()>{z.name()}</option> }
+                                />
+                            </select>
+                        </label>
+                    </Show>
                     <label class="field">
                         <span>{move || crate::i18n::t(state.lang.get(), "calendar")}</span>
                         <select
+                            class="calendar-select"
                             prop:value=move || cal_href.get()
                             on:change=move |ev| cal_href.set(event_target_value(&ev))
                         >
@@ -665,6 +703,7 @@ pub fn EventModal() -> impl IntoView {
                         <label class="field">
                             <span>{move || crate::i18n::t(state.lang.get(), "repeat")}</span>
                             <select
+                                class="freq-select"
                                 prop:value=move || freq.get()
                                 on:change=move |ev| freq.set(event_target_value(&ev))
                             >
@@ -691,6 +730,7 @@ pub fn EventModal() -> impl IntoView {
                                 <label class="field">
                                     <span>{move || crate::i18n::t(state.lang.get(), "ends")}</span>
                                     <select
+                                        class="repeat-end-select"
                                         prop:value=move || end_mode.get()
                                         on:change=move |ev| end_mode.set(event_target_value(&ev))
                                     >
