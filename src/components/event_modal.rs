@@ -1,15 +1,98 @@
 //! Create / edit / delete an event. Writes go to CalDAV with optimistic
 //! concurrency (If-Match); offline writes are queued in the outbox.
 
+use std::collections::HashMap;
+
 use caldav::ics::{DtValue, EventDraft};
 use caldav::recurrence::{build_simple_rule, parse_simple_rule, SimpleRule, WEEKDAY_CODES};
-use chrono::{Datelike, Duration, NaiveDate, NaiveTime, TimeZone};
+use chrono::{Datelike, Duration, NaiveDate, NaiveTime, Offset, TimeZone};
+use chrono_tz::Tz;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::api;
 use crate::browser;
 use crate::state::{AppState, DisplayEvent, ModalState};
+
+/// A short list of well-known zones. The picker keeps at most two per current
+/// UTC offset, which covers every part of the world without 600 entries.
+const COMMON_ZONES: &[&str] = &[
+    "Europe/London",
+    "Europe/Paris",
+    "Europe/Berlin",
+    "Europe/Madrid",
+    "Europe/Rome",
+    "Europe/Amsterdam",
+    "Europe/Zurich",
+    "Europe/Vienna",
+    "Europe/Warsaw",
+    "Europe/Stockholm",
+    "Europe/Helsinki",
+    "Europe/Athens",
+    "Europe/Istanbul",
+    "Europe/Moscow",
+    "Europe/Lisbon",
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "America/Toronto",
+    "America/Vancouver",
+    "America/Mexico_City",
+    "America/Bogota",
+    "America/Sao_Paulo",
+    "America/Argentina/Buenos_Aires",
+    "America/Santiago",
+    "America/St_Johns",
+    "Asia/Tokyo",
+    "Asia/Shanghai",
+    "Asia/Hong_Kong",
+    "Asia/Singapore",
+    "Asia/Seoul",
+    "Asia/Kolkata",
+    "Asia/Kathmandu",
+    "Asia/Dubai",
+    "Asia/Bangkok",
+    "Asia/Jakarta",
+    "Asia/Jerusalem",
+    "Asia/Riyadh",
+    "Asia/Karachi",
+    "Asia/Taipei",
+    "Australia/Sydney",
+    "Australia/Melbourne",
+    "Australia/Brisbane",
+    "Australia/Perth",
+    "Australia/Adelaide",
+    "Pacific/Auckland",
+    "Pacific/Honolulu",
+    "Pacific/Kiritimati",
+    "Pacific/Pago_Pago",
+    "Africa/Cairo",
+    "Africa/Johannesburg",
+    "Africa/Lagos",
+    "Africa/Nairobi",
+    "Africa/Casablanca",
+    "Atlantic/Azores",
+    "America/Anchorage",
+];
+
+fn zone_label(zone: Tz, now: chrono::DateTime<chrono::Utc>) -> String {
+    let secs = now
+        .with_timezone(&zone)
+        .offset()
+        .fix()
+        .local_minus_utc();
+    let sign = if secs < 0 { '-' } else { '+' };
+    let abs = secs.abs();
+    let h = abs / 3600;
+    let m = (abs % 3600) / 60;
+    let offset = if m == 0 {
+        format!("UTC{sign}{h}")
+    } else {
+        format!("UTC{sign}{h}:{m:02}")
+    };
+    format!("{} ({offset})", zone.name())
+}
 
 fn weekday_code(d: NaiveDate) -> String {
     WEEKDAY_CODES[d.weekday().num_days_from_monday() as usize].to_string()
@@ -55,10 +138,60 @@ pub fn EventModal() -> impl IntoView {
         })
         .unwrap_or(tz);
     let event_tz = RwSignal::new(initial_tz);
+    // Picker contents: UTC, the browser zone (marked) and two common zones at
+    // the top; then at most two well-known zones per current UTC offset.
     let timezones = Memo::new(move |_| {
-        let mut zones = chrono_tz::TZ_VARIANTS.to_vec();
-        zones.sort_by_key(|z| z.name());
-        zones
+        let now = browser::now_utc();
+        let lang = state.lang.get();
+        let mut specs: Vec<(Tz, Option<String>)> = vec![
+            (chrono_tz::UTC, None),
+            (
+                tz,
+                Some(crate::i18n::t(lang, "your_zone").to_string()),
+            ),
+            (chrono_tz::America::New_York, None),
+            (chrono_tz::Europe::London, None),
+        ];
+        if !specs.iter().any(|(z, _)| *z == initial_tz) {
+            specs.push((initial_tz, None));
+        }
+        let mut top: Vec<(Tz, String)> = Vec::new();
+        for (zone, note) in specs {
+            if top.iter().any(|(z, _)| *z == zone) {
+                continue;
+            }
+            let mut label = zone_label(zone, now);
+            if let Some(note) = note {
+                label.push_str(" · ");
+                label.push_str(&note);
+            }
+            top.push((zone, label));
+        }
+        let mut more: Vec<(Tz, String)> = Vec::new();
+        let mut per_offset: HashMap<i32, usize> = HashMap::new();
+        for name in COMMON_ZONES {
+            let Ok(zone) = name.parse::<Tz>() else {
+                continue;
+            };
+            if top.iter().any(|(z, _)| *z == zone) {
+                continue;
+            }
+            let secs = now
+                .with_timezone(&zone)
+                .offset()
+                .fix()
+                .local_minus_utc();
+            let count = per_offset.entry(secs).or_insert(0);
+            if *count >= 2 {
+                continue;
+            }
+            *count += 1;
+            more.push((zone, zone_label(zone, now)));
+        }
+        more.sort_by_key(|(zone, _)| {
+            (now.with_timezone(zone).offset().fix().local_minus_utc(), zone.name())
+        });
+        (top, more)
     });
     let is_recurring = existing
         .as_ref()
@@ -656,11 +789,20 @@ pub fn EventModal() -> impl IntoView {
                                     }
                                 }
                             >
-                                <For
-                                    each=move || timezones.get()
-                                    key=|z| z.name()
-                                    children=|z| view! { <option value=z.name()>{z.name()}</option> }
-                                />
+                                <optgroup label=move || crate::i18n::t(state.lang.get(), "suggested")>
+                                    <For
+                                        each=move || timezones.get().0
+                                        key=|(z, _)| z.name()
+                                        children=|(z, label)| view! { <option value=z.name()>{label}</option> }
+                                    />
+                                </optgroup>
+                                <optgroup label=move || crate::i18n::t(state.lang.get(), "more_zones")>
+                                    <For
+                                        each=move || timezones.get().1
+                                        key=|(z, _)| z.name()
+                                        children=|(z, label)| view! { <option value=z.name()>{label}</option> }
+                                    />
+                                </optgroup>
                             </select>
                         </label>
                     </Show>

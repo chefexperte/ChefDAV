@@ -333,7 +333,7 @@ pub fn MonthView() -> impl IntoView {
                 children=|d| view! { <span>{d}</span> }
             />
         </div>
-        <div class="month-grid">
+        <div class="month-grid" class:drag-selecting=move || drag_start.get().is_some()>
             <For
                 each=move || {
                     let m = month_key.get();

@@ -36,9 +36,16 @@ All notable, user-visible changes to ChefDAV.
   every selected day gets an accent tint, and releasing opens the editor with
   the first and last day filled in. A click still opens the day popup; touch is
   unaffected.
-- Timed events have a **time zone** picker in the editor (all IANA zones).
-  Existing events open in the zone they were saved in, and changing the picker
-  saves the event in the selected zone. All-day events hide the picker.
+- Timed events have a **time zone** picker in the editor. It is a short list:
+  UTC, your zone and New York/London at the top, then at most two well-known
+  zones per UTC offset. Every label shows the offset, e.g.
+  `Europe/Berlin (UTC+1)`. Existing events open in the zone they were saved in,
+  and changing the picker saves the event in the selected zone. All-day events
+  hide the picker.
+- Dragging a range in the month grid, the timeline or the all-day row no longer
+  selects page text.
+- The menu button is hidden while the sidebar is expanded (desktop) and only
+  appears once the window is narrow enough for the sidebar to collapse.
 - When the CalDAV endpoint answers with a proxy 404 or a 5xx, the app says that
   the calendar backend is not available instead of showing the raw HTTP error,
   and explains that browsing the cache works but creating, editing or deleting

@@ -743,10 +743,13 @@ const tzTitle = `TZ ${run}`;
 await page.click("button.new-event");
 await page.waitForSelector(".modal");
 const tzSelect = page.locator(".modal .tz-select");
+const tzOptions = await tzSelect.locator("option").allInnerTexts();
 check(
-  "time zone picker lists IANA zones",
-  (await tzSelect.locator("option").count()) > 100,
-  String(await tzSelect.locator("option").count())
+  "time zone picker lists a short list with UTC offsets",
+  tzOptions.length > 20 &&
+    tzOptions.some((t) => /^UTC/.test(t)) &&
+    tzOptions.some((t) => /\(UTC[+-]/.test(t)),
+  `${tzOptions.length} options, first: ${tzOptions[0] || "none"}`
 );
 await page.fill('.modal input[type="text"]', tzTitle);
 await page.fill('.modal input[type="date"]', "2026-11-21");
