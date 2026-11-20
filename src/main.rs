@@ -5,6 +5,12 @@
 #[cfg(target_arch = "wasm32")]
 fn main() {
     console_error_panic_hook::set_once();
+    // Drop the static boot screen from index.html before the app paints.
+    if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+        if let Some(boot) = doc.get_element_by_id("boot") {
+            boot.remove();
+        }
+    }
     leptos::mount::mount_to_body(chef_dav::app::App);
 }
 

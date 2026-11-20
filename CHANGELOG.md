@@ -6,6 +6,9 @@ All notable, user-visible changes to ChefDAV.
 
 ### Changes
 
+- A small static loading screen ("ChefDAV — Loading your calendar…") shows
+  immediately, before the WASM bundle has downloaded and compiled. Slow first
+  loads no longer look like a blank page.
 - On phones the sidebar collapses like an AdwNavigationSplitView: a menu button
   in the toolbar opens it over the content, and a tap on the backdrop (or
   Escape) closes it. The toolbar wraps as menu + title, navigation + search,
