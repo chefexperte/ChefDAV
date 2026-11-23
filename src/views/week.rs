@@ -548,7 +548,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                         view! {
                             <div class="week-day-head" class:today=is_today>
                                 <span class="wd-name">
-                                    {crate::i18n::weekday_short(state.lang.get(), d.weekday().num_days_from_monday() as usize)}
+                                    {move || crate::i18n::weekday_short(state.lang.get(), d.weekday().num_days_from_monday() as usize)}
                                 </span>
                                 <span class="wd-num">{d.day()}</span>
                             </div>
@@ -738,6 +738,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                             let href = href.clone();
                                             move |_| state.selected.get().iter().any(|h| h == &href)
                                         });
+                                        let tooltip = summary.clone();
                                         view! {
                                             <div
                                                 class="allday-chip"
@@ -745,6 +746,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                                 class:cont-right=cr
                                                 class:selected=move || selected.get()
                                                 style=format!("--chip:{color}")
+                                                title=tooltip
                                                 on:click=move |e| {
                                                     e.stop_propagation();
                                                     if e.ctrl_key() || e.meta_key() {

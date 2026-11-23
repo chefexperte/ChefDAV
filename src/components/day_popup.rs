@@ -68,6 +68,7 @@ pub fn DayPopup() -> impl IntoView {
                                 let idx = item.index;
                                 let occ = item.occurrence.clone();
                                 let title = day_events::item_title(&state, &item);
+                                let tooltip = title.clone();
                                 let color = day_events::item_color(&state, &item);
                                 let all_day = item.all_day;
                                 let start = item.occurrence.start.clone();
@@ -76,6 +77,7 @@ pub fn DayPopup() -> impl IntoView {
                                         <button
                                             class="popover-event"
                                             style=format!("--chip:{color}")
+                                            title=tooltip
                                             on:click=move |e| {
                                                 state.day_popup.set(None);
                                                 state.open_details(idx, occ.recurrence_id, Some(occ.start), Some((e.client_x() as i32, e.client_y() as i32)));

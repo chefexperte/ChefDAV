@@ -820,7 +820,8 @@ await page.click('.prefs-row button:has-text("Deutsch")');
 await page.waitForTimeout(300);
 check("language toggle (EN)", (await page.textContent("button.new-event")).includes("New event"));
 
-// All-day cards keep the localized label in sync while the language changes.
+// Month cards omit the redundant "all day" tag; the localized agenda heading
+// must still follow a language switch without a reload.
 const allDayTitle = `All day ${run}`;
 await openNewEventFromSidebar();
 await page.fill('.modal input[type="text"]', allDayTitle);
@@ -828,21 +829,43 @@ await page.fill('.modal input[type="date"]', "2026-11-19");
 await page.check('.modal .field-check input[type="checkbox"]');
 await saveModal();
 const allDayChip = page.locator(".chip", { hasText: allDayTitle }).first();
-check("all-day chip starts in English", (await allDayChip.locator(".chip-time").textContent()).trim() === "all day");
+check(
+  "all-day month chip has no all-day tag",
+  (await allDayChip.locator(".chip-time").count()) === 0
+);
+check(
+  "event chip tooltip carries the full name",
+  (await allDayChip.getAttribute("title")) === allDayTitle,
+  (await allDayChip.getAttribute("title")) ?? "(none)"
+);
+
+await page.click('.segmented-btn:has-text("List")');
+await page.waitForSelector(".agenda", { timeout: 10000 });
+const allDayDay = page.locator(".agenda-day", { hasText: allDayTitle }).first();
+const englishDay = (await allDayDay.locator(".agenda-date").textContent()).trim();
+check(
+  "agenda day heading uses the English date format",
+  englishDay.includes("19 November") && !englishDay.includes("19. November"),
+  englishDay
+);
 await page.click('.prefs-row button:has-text("English")');
 await page.waitForTimeout(300);
+const germanDay = (await allDayDay.locator(".agenda-date").textContent()).trim();
 check(
-  "all-day chip follows the language without a reload (DE)",
-  (await allDayChip.locator(".chip-time").textContent()).trim() === "ganztägig",
-  (await allDayChip.locator(".chip-time").textContent()).trim()
+  "agenda day heading follows the language live",
+  germanDay.includes("19. November"),
+  germanDay
 );
 await page.click('.prefs-row button:has-text("Deutsch")');
 await page.waitForTimeout(300);
+const englishAgain = (await allDayDay.locator(".agenda-date").textContent()).trim();
 check(
-  "all-day chip follows the language without a reload (EN)",
-  (await allDayChip.locator(".chip-time").textContent()).trim() === "all day",
-  (await allDayChip.locator(".chip-time").textContent()).trim()
+  "agenda day heading switches back live",
+  englishAgain.includes("19 November") && !englishAgain.includes("19. November"),
+  englishAgain
 );
+await page.click('.segmented-btn:has-text("Month")');
+await page.waitForSelector(".month-grid", { timeout: 10000 });
 
 // ---------- keyboard ----------
 await page.keyboard.press("n");

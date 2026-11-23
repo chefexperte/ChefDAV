@@ -71,6 +71,7 @@ fn chip(
         ),
     };
     let occ_start = occ.start.clone();
+    let tooltip = summary.clone();
     let draggable = !read_only && !recurring;
     let drag_href = href.clone();
     let selected = Memo::new({
@@ -82,6 +83,7 @@ fn chip(
             class="chip"
             class:selected=move || selected.get()
             style=format!("--chip:{color}")
+            title=tooltip
             draggable=draggable
             on:dragstart=move |ev| {
                 if let Some(dt) = ev.data_transfer() {
@@ -105,15 +107,11 @@ fn chip(
                 }
             }
         >
-            <span class="chip-time">
-                {move || {
-                    if all_day {
-                        crate::i18n::t(state.lang.get(), "all_day_lower").to_string()
-                    } else {
-                        occ_start.with_timezone(&tz).format("%H:%M").to_string()
-                    }
-                }}
-            </span>
+            <Show when=move || !all_day fallback=|| ()>
+                <span class="chip-time">
+                    {occ_start.with_timezone(&tz).format("%H:%M").to_string()}
+                </span>
+            </Show>
             <span class="chip-title">{summary}</span>
             <Show when=move || read_only fallback=|| ()>
                 <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.4" /><rect x="3.4" y="7" width="9.2" height="6.6" rx="1.4" fill="currentColor" /></svg></span>

@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use caldav::ics::DtValue;
 
-use chrono::{Datelike, NaiveDate};
+use chrono::NaiveDate;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
@@ -38,16 +38,6 @@ pub fn TasksView() -> impl IntoView {
             let _ = api::toggle_todo(&st, index).await;
             api::refresh_todos(&st).await;
         });
-    };
-
-    let label = move |d: Option<NaiveDate>| match d {
-        Some(d) => format!(
-            "{} {} {}",
-            crate::i18n::weekday_short(state.lang.get(), d.weekday().num_days_from_monday() as usize),
-            d.day(),
-            crate::i18n::month_name(state.lang.get(), d.month())
-        ),
-        None => crate::i18n::t(state.lang.get(), "no_due_date").to_string(),
     };
 
     view! {
@@ -106,7 +96,12 @@ pub fn TasksView() -> impl IntoView {
                         });
                         view! {
                             <section class="task-group">
-                                <h3 class="agenda-date">{label(d)}</h3>
+                                <h3 class="agenda-date">
+                                    {move || match d {
+                                        Some(d) => crate::browser::format_day_heading(state.lang.get(), d),
+                                        None => crate::i18n::t(state.lang.get(), "no_due_date").to_string(),
+                                    }}
+                                </h3>
                                 <ul class="task-list">
                                     <For
                                         each=move || items.get()

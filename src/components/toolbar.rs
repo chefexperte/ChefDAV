@@ -268,15 +268,16 @@ pub fn Toolbar() -> impl IntoView {
                                 let href = hit.href.clone();
                                 let time = hit.time.clone();
                                 let summary = hit.summary.clone();
+                                let tooltip = summary.clone();
                                 let location = hit.location.clone();
                                 let has_location = !location.is_empty();
                                 let location_text = location.clone();
                                 let color = hit.color.clone();
-                                let date_label = crate::i18n::day_label(state.lang.get(), date);
                                 view! {
                                     <button
                                         class="search-hit"
                                         style=format!("--chip:{color}")
+                                        title=tooltip
                                         on:click=move |e| {
                                             state.anchor.set(date);
                                             state.view.set(ViewMode::Day);
@@ -289,7 +290,10 @@ pub fn Toolbar() -> impl IntoView {
                                     >
                                         <span class="agenda-dot"></span>
                                         <span class="search-summary">{summary}</span>
-                                        <span class="search-when">{date_label}" · "{time}</span>
+                                        <span class="search-when">
+                                            {move || crate::i18n::day_label(state.lang.get(), date)}
+                                            " · " {time}
+                                        </span>
                                         <Show when=move || has_location fallback=|| ()>
                                             <span class="search-loc">{location_text.clone()}</span>
                                         </Show>

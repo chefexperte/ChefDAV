@@ -1,8 +1,10 @@
 //! Small wasm-bindgen glue: CSPRNG, UIDs, clock and the browser timezone.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use chrono_tz::Tz;
 use wasm_bindgen::{JsCast, JsValue};
+
+use crate::state::Lang;
 
 pub fn window() -> web_sys::Window {
     web_sys::window().expect("running in a browser window")
@@ -96,6 +98,43 @@ pub async fn sleep_ms(ms: u32) {
         );
     });
     let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+}
+
+/// Locale-aware day heading for the agenda/tasks list: short weekday, numeric
+/// day and long month ("Do., 19. November" / "Thu 19 November"). Using the
+/// browser's `Intl.DateTimeFormat` means a new language only needs its locale
+/// mapping, not another hand-written date format.
+pub fn format_day_heading(lang: Lang, date: NaiveDate) -> String {
+    let locale = match lang {
+        Lang::De => "de-DE",
+        Lang::En => "en-GB",
+    };
+    let js_date = js_sys::Date::new_with_year_month_day(
+        date.year() as u32,
+        date.month0() as i32,
+        date.day() as i32,
+    );
+    let locales = js_sys::Array::new();
+    locales.push(&JsValue::from_str(locale));
+    let options = js_sys::Object::new();
+    for (key, value) in [
+        ("weekday", "short"),
+        ("day", "numeric"),
+        ("month", "long"),
+    ] {
+        let _ = js_sys::Reflect::set(
+            &options,
+            &JsValue::from_str(key),
+            &JsValue::from_str(value),
+        );
+    }
+    let formatter = js_sys::Intl::DateTimeFormat::new(&locales, &options);
+    formatter
+        .format()
+        .call1(&JsValue::UNDEFINED, js_date.as_ref())
+        .ok()
+        .and_then(|value| value.as_string())
+        .unwrap_or_else(|| format!("{} {}", date.day(), crate::i18n::month_name(lang, date.month())))
 }
 
 /// Current instant (from the JS clock, which works on wasm).

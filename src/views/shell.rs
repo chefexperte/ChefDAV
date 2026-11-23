@@ -547,6 +547,7 @@ pub fn Shell() -> impl IntoView {
                         }
                         children=move |c| {
                             let name = c.info.display_name.clone();
+                            let name_tip = name.clone();
                             let color = c.color.clone();
                             let href = c.info.href.clone();
                             let read_only = c.read_only();
@@ -559,7 +560,7 @@ pub fn Shell() -> impl IntoView {
                                             on:change=move |ev| c.visible.set(event_target_checked(&ev))
                                         />
                                         <span class="cal-dot" style=format!("background: {color}")></span>
-                                        <span class="cal-name">{name}</span>
+                                        <span class="cal-name" title=name_tip>{name}</span>
                                         <Show when=move || read_only fallback=|| ()>
                                             <span class="lock" title=move || crate::i18n::t(state.lang.get(), "lock")><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.4" /><rect x="3.4" y="7" width="9.2" height="6.6" rx="1.4" fill="currentColor" /></svg></span>
                                         </Show>

@@ -49,12 +49,14 @@ pub fn WeekMoreModal() -> impl IntoView {
                         children=move |(idx, occ_start, ev)| {
                             let dtstart = ev.event.dtstart.clone();
                             let summary = ev.event.summary.clone();
+                            let tooltip = summary.clone();
                             let color = ev.color.clone();
                             view! {
                                 <li>
                                     <button
                                         class="popover-event"
                                         style=format!("--chip:{color}")
+                                        title=tooltip
                                         on:click=move |e| {
                                             state.week_more.set(None);
                                             state.open_details(

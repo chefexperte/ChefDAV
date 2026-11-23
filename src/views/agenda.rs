@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use caldav::recurrence::expand_series;
 use caldav::time::{agenda_range, today};
-use chrono::{Datelike, Duration, NaiveDate, TimeZone};
+use chrono::{Duration, NaiveDate, TimeZone};
 use leptos::prelude::*;
 
 use crate::browser;
@@ -96,11 +96,6 @@ pub fn AgendaView() -> impl IntoView {
         map.into_iter().collect::<Vec<_>>()
     });
 
-    let day_label = move |d: NaiveDate| {
-        let wd = crate::i18n::weekday_short(state.lang.get(), d.weekday().num_days_from_monday() as usize);
-        format!("{wd} {} {}", d.day(), crate::i18n::month_name(state.lang.get(), d.month()))
-    };
-
     view! {
         <div class="agenda">
             <Show
@@ -122,7 +117,7 @@ pub fn AgendaView() -> impl IntoView {
                         view! {
                             <section class="agenda-day" class:today=is_today>
                                 <h3 class="agenda-date">
-                                    {day_label(d)}
+                                    {move || crate::browser::format_day_heading(state.lang.get(), d)}
                                     <Show when=move || is_today fallback=|| ()>
                                         <span class="today-pill">{move || crate::i18n::t(state.lang.get(), "today_pill")}</span>
                                     </Show>
@@ -145,12 +140,14 @@ pub fn AgendaView() -> impl IntoView {
                                                 let href = href.clone();
                                                 move |_| state.selected.get().iter().any(|h| h == &href)
                                             });
+                                            let tooltip = summary.clone();
                                             view! {
                                                 <li>
                                                     <button
                                                         class="agenda-item"
                                                         class:selected=move || selected.get()
                                                         style=format!("--chip:{color}")
+                                                        title=tooltip
                                                         on:click=move |e| {
                                                             if e.ctrl_key() || e.meta_key() {
                                                                 state.selected.update(|sel| {

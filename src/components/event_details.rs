@@ -169,6 +169,7 @@ pub fn EventDetails() -> impl IntoView {
                             .calendar_for(&ev.calendar_href)
                             .map(|c| c.info.display_name)
                             .unwrap_or_else(|| crate::i18n::t(state.lang.get(), "calendar").to_string());
+                        let calendar_tip = calendar.clone();
                         let read_only = ev.read_only;
                         let is_exception = override_event.is_some();
                         let rule = ev.event.rrule.clone();
@@ -215,7 +216,7 @@ pub fn EventDetails() -> impl IntoView {
                             </div>
                             <p class="details-when">{when}</p>
                             <p class="details-meta">
-                                <span class="details-cal">{calendar}</span>
+                                <span class="details-cal" title=calendar_tip>{calendar}</span>
                                 <Show when=move || is_multi_day fallback=|| ()>
                                     <span class="details-days">{move || format!("{} {}", days.unwrap_or(0), crate::i18n::t(state.lang.get(), "days"))}</span>
                                 </Show>

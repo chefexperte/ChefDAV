@@ -6,8 +6,14 @@ All notable, user-visible changes to ChefDAV.
 
 ### Changes
 
-- All-day event cards update their "all day" / "ganztägig" label immediately
-  when the language changes, without reloading the page.
+- List view day headings now use the browser's locale-aware
+  `Intl.DateTimeFormat` (German shows "Do., 19. November", English "Thu 19
+  November"). They update immediately on a language switch, as do the task
+  headings, week day names and search result dates.
+- Month-view event cards no longer show an "all day" tag: a missing start time
+  already means the event lasts all day.
+- Event cards, list rows and calendar names now have native hover tooltips with
+  the full name, so truncated titles remain discoverable.
 - Locally created or edited events and tasks that are waiting for sync stay
   visible after a reload: the outbox is layered over the cached calendar.
   Clicking the pending badge opens a list of queued changes; each one can be

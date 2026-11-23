@@ -106,6 +106,12 @@ await page.click('button[title="Today"]');
 await page.waitForSelector(".cal-item", { timeout: 15000 });
 const calendars = await page.$$eval(".cal-item .cal-name", (els) => els.map((e) => e.textContent.trim()));
 check("calendar list", calendars.length > 0, calendars.join(", "));
+const calendarTip = await page.locator(".cal-item .cal-name").first().getAttribute("title");
+check(
+  "calendar name tooltip carries the full name",
+  calendarTip === calendars[0],
+  calendarTip ?? "(none)"
+);
 
 // ---------- views ----------
 await page.click('.segmented-btn:has-text("Week")');
