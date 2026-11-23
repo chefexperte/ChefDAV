@@ -93,6 +93,15 @@ check(
   monthTitle
 );
 
+await page.keyboard.press("ArrowRight");
+await page.waitForFunction(() => location.pathname.endsWith("/month/2026-12"));
+check("ArrowRight steps one month", true);
+await page.keyboard.press("ArrowLeft");
+await page.waitForFunction(() => location.pathname.endsWith("/month/2026-11"));
+check("ArrowLeft steps back one month", true);
+// the month step lands on the 1st; put the anchor back on the pinned today
+await page.click('button[title="Today"]');
+
 // the calendar list arrives with the first PROPFIND; wait for it
 await page.waitForSelector(".cal-item", { timeout: 15000 });
 const calendars = await page.$$eval(".cal-item .cal-name", (els) => els.map((e) => e.textContent.trim()));
@@ -101,9 +110,17 @@ check("calendar list", calendars.length > 0, calendars.join(", "));
 // ---------- views ----------
 await page.click('.segmented-btn:has-text("Week")');
 await page.waitForSelector(".week-view", { timeout: 10000 });
+await page.waitForFunction(() => location.pathname.endsWith("/week/2026-11-09"));
 const dayHeads = await page.locator(".week-day-head").count();
 const hourLabels = await page.locator(".hour-label").count();
 check("week view renders", dayHeads === 7 && hourLabels === 24, `${dayHeads} days, ${hourLabels} hours`);
+
+await page.keyboard.press("ArrowRight");
+await page.waitForFunction(() => location.pathname.endsWith("/week/2026-11-16"));
+check("ArrowRight steps one week", true);
+await page.keyboard.press("ArrowLeft");
+await page.waitForFunction(() => location.pathname.endsWith("/week/2026-11-09"));
+check("ArrowLeft steps back one week", true);
 
 await page.click('.segmented-btn:has-text("Day")');
 await page.waitForSelector(".week-view", { timeout: 10000 });

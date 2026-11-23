@@ -6,6 +6,10 @@ All notable, user-visible changes to ChefDAV.
 
 ### Changes
 
+- The left/right arrow keys now navigate by month in the month view and by
+  week in the week and list views, matching the toolbar arrows. Day view still
+  moves one day, and the shortcuts dialog now says "previous/next period"
+  instead of "previous/next day".
 - The browser tab title is now dynamic and drops the old "ChefDAV · your
   calendar" wording. While loading it is just **ChefDAV**; the login screen,
   the visible month/week/day/list, tasks, an open event or a task add the

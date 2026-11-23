@@ -371,13 +371,11 @@ pub fn Shell() -> impl IntoView {
                         }
                         "ArrowLeft" => {
                             ev.prevent_default();
-                            let d = st.anchor.get();
-                            st.anchor.set(d - chrono::Duration::days(1));
+                            st.step(-1);
                         }
                         "ArrowRight" => {
                             ev.prevent_default();
-                            let d = st.anchor.get();
-                            st.anchor.set(d + chrono::Duration::days(1));
+                            st.step(1);
                         }
                         "Escape" => {
                             st.modal.set(None);

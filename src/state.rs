@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use caldav::client::CalendarInfo;
 use caldav::ics::{VEvent, VTodo};
-use chrono::{DateTime, NaiveDate};
+use chrono::{DateTime, Datelike, NaiveDate};
 use chrono_tz::Tz;
 use leptos::prelude::*;
 use leptos_router::NavigateOptions;
@@ -193,6 +193,27 @@ pub fn color_for(href: &str, server_color: &Option<String>, index: usize) -> Str
     PALETTE[(h as usize + index) % PALETTE.len()].to_string()
 }
 
+/// One navigation step for a view. Shared by the toolbar buttons and the
+/// keyboard arrows: a month, a week (agenda included), or a day. The tasks
+/// list has no date axis, so it stays put.
+pub(crate) fn step_date(view: ViewMode, date: NaiveDate, delta: i32) -> NaiveDate {
+    match view {
+        ViewMode::Month => shift_month(date, delta),
+        ViewMode::Week | ViewMode::Agenda => {
+            date + chrono::Duration::days(7 * delta as i64)
+        }
+        ViewMode::Day => date + chrono::Duration::days(delta as i64),
+        ViewMode::Tasks => date,
+    }
+}
+
+fn shift_month(date: NaiveDate, delta: i32) -> NaiveDate {
+    let total = date.year() * 12 + (date.month() as i32 - 1) + delta;
+    let y = total.div_euclid(12);
+    let m = (total.rem_euclid(12) + 1) as u32;
+    NaiveDate::from_ymd_opt(y, m, 1).unwrap_or(date)
+}
+
 #[derive(Clone, Copy)]
 pub struct AppState {
     pub session: RwSignal<Option<Session>>,
@@ -327,9 +348,19 @@ impl AppState {
 
     /// (year, month) of the current anchor.
     pub fn anchor_month(&self) -> (i32, u32) {
-        use chrono::Datelike;
         let d = self.anchor.get();
         (d.year(), d.month())
+    }
+
+    /// Move the anchor one step in the current view. Used by both the toolbar
+    /// arrows and the keyboard arrow keys.
+    pub fn step(&self, delta: i32) {
+        let next = step_date(
+            self.view.get_untracked(),
+            self.anchor.get_untracked(),
+            delta,
+        );
+        self.anchor.set(next);
     }
 
     /// The calendar (if any) that owns the given href.
@@ -487,5 +518,64 @@ impl AppState {
             let base = self.base_url.get();
             self.navigate_to(if base.is_empty() { "/" } else { &base }, true);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn day() -> NaiveDate {
+        NaiveDate::from_ymd_opt(2026, 11, 9).expect("valid test date")
+    }
+
+    #[test]
+    fn month_view_steps_whole_months() {
+        assert_eq!(
+            step_date(ViewMode::Month, day(), 1),
+            NaiveDate::from_ymd_opt(2026, 12, 1).unwrap()
+        );
+        assert_eq!(
+            step_date(ViewMode::Month, day(), -1),
+            NaiveDate::from_ymd_opt(2026, 10, 1).unwrap()
+        );
+        assert_eq!(
+            step_date(ViewMode::Month, NaiveDate::from_ymd_opt(2026, 12, 31).unwrap(), 1),
+            NaiveDate::from_ymd_opt(2027, 1, 1).unwrap()
+        );
+    }
+
+    #[test]
+    fn week_and_agenda_step_seven_days() {
+        assert_eq!(
+            step_date(ViewMode::Week, day(), 1),
+            NaiveDate::from_ymd_opt(2026, 11, 16).unwrap()
+        );
+        assert_eq!(
+            step_date(ViewMode::Week, day(), -1),
+            NaiveDate::from_ymd_opt(2026, 11, 2).unwrap()
+        );
+        assert_eq!(
+            step_date(ViewMode::Agenda, day(), 1),
+            NaiveDate::from_ymd_opt(2026, 11, 16).unwrap()
+        );
+    }
+
+    #[test]
+    fn day_view_steps_one_day() {
+        assert_eq!(
+            step_date(ViewMode::Day, day(), 1),
+            NaiveDate::from_ymd_opt(2026, 11, 10).unwrap()
+        );
+        assert_eq!(
+            step_date(ViewMode::Day, day(), -1),
+            NaiveDate::from_ymd_opt(2026, 11, 8).unwrap()
+        );
+    }
+
+    #[test]
+    fn tasks_view_has_no_date_step() {
+        assert_eq!(step_date(ViewMode::Tasks, day(), 1), day());
+        assert_eq!(step_date(ViewMode::Tasks, day(), -1), day());
     }
 }

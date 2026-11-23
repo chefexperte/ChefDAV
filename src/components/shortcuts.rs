@@ -80,8 +80,8 @@ pub fn ShortcutsDialog() -> impl IntoView {
 
                 <div class="shortcut-section">
                     <h4>{move || t("shortcuts_navigation")}</h4>
-                    {shortcut_row(t("shortcut_prev_day"), &["←"])}
-                    {shortcut_row(t("shortcut_next_day"), &["→"])}
+                    {shortcut_row(t("shortcut_prev_period"), &["←"])}
+                    {shortcut_row(t("shortcut_next_period"), &["→"])}
                 </div>
 
                 <p class="shortcuts-hint">{move || t("shortcuts_hint")}</p>

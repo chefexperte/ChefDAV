@@ -2,7 +2,7 @@
 //! bulk-selection actions.
 
 use caldav::time::week_days;
-use chrono::{Datelike, Duration, NaiveDate};
+use chrono::Datelike;
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 use leptos::task::spawn_local;
@@ -28,35 +28,12 @@ fn SyncStatus() -> impl IntoView {
     }
 }
 
-fn shift_month(date: NaiveDate, delta: i32) -> NaiveDate {
-    let total = date.year() * 12 + (date.month() as i32 - 1) + delta;
-    let y = total.div_euclid(12);
-    let m = (total.rem_euclid(12) + 1) as u32;
-    NaiveDate::from_ymd_opt(y, m, 1).unwrap_or(date)
-}
-
 #[component]
 pub fn Toolbar() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
 
-    let prev = move |_| {
-        let d = state.anchor.get();
-        state.anchor.set(match state.view.get() {
-            ViewMode::Month => shift_month(d, -1),
-            ViewMode::Week | ViewMode::Agenda => d - Duration::days(7),
-            ViewMode::Day => d - Duration::days(1),
-            ViewMode::Tasks => d,
-        });
-    };
-    let next = move |_| {
-        let d = state.anchor.get();
-        state.anchor.set(match state.view.get() {
-            ViewMode::Month => shift_month(d, 1),
-            ViewMode::Week | ViewMode::Agenda => d + Duration::days(7),
-            ViewMode::Day => d + Duration::days(1),
-            ViewMode::Tasks => d,
-        });
-    };
+    let prev = move |_| state.step(-1);
+    let next = move |_| state.step(1);
     let go_today = move |_| {
         state
             .anchor
