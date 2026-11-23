@@ -127,6 +127,23 @@ check(
   (await page.locator(".login-card form").count()) === 0
 );
 
+// ---------- restoring splash ----------
+// Hold the login check open long enough to see the spinner that replaces the
+// old text-only "Restoring your session" line.
+await page.route(`${DAV}/**`, async (route) => {
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  try {
+    await route.continue();
+  } catch (_) {
+    // The reload cancelled a request from the previous page.
+  }
+});
+await page.reload({ waitUntil: "domcontentloaded" });
+await page.waitForSelector(".restoring .spinner", { timeout: 10000 });
+check("restoring screen shows a spinner", true);
+await page.waitForSelector(".month-grid", { timeout: 20000 });
+await page.unroute(`${DAV}/**`);
+
 // ---------- reload while the backend is unreachable ----------
 // The cached calendar must open read-only, not the login page. The saved
 // password is still there, but it cannot be verified until the server is back.
