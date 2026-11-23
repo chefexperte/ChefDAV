@@ -486,10 +486,18 @@ input[type="checkbox"]:focus-visible {
 
 
 .restoring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
   margin: 22px 0 4px;
   text-align: center;
   font-size: 14px;
   color: var(--ink-soft);
+}
+
+.restoring .spinner {
+  color: var(--accent-bg);
 }
 
 .login-prefs {
@@ -935,6 +943,12 @@ input[type="checkbox"]:focus-visible {
   width: 13px;
   height: 13px;
   border-width: 1.7px;
+}
+
+.spinner-large {
+  width: 18px;
+  height: 18px;
+  border-width: 2.2px;
 }
 
 @keyframes spin {

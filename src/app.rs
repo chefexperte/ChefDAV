@@ -140,8 +140,9 @@ pub fn App() -> impl IntoView {
                                 <img src=logo width="64" height="64" alt="ChefDAV logo" />
                                 <h1>"ChefDAV"</h1>
                             </div>
-                            <p class="restoring">
-                                {move || crate::i18n::t(state.lang.get(), "restoring_session")}
+                            <p class="restoring" role="status" aria-live="polite">
+                                <span class="spinner spinner-large" aria-hidden="true"></span>
+                                <span>{move || crate::i18n::t(state.lang.get(), "restoring_session")}</span>
                             </p>
                         </div>
                     </div>
@@ -164,8 +165,9 @@ pub fn App() -> impl IntoView {
                                     <img src=move || crate::config::asset_url("logo.svg") width="64" height="64" alt="ChefDAV logo" />
                                     <h1>"ChefDAV"</h1>
                                 </div>
-                                <p class="restoring">
-                                    {move || crate::i18n::t(state.lang.get(), "restoring_session")}
+                                <p class="restoring" role="status" aria-live="polite">
+                                    <span class="spinner spinner-large" aria-hidden="true"></span>
+                                    <span>{move || crate::i18n::t(state.lang.get(), "restoring_session")}</span>
                                 </p>
                             </div>
                         </div>

@@ -6,6 +6,8 @@ All notable, user-visible changes to ChefDAV.
 
 ### Changes
 
+- The "Restoring your session" screen now shows a small GTK-style spinner, so
+  the wait before the calendar (or login page) appears is visibly in progress.
 - After one online visit, ChefDAV also works when the server that hosts the
   frontend is unreachable. A service worker keeps the app shell (HTML, WASM,
   CSS, fonts and `config.json`) in CacheStorage, so a reload boots from the
