@@ -53,6 +53,12 @@ page.on("request", (r) => {
 async function login() {
   await page.goto(APP, { waitUntil: "networkidle" });
   await page.waitForSelector(".login-card form", { timeout: 20000 });
+  const loginTitle = await page.title();
+  check(
+    "login page title",
+    loginTitle === "ChefDAV – Log in" && !loginTitle.includes("·"),
+    loginTitle
+  );
   await page.fill('input[type="url"]', DAV);
   await page.fill('input[autocomplete="username"]', USER);
   await page.fill('input[autocomplete="current-password"]', PASS);
@@ -80,6 +86,12 @@ const chips = () => page.$$eval(".chip .chip-title", (els) => els.map((e) => e.t
 // ---------- login ----------
 await login();
 check("login", true, await page.textContent(".month-title"));
+const monthTitle = await page.title();
+check(
+  "month view title carries the visible month",
+  monthTitle === "ChefDAV – November 2026" && !monthTitle.includes("·"),
+  monthTitle
+);
 
 // the calendar list arrives with the first PROPFIND; wait for it
 await page.waitForSelector(".cal-item", { timeout: 15000 });
@@ -131,6 +143,12 @@ check("create event", (await chips()).includes(EVENT));
 await page.locator(".chip", { hasText: EVENT }).first().click();
 await page.waitForSelector(".details-modal", { timeout: 10000 });
 check("event click opens details", (await page.locator(".details-modal").count()) === 1);
+const eventTitle = await page.title();
+check(
+  "event details replace the view in the title",
+  eventTitle === `ChefDAV – ${EVENT}`,
+  eventTitle
+);
 await page.click('.details-modal button:has-text("Edit")');
 await page.waitForSelector('.modal:not(.details-modal)', { timeout: 10000 });
 await page.fill('.modal input[type="text"]', EVENT_EDITED);
@@ -158,6 +176,7 @@ check("reload stays logged in", (await page.locator(".login-card form").count())
 // logout forgets the password but keeps server/username for prefill
 await page.click('button:has-text("Log out")');
 await page.waitForSelector(".login-card form", { timeout: 15000 });
+check("logout title returns to the login view", (await page.title()) === "ChefDAV – Log in");
 const prefilledUser = await page.inputValue('input[autocomplete="username"]');
 const prefilledPass = await page.inputValue('input[autocomplete="current-password"]');
 check(

@@ -6,6 +6,10 @@ All notable, user-visible changes to ChefDAV.
 
 ### Changes
 
+- The browser tab title is now dynamic and drops the old "ChefDAV · your
+  calendar" wording. While loading it is just **ChefDAV**; the login screen,
+  the visible month/week/day/list, tasks, an open event or a task add the
+  current context after a plain en dash, e.g. "ChefDAV – November 2026".
 - The "Restoring your session" screen now shows a small GTK-style spinner, so
   the wait before the calendar (or login page) appears is visibly in progress.
 - After one online visit, ChefDAV also works when the server that hosts the
