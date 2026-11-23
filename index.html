@@ -17,17 +17,56 @@
          files are served same-origin from /fonts/. -->
     <link data-trunk rel="copy-file" href="style/fonts.css" />
     <link data-trunk rel="copy-dir" href="public/fonts" />
+    <!-- App-shell service worker (see public/sw.js): keeps the frontend
+         loadable when the server serving it is unreachable. copy-file keeps
+         the stable /sw.js name even in release builds (no content hash). -->
+    <link data-trunk rel="copy-file" href="public/sw.js" />
     <!-- build the bin target: on wasm32 its main() mounts the app, natively it
          is the optional static file server for dist/ -->
     <link data-trunk rel="rust" data-target-name="chef-dav" data-cargo-no-default-features="true" />
     <!-- trunk compiles this to dist/main.css and injects the link -->
     <link data-trunk rel="css" href="style/main.css" />
-    <!-- Older builds registered a reminder service worker; remove it. -->
+    <!-- Cache the app shell so a reload survives an unreachable frontend
+         server. Calendar data is cached separately in IndexedDB by the app.
+         The mount path comes from the container's <base href> when present,
+         otherwise from the same first-segment rule as config.rs. -->
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.getRegistrations().then((regs) => {
-          for (const reg of regs) reg.unregister();
-        });
+        (function () {
+          var known = ["month", "week", "day", "list", "tasks", "event", "task", "login"];
+          var basePath = "";
+          var baseTag = document.querySelector("base[href]");
+          if (baseTag) {
+            try {
+              basePath = new URL(baseTag.getAttribute("href"), location.href).pathname;
+            } catch (_) {}
+          }
+          if (!basePath) {
+            var first = location.pathname.split("/").filter(Boolean)[0] || "";
+            if (first && known.indexOf(first) === -1) basePath = "/" + first;
+          }
+          basePath = basePath.replace(/\/+$/, "");
+          var swUrl = new URL(basePath + "/sw.js", location.origin).href;
+          var scope = basePath + "/";
+          navigator.serviceWorker
+            .getRegistrations()
+            .then(function (regs) {
+              // Remove the old reminder worker and workers from another mount.
+              return Promise.all(
+                regs.map(function (reg) {
+                  var worker = reg.active || reg.waiting || reg.installing;
+                  if (!worker || worker.scriptURL !== swUrl) return reg.unregister();
+                })
+              );
+            })
+            .then(function () {
+              return navigator.serviceWorker.register(swUrl, {
+                scope: scope,
+                updateViaCache: "none",
+              });
+            })
+            .catch(function () {});
+        })();
       }
     </script>
   </head>

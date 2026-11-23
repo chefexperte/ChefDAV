@@ -117,6 +117,7 @@ jobs:
           node visibility.mjs
           node fixed-backend.mjs
           node session.mjs
+          node offline-shell.mjs
           node location.mjs
           node links.mjs
           node multiday.mjs

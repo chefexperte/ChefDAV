@@ -15,6 +15,9 @@ Playwright suites that drive the real app against the real dev stack:
 - `session.mjs`: auto-login, logout, opting out, the theme/language controls on
   the login page, and opening the cache read-only when the backend is
   unreachable.
+- `offline-shell.mjs`: the app-shell service worker. After one online visit it
+  reloads the whole frontend from CacheStorage with the network completely
+  offline, and reconnects again afterwards.
 - `location.mjs`: OpenStreetMap preview for coordinates and the search fallback
   for plain venue names.
 - `audit.mjs`: screenshots plus layout and translation checks. It expects the
@@ -61,6 +64,7 @@ node recurrence.mjs
 node visibility.mjs
 node fixed-backend.mjs
 node session.mjs
+node offline-shell.mjs
 node location.mjs
 node links.mjs
 node multiday.mjs

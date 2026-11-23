@@ -6,6 +6,10 @@ All notable, user-visible changes to ChefDAV.
 
 ### Changes
 
+- After one online visit, ChefDAV also works when the server that hosts the
+  frontend is unreachable. A service worker keeps the app shell (HTML, WASM,
+  CSS, fonts and `config.json`) in CacheStorage, so a reload boots from the
+  local copy. Calendar data still comes from the existing IndexedDB cache.
 - Reloading while the CalDAV backend is unreachable no longer strands you on a
   login page that cannot work. With "Stay logged in" on, the last cached
   calendar opens read-only behind a warning banner, and **Try again** (or the

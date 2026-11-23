@@ -68,6 +68,9 @@ Basic auth.
   the saved login cannot reach Radicale, the last cached calendar opens
   read-only with a warning banner and a retry button. Once the server answers
   again, the app verifies the saved login and resumes normal syncing.
+- **The app shell survives its own server being down.** After one online visit,
+  a service worker serves the HTML, WASM, CSS and fonts from CacheStorage, so
+  even a reload with the frontend host unreachable boots the cached calendar.
 
 ## Deploy with Docker Compose
 
@@ -348,8 +351,8 @@ cargo check --target wasm32-unknown-unknown
 trunk build && python3 scripts/serve.py 3100 dist &
 cd e2e && npm install && npx playwright install chromium
 npm test && node features.mjs && node recurrence.mjs && node visibility.mjs \
-  && node fixed-backend.mjs && node session.mjs && node location.mjs \
-  && node audit.mjs
+  && node fixed-backend.mjs && node session.mjs && node offline-shell.mjs \
+  && node location.mjs && node audit.mjs
 ```
 
 ## Project layout
@@ -380,6 +383,11 @@ ChefDAV/
   your privileges and guidance, but does not write ACLs.
 - The map preview needs OpenStreetMap/Photon. Once the calendar has loaded, it
   works from cache without a connection.
+- Offline mode needs one successful online visit first: without a cached app
+  shell or calendar the browser has nothing to show.
+- The app-shell cache uses a service worker, so browsers require a secure
+  context (HTTPS or localhost). On a plain-HTTP LAN address the app still works
+  online, but not offline.
 
 ## Licensing / credits
 
