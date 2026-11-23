@@ -5,6 +5,7 @@ pub mod event_modal;
 pub mod icons;
 pub mod jump;
 pub mod new_calendar;
+pub mod pending;
 pub mod popover_pos;
 pub mod prefs;
 pub mod shortcuts;

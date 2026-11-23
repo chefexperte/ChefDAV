@@ -18,9 +18,13 @@ fn SyncStatus() -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     view! {
         <Show when=move || (state.pending.get() > 0) fallback=|| ()>
-            <span class="pending-badge" title="Changes waiting to sync">
+            <button
+                class="pending-badge pending-button"
+                title=move || crate::i18n::t(state.lang.get(), "pending_changes")
+                on:click=move |_| state.pending_open.set(true)
+            >
                 {move || format!("{} {}", state.pending.get(), crate::i18n::t(state.lang.get(), "pending"))}
-            </span>
+            </button>
         </Show>
         <Show when=move || state.loading.get() fallback=|| ()>
             <span class="loading">{move || crate::i18n::t(state.lang.get(), "syncing")}</span>

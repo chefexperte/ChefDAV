@@ -8,6 +8,10 @@ All notable, user-visible changes to ChefDAV.
 
 - All-day event cards update their "all day" / "ganztägig" label immediately
   when the language changes, without reloading the page.
+- Locally created or edited events and tasks that are waiting for sync stay
+  visible after a reload: the outbox is layered over the cached calendar.
+  Clicking the pending badge opens a list of queued changes; each one can be
+  inspected (summary, calendar, date) and discarded individually.
 - The left/right arrow keys now navigate by month in the month view and by
   week in the week and list views, matching the toolbar arrows. Day view still
   moves one day, and the shortcuts dialog now says "previous/next period"

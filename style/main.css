@@ -2763,6 +2763,90 @@ input[type="checkbox"]:focus-visible {
   align-self: center;
 }
 
+.pending-button {
+  border: 0;
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+.pending-button:hover {
+  background: color-mix(in srgb, var(--accent) 20%, var(--accent-soft));
+}
+
+.pending-modal {
+  max-width: 560px;
+}
+
+.pending-hint {
+  margin: 0 0 10px;
+  color: var(--ink-faint);
+  font-size: 12.5px;
+}
+
+.pending-list {
+  list-style: none;
+  margin: 0;
+  max-height: min(55vh, 520px);
+  overflow-y: auto;
+}
+
+.pending-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.pending-item:first-child {
+  border-top: 0;
+}
+
+.pending-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pending-summary {
+  font-size: 13.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pending-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+
+.pending-action {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.pending-discard {
+  flex: none;
+  color: var(--danger);
+}
+
+.pending-discard:hover {
+  background: var(--danger-soft);
+}
+
+.pending-loading {
+  display: flex;
+  justify-content: center;
+  padding: 22px;
+}
+
 .banner-info {
   background: var(--accent-soft);
   border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));

@@ -18,6 +18,8 @@ Playwright suites that drive the real app against the real dev stack:
 - `offline-shell.mjs`: the app-shell service worker. After one online visit it
   reloads the whole frontend from CacheStorage with the network completely
   offline, and reconnects again afterwards.
+- `pending.mjs`: queued offline creates stay visible after a reload, open like
+  normal events, and can be discarded one by one from the pending dialog.
 - `location.mjs`: OpenStreetMap preview for coordinates and the search fallback
   for plain venue names.
 - `audit.mjs`: screenshots plus layout and translation checks. It expects the
@@ -65,6 +67,7 @@ node visibility.mjs
 node fixed-backend.mjs
 node session.mjs
 node offline-shell.mjs
+node pending.mjs
 node location.mjs
 node links.mjs
 node multiday.mjs

@@ -400,6 +400,129 @@ fn display_events(
     out
 }
 
+/// Parse one cached/queued resource into the display shape (master plus
+/// RECURRENCE-ID overrides).
+fn display_events_from_ics(
+    cal: &CalState,
+    href: &str,
+    etag: Option<String>,
+    ics: &str,
+    tz: &chrono_tz::Tz,
+) -> Vec<DisplayEvent> {
+    let mut out = Vec::new();
+    let mut by_uid: HashMap<String, (Option<VEvent>, Vec<VEvent>)> = HashMap::new();
+    for event in parse_cached_event(ics, tz) {
+        let entry = by_uid.entry(event.uid.clone()).or_default();
+        if event.is_override() {
+            entry.1.push(event);
+        } else {
+            entry.0 = Some(event);
+        }
+    }
+    for (_, (master, overrides)) in by_uid {
+        let Some(master) = master else { continue };
+        out.push(DisplayEvent {
+            href: href.to_string(),
+            etag: etag.clone(),
+            event: master,
+            overrides,
+            calendar_href: cal.info.href.clone(),
+            color: cal.color.clone(),
+            read_only: cal.read_only(),
+        });
+    }
+    out
+}
+
+fn outbox_href(calendar_href: &str, uid: &str, stored: &str) -> Option<String> {
+    if !stored.is_empty() {
+        return Some(stored.to_string());
+    }
+    let cal = Url::parse(calendar_href).ok()?;
+    resource_url(&cal, uid).ok().map(|url| url.to_string())
+}
+
+/// Layer queued writes over a view built from the server/cache, so an offline
+/// edit or a brand-new event stays visible after a reload. Later operations
+/// win: a queued create followed by a queued delete disappears again.
+fn apply_event_outbox(state: &AppState, ops: &[OutboxOp], events: &mut Vec<DisplayEvent>) {
+    let calendars = state.calendars.get_untracked();
+    for op in ops {
+        match op {
+            OutboxOp::PutEvent {
+                calendar_href,
+                uid,
+                ics,
+                etag,
+                href,
+            } => {
+                let Some(cal) = calendars
+                    .iter()
+                    .find(|cal| cal.info.href == *calendar_href && cal.visible.get_untracked())
+                else {
+                    continue;
+                };
+                let Some(href) = outbox_href(calendar_href, uid, href) else {
+                    continue;
+                };
+                let local = display_events_from_ics(cal, &href, etag.clone(), ics, &state.tz);
+                events.retain(|event| {
+                    event.href != href
+                        && !(event.calendar_href == *calendar_href && event.event.uid == *uid)
+                });
+                events.extend(local);
+            }
+            OutboxOp::DeleteEvent { href, .. } => {
+                events.retain(|event| event.href != *href);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn apply_todo_outbox(state: &AppState, ops: &[OutboxOp], todos: &mut Vec<TodoItem>) {
+    let calendars = state.calendars.get_untracked();
+    for op in ops {
+        match op {
+            OutboxOp::PutTodo {
+                calendar_href,
+                uid,
+                ics,
+                etag,
+                href,
+            } => {
+                let Some(cal) = calendars
+                    .iter()
+                    .find(|cal| cal.info.href == *calendar_href && cal.visible.get_untracked())
+                else {
+                    continue;
+                };
+                let Some(href) = outbox_href(calendar_href, uid, href) else {
+                    continue;
+                };
+                todos.retain(|todo| {
+                    todo.href != href
+                        && !(todo.calendar_href == *calendar_href && todo.todo.uid == *uid)
+                });
+                for todo in caldav::ics::parse_cached_todo(ics, &state.tz) {
+                    todos.push(TodoItem {
+                        href: href.clone(),
+                        etag: etag.clone(),
+                        todo,
+                        calendar_href: calendar_href.clone(),
+                        color: cal.color.clone(),
+                        read_only: cal.read_only(),
+                    });
+                }
+            }
+            OutboxOp::DeleteTodo { href, .. } => {
+                todos.retain(|todo| todo.href != *href);
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Rebuild `state.events` from the IndexedDB cache and the current calendar
 /// visibility. Offline mode uses this for show/hide and navigation, so the
 /// cached data behaves like the live list without touching the server.
@@ -418,6 +541,8 @@ async fn restore_cached_events(state: &AppState) {
             }
         }
     }
+    let ops = store::outbox_load().await;
+    apply_event_outbox(state, &ops, &mut events);
     state.remap_open_modal(Some(&events), None);
     state.events.set(events);
 }
@@ -446,6 +571,8 @@ async fn restore_cached_todos(state: &AppState) {
             }
         }
     }
+    let ops = store::outbox_load().await;
+    apply_todo_outbox(state, &ops, &mut todos);
     state.remap_open_modal(None, Some(&todos));
     state.todos.set(todos);
 }
@@ -587,6 +714,8 @@ pub async fn refresh_events(state: &AppState) {
     if any_ok {
         state.backend_down.set(false);
     }
+    let ops = store::outbox_load().await;
+    apply_event_outbox(state, &ops, &mut all);
     state.remap_open_modal(Some(&all), None);
     state.events.set(all);
     store::cache_save(&caches.into_values().collect::<Vec<_>>()).await;
@@ -615,11 +744,14 @@ pub async fn refresh_todos(state: &AppState) {
     }
     let c = client(&session);
     let mut all = Vec::new();
-    let mut cached = Vec::new();
+    // Start from the existing cache so a calendar that fails keeps its tasks;
+    // a successful calendar replaces its own entries.
+    let mut cached = store::todos_cache_load().await;
     for (cal, color) in &visible {
         let Ok(url) = Url::parse(&cal.href) else { continue };
         match c.query_todos(&url, &state.tz).await {
             Ok(todos) => {
+                cached.retain(|t| t.calendar_href != cal.href);
                 for t in todos {
                     cached.push(CachedTodo {
                         calendar_href: cal.href.clone(),
@@ -646,6 +778,8 @@ pub async fn refresh_todos(state: &AppState) {
                 .set(Some(format!("{} tasks: {e}", cal.display_name))),
         }
     }
+    let ops = store::outbox_load().await;
+    apply_todo_outbox(state, &ops, &mut all);
     state.remap_open_modal(None, Some(&all));
     state.todos.set(all);
     store::todos_cache_save(&cached).await;
@@ -780,6 +914,28 @@ async fn queue(state: &AppState, op: OutboxOp) {
     state.pending.set(ops.len());
 }
 
+fn upsert_local_todo(state: &AppState, cal_href: &str, href: &str, ics: &str, etag: Option<String>) {
+    let Some(cal) = state.calendar_for(cal_href) else { return };
+    for todo in caldav::ics::parse_cached_todo(ics, &state.tz) {
+        let item = TodoItem {
+            href: href.to_string(),
+            etag: etag.clone(),
+            todo,
+            calendar_href: cal_href.to_string(),
+            color: cal.color.clone(),
+            read_only: cal.read_only(),
+        };
+        state.todos.update(|all| {
+            all.retain(|existing| {
+                existing.href != href
+                    && !(existing.calendar_href == cal_href
+                        && existing.todo.uid == item.todo.uid)
+            });
+            all.push(item.clone());
+        });
+    }
+}
+
 fn upsert_local_event(state: &AppState, cal_href: &str, href: &str, ics: &str, etag: Option<String>) {
     let Some(cal) = state.calendar_for(cal_href) else { return };
     let events = parse_cached_event(ics, &state.tz);
@@ -846,6 +1002,7 @@ pub async fn save_event(
                     uid: draft.uid.clone(),
                     ics: resource.clone(),
                     etag: etag.map(str::to_string),
+                    href: target.as_str().to_string(),
                 },
             )
             .await;
@@ -965,9 +1122,17 @@ pub async fn save_todo(
                     uid: draft.uid.clone(),
                     ics: ics.clone(),
                     etag: etag.map(str::to_string),
+                    href: target.as_str().to_string(),
                 },
             )
             .await;
+            upsert_local_todo(
+                state,
+                calendar_href,
+                target.as_str(),
+                &ics,
+                etag.map(str::to_string),
+            );
             Ok(true)
         }
         Err(e) => Err(e),
@@ -1148,6 +1313,7 @@ pub async fn move_event(state: &AppState, href: &str, delta_days: i64) -> Result
                     uid: ev.event.uid.clone(),
                     ics: ics.clone(),
                     etag: ev.etag.clone(),
+                    href: href.to_string(),
                 },
             )
             .await;
@@ -1161,6 +1327,20 @@ pub async fn move_event(state: &AppState, href: &str, delta_days: i64) -> Result
 fn resolve_resource(calendar_href: &str, uid: &str) -> Result<Url> {
     let cal = Url::parse(calendar_href)?;
     resource_url(&cal, uid)
+}
+
+/// Drop one queued write without sending it. The visible events/tasks are then
+/// rebuilt from the server (or the cache plus the remaining outbox).
+pub async fn discard_outbox_op(state: &AppState, target: &OutboxOp) {
+    let mut ops = store::outbox_load().await;
+    let Some(index) = ops.iter().position(|op| op == target) else {
+        return;
+    };
+    ops.remove(index);
+    store::outbox_save(&ops).await;
+    state.pending.set(ops.len());
+    refresh_events(state).await;
+    refresh_todos(state).await;
 }
 
 /// Retry outboxed writes. Stops at the first network failure and keeps the
@@ -1191,10 +1371,18 @@ pub async fn flush_outbox(state: &AppState) {
                 uid,
                 ics,
                 etag,
-            } => match resolve_resource(calendar_href, uid) {
-                Ok(url) => c.put_resource(&url, ics, etag.as_deref()).await.map(|_| ()),
-                Err(e) => Err(e),
-            },
+                href,
+            } => {
+                let url = if href.is_empty() {
+                    resolve_resource(calendar_href, uid)
+                } else {
+                    Url::parse(href).map_err(DavError::from)
+                };
+                match url {
+                    Ok(url) => c.put_resource(&url, ics, etag.as_deref()).await.map(|_| ()),
+                    Err(e) => Err(e),
+                }
+            }
             OutboxOp::DeleteEvent { href, etag } => match Url::parse(href) {
                 Ok(url) => c.delete_event(&url, etag.as_deref()).await,
                 Err(e) => Err(DavError::from(e)),
@@ -1204,10 +1392,18 @@ pub async fn flush_outbox(state: &AppState) {
                 uid,
                 ics,
                 etag,
-            } => match resolve_resource(calendar_href, uid) {
-                Ok(url) => c.put_resource(&url, ics, etag.as_deref()).await.map(|_| ()),
-                Err(e) => Err(e),
-            },
+                href,
+            } => {
+                let url = if href.is_empty() {
+                    resolve_resource(calendar_href, uid)
+                } else {
+                    Url::parse(href).map_err(DavError::from)
+                };
+                match url {
+                    Ok(url) => c.put_resource(&url, ics, etag.as_deref()).await.map(|_| ()),
+                    Err(e) => Err(e),
+                }
+            }
             OutboxOp::DeleteTodo { href, etag } => match Url::parse(href) {
                 Ok(url) => c.delete_event(&url, etag.as_deref()).await,
                 Err(e) => Err(DavError::from(e)),

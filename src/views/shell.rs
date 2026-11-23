@@ -16,6 +16,7 @@ use crate::components::event_details::EventDetails;
 use crate::components::event_modal::EventModal;
 use crate::components::jump::{MonthMenu, YearMenu};
 use crate::components::new_calendar::NewCalendarModal;
+use crate::components::pending::PendingModal;
 use crate::components::prefs::PrefsRow;
 use crate::components::shortcuts::{ShortcutsButton, ShortcutsDialog};
 use crate::components::slot_popup::SlotPopup;
@@ -387,6 +388,7 @@ pub fn Shell() -> impl IntoView {
                             st.search_open.set(false);
                             st.jump_open.set(None);
                             st.shortcuts_open.set(false);
+                            st.pending_open.set(false);
                             st.sidebar_open.set(false);
                         }
                         _ => {}
@@ -606,9 +608,13 @@ pub fn Shell() -> impl IntoView {
                         </span>
                     </Show>
                     <Show when=move || (state.pending.get() > 0) fallback=|| ()>
-                        <span class="pending-badge">
+                        <button
+                            class="pending-badge pending-button"
+                            title=move || crate::i18n::t(state.lang.get(), "pending_changes")
+                            on:click=move |_| state.pending_open.set(true)
+                        >
                             {move || format!("{} {}", state.pending.get(), crate::i18n::t(state.lang.get(), "changes_pending"))}
-                        </span>
+                        </button>
                     </Show>
                     <ShortcutsButton />
                     <PrefsRow />
@@ -681,6 +687,9 @@ pub fn Shell() -> impl IntoView {
         </Show>
         <Show when=move || state.new_calendar.get() fallback=|| ()>
             <NewCalendarModal />
+        </Show>
+        <Show when=move || state.pending_open.get() fallback=|| ()>
+            <PendingModal />
         </Show>
         <Show when=move || state.calendar_action.get().is_some() fallback=|| ()>
             <CalendarActionModal />

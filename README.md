@@ -71,6 +71,9 @@ Basic auth.
 - **The app shell survives its own server being down.** After one online visit,
   a service worker serves the HTML, WASM, CSS and fonts from CacheStorage, so
   even a reload with the frontend host unreachable boots the cached calendar.
+- **Queued offline writes stay visible.** Events and tasks waiting for sync are
+  layered over the cached view after a reload. The pending badge opens a list
+  where each change can be inspected and discarded individually.
 
 ## Deploy with Docker Compose
 
@@ -352,7 +355,7 @@ trunk build && python3 scripts/serve.py 3100 dist &
 cd e2e && npm install && npx playwright install chromium
 npm test && node features.mjs && node recurrence.mjs && node visibility.mjs \
   && node fixed-backend.mjs && node session.mjs && node offline-shell.mjs \
-  && node location.mjs && node audit.mjs
+  && node pending.mjs && node location.mjs && node audit.mjs
 ```
 
 ## Project layout

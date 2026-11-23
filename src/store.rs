@@ -136,13 +136,17 @@ pub struct CalendarCache {
 }
 
 /// A write that could not reach the server (offline) and is retried later.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum OutboxOp {
     PutEvent {
         calendar_href: String,
         uid: String,
         ics: String,
         etag: Option<String>,
+        /// Resource URL. Missing in outbox entries written before this field
+        /// existed; the retry then derives it from calendar + UID as before.
+        #[serde(default)]
+        href: String,
     },
     DeleteEvent {
         href: String,
@@ -153,6 +157,9 @@ pub enum OutboxOp {
         uid: String,
         ics: String,
         etag: Option<String>,
+        /// Resource URL; see `PutEvent::href`.
+        #[serde(default)]
+        href: String,
     },
     DeleteTodo {
         href: String,
@@ -214,4 +221,38 @@ pub async fn settings_load() -> Settings {
 
 pub async fn settings_save(settings: &Settings) {
     let _ = kv_set("settings", settings).await;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn old_put_ops_without_href_still_deserialize() {
+        // Entries written before the href field existed have exactly this
+        // shape. They must not make the whole outbox unreadable.
+        let old = r#"{"PutEvent":{"calendar_href":"https://dav/cal/","uid":"u1","ics":"BEGIN:VCALENDAR","etag":null}}"#;
+        let op: OutboxOp = serde_json::from_str(old).expect("legacy outbox entry");
+        match op {
+            OutboxOp::PutEvent { href, uid, .. } => {
+                assert_eq!(uid, "u1");
+                assert!(href.is_empty());
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn put_ops_keep_their_resource_href() {
+        let op = OutboxOp::PutEvent {
+            calendar_href: "https://dav/cal/".into(),
+            uid: "u1".into(),
+            ics: "BEGIN:VCALENDAR".into(),
+            etag: None,
+            href: "https://dav/cal/not-uid-based.ics".into(),
+        };
+        let json = serde_json::to_string(&op).expect("serialize");
+        let back: OutboxOp = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, op);
+    }
 }
