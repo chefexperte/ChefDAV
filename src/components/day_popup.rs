@@ -2,20 +2,8 @@
 
 use leptos::prelude::*;
 
-use crate::day_events::{self, DayItem};
+use crate::day_events;
 use crate::state::{AppState, ModalState};
-
-pub fn occurrence_time(state: &AppState, item: &DayItem) -> String {
-    if item.all_day {
-        crate::i18n::t(state.lang.get(), "all_day").to_string()
-    } else {
-        item.occurrence
-            .start
-            .with_timezone(&state.tz)
-            .format("%H:%M")
-            .to_string()
-    }
-}
 
 #[component]
 pub fn DayPopup() -> impl IntoView {
@@ -59,7 +47,9 @@ pub fn DayPopup() -> impl IntoView {
                 role="dialog"
                 aria-modal="true"
             >
-                <h3 class="popover-title">{day_events::popup_day_label(&state, date)}</h3>
+                <h3 class="popover-title">
+                    {move || day_events::popup_day_label(&state, date)}
+                </h3>
                 <Show
                     when=move || !items.get().is_empty()
                     fallback=move || {
@@ -79,7 +69,8 @@ pub fn DayPopup() -> impl IntoView {
                                 let occ = item.occurrence.clone();
                                 let title = day_events::item_title(&state, &item);
                                 let color = day_events::item_color(&state, &item);
-                                let time = occurrence_time(&state, &item);
+                                let all_day = item.all_day;
+                                let start = item.occurrence.start.clone();
                                 view! {
                                     <li>
                                         <button
@@ -90,7 +81,15 @@ pub fn DayPopup() -> impl IntoView {
                                                 state.open_details(idx, occ.recurrence_id, Some(occ.start), Some((e.client_x() as i32, e.client_y() as i32)));
                                             }
                                         >
-                                            <span class="popover-time">{time}</span>
+                                            <span class="popover-time">
+                                                {move || {
+                                                    if all_day {
+                                                        crate::i18n::t(state.lang.get(), "all_day").to_string()
+                                                    } else {
+                                                        start.with_timezone(&state.tz).format("%H:%M").to_string()
+                                                    }
+                                                }}
+                                            </span>
                                             <span class="cal-dot" style=format!("background:{color}")></span>
                                             <span class="popover-event-title">{title}</span>
                                         </button>

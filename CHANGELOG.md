@@ -6,6 +6,8 @@ All notable, user-visible changes to ChefDAV.
 
 ### Changes
 
+- All-day event cards update their "all day" / "ganztägig" label immediately
+  when the language changes, without reloading the page.
 - The left/right arrow keys now navigate by month in the month view and by
   week in the week and list views, matching the toolbar arrows. Day view still
   moves one day, and the shortcuts dialog now says "previous/next period"

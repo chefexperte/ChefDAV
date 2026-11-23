@@ -2,7 +2,6 @@
 
 use leptos::prelude::*;
 
-use crate::components::day_popup::occurrence_time;
 use crate::day_events::{self, DayItem};
 use crate::state::{AppState, ModalState};
 
@@ -45,19 +44,21 @@ pub fn SlotPopup() -> impl IntoView {
         state.modal.set(Some(ModalState::New { date }));
     };
 
-    let title = if all_day {
-        format!(
-            "{} · {}",
-            day_events::popup_day_label(&state, date),
-            crate::i18n::t(state.lang.get(), "all_day_lower")
-        )
-    } else {
-        format!(
-            "{} · {:02}:{:02}",
-            day_events::popup_day_label(&state, date),
-            minutes / 60,
-            minutes % 60
-        )
+    let title = move || {
+        if all_day {
+            format!(
+                "{} · {}",
+                day_events::popup_day_label(&state, date),
+                crate::i18n::t(state.lang.get(), "all_day_lower")
+            )
+        } else {
+            format!(
+                "{} · {:02}:{:02}",
+                day_events::popup_day_label(&state, date),
+                minutes / 60,
+                minutes % 60
+            )
+        }
     };
 
     view! {
@@ -69,7 +70,7 @@ pub fn SlotPopup() -> impl IntoView {
                 role="dialog"
                 aria-modal="true"
             >
-                <h3 class="popover-title">{title}</h3>
+                <h3 class="popover-title">{move || title()}</h3>
                 <Show
                     when=move || !items.get().is_empty()
                     fallback=move || {
@@ -89,7 +90,8 @@ pub fn SlotPopup() -> impl IntoView {
                                 let occ = item.occurrence.clone();
                                 let title = day_events::item_title(&state, &item);
                                 let color = day_events::item_color(&state, &item);
-                                let time = occurrence_time(&state, &item);
+                                let item_all_day = item.all_day;
+                                let start = item.occurrence.start.clone();
                                 view! {
                                     <li>
                                         <button
@@ -100,7 +102,15 @@ pub fn SlotPopup() -> impl IntoView {
                                                 state.open_details(idx, occ.recurrence_id, Some(occ.start), Some((e.client_x() as i32, e.client_y() as i32)));
                                             }
                                         >
-                                            <span class="popover-time">{time}</span>
+                                            <span class="popover-time">
+                                                {move || {
+                                                    if item_all_day {
+                                                        crate::i18n::t(state.lang.get(), "all_day").to_string()
+                                                    } else {
+                                                        start.with_timezone(&state.tz).format("%H:%M").to_string()
+                                                    }
+                                                }}
+                                            </span>
                                             <span class="cal-dot" style=format!("background:{color}")></span>
                                             <span class="popover-event-title">{title}</span>
                                         </button>

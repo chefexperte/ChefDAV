@@ -47,15 +47,7 @@ pub fn WeekMoreModal() -> impl IntoView {
                         each=move || items.clone()
                         key=|(i, occ, e)| (*i, *occ, e.href.clone())
                         children=move |(idx, occ_start, ev)| {
-                            let time = match &ev.event.dtstart {
-                                Some(caldav::ics::DtValue::Date(_)) => {
-                                    crate::i18n::t(state.lang.get(), "all_day").to_string()
-                                }
-                                Some(caldav::ics::DtValue::DateTime(t)) => {
-                                    t.with_timezone(&tz).format("%H:%M").to_string()
-                                }
-                                None => String::new(),
-                            };
+                            let dtstart = ev.event.dtstart.clone();
                             let summary = ev.event.summary.clone();
                             let color = ev.color.clone();
                             view! {
@@ -73,7 +65,17 @@ pub fn WeekMoreModal() -> impl IntoView {
                                             );
                                         }
                                     >
-                                        <span class="popover-time">{time}</span>
+                                        <span class="popover-time">
+                                            {move || match &dtstart {
+                                                Some(caldav::ics::DtValue::Date(_)) => {
+                                                    crate::i18n::t(state.lang.get(), "all_day").to_string()
+                                                }
+                                                Some(caldav::ics::DtValue::DateTime(t)) => {
+                                                    t.with_timezone(&tz).format("%H:%M").to_string()
+                                                }
+                                                None => String::new(),
+                                            }}
+                                        </span>
                                         <span class="cal-dot" style=format!("background:{color}")></span>
                                         <span class="popover-event-title">{summary}</span>
                                     </button>

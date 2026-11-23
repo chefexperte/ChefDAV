@@ -820,6 +820,30 @@ await page.click('.prefs-row button:has-text("Deutsch")');
 await page.waitForTimeout(300);
 check("language toggle (EN)", (await page.textContent("button.new-event")).includes("New event"));
 
+// All-day cards keep the localized label in sync while the language changes.
+const allDayTitle = `All day ${run}`;
+await openNewEventFromSidebar();
+await page.fill('.modal input[type="text"]', allDayTitle);
+await page.fill('.modal input[type="date"]', "2026-11-19");
+await page.check('.modal .field-check input[type="checkbox"]');
+await saveModal();
+const allDayChip = page.locator(".chip", { hasText: allDayTitle }).first();
+check("all-day chip starts in English", (await allDayChip.locator(".chip-time").textContent()).trim() === "all day");
+await page.click('.prefs-row button:has-text("English")');
+await page.waitForTimeout(300);
+check(
+  "all-day chip follows the language without a reload (DE)",
+  (await allDayChip.locator(".chip-time").textContent()).trim() === "ganztägig",
+  (await allDayChip.locator(".chip-time").textContent()).trim()
+);
+await page.click('.prefs-row button:has-text("Deutsch")');
+await page.waitForTimeout(300);
+check(
+  "all-day chip follows the language without a reload (EN)",
+  (await allDayChip.locator(".chip-time").textContent()).trim() === "all day",
+  (await allDayChip.locator(".chip-time").textContent()).trim()
+);
+
 // ---------- keyboard ----------
 await page.keyboard.press("n");
 await page.waitForSelector(".modal", { timeout: 10000 });
