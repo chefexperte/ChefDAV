@@ -12,6 +12,8 @@ All notable, user-visible changes to ChefDAV.
   browser coming back online) verifies the saved login and resumes syncing.
   The saved login now also keeps the discovered principal/home URL, so this
   works without contacting the server first.
+- The retry button shows a small GTK-style spinner for at least 100 ms, so a
+  click always has visible feedback even when the server answers immediately.
 
 ## 0.3.1 — 2026-11-20
 

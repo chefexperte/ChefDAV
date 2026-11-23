@@ -421,10 +421,23 @@ pub fn Shell() -> impl IntoView {
         });
     };
 
+    // Keep the spinner (and the banner it lives in) up for a moment even when
+    // the saved login succeeds immediately, so a click always gets feedback.
+    let retrying = RwSignal::new(false);
     let retry_connection = move |_| {
+        if retrying.get_untracked() {
+            return;
+        }
+        retrying.set(true);
         let st = state;
         spawn_local(async move {
+            let started = js_sys::Date::now();
             api::retry_cached_session(&st).await;
+            let elapsed = js_sys::Date::now() - started;
+            if elapsed < 100.0 {
+                crate::browser::sleep_ms((100.0 - elapsed).ceil() as u32).await;
+            }
+            retrying.set(false);
         });
     };
 
@@ -611,21 +624,40 @@ pub fn Shell() -> impl IntoView {
             </Show>
             <main class="main">
                 <Toolbar />
-                <Show when=move || state.backend_down.get() fallback=|| ()>
+                <Show
+                    when=move || state.backend_down.get() || retrying.get()
+                    fallback=|| ()
+                >
                     <div class="banner-error backend-banner" role="status">
                         <span>
                             {move || crate::i18n::t(
                                 state.lang.get(),
-                                if state.cache_only.get() {
+                                if state.cache_only.get() || retrying.get() {
                                     "offline_cache_read_only"
                                 } else {
                                     "backend_unavailable"
                                 },
                             )}
                         </span>
-                        <Show when=move || state.cache_only.get() fallback=|| ()>
-                            <button class="btn btn-ghost backend-retry" on:click=retry_connection>
-                                {move || crate::i18n::t(state.lang.get(), "retry")}
+                        <Show
+                            when=move || state.cache_only.get() || retrying.get()
+                            fallback=|| ()
+                        >
+                            <button
+                                class="btn btn-ghost backend-retry"
+                                disabled=move || retrying.get()
+                                aria-busy=move || retrying.get().to_string()
+                                on:click=retry_connection
+                            >
+                                <Show
+                                    when=move || retrying.get()
+                                    fallback=move || view! {
+                                        {move || crate::i18n::t(state.lang.get(), "retry")}
+                                    }
+                                >
+                                    <span class="spinner spinner-small" aria-hidden="true"></span>
+                                    <span>{move || crate::i18n::t(state.lang.get(), "retrying")}</span>
+                                </Show>
                             </button>
                         </Show>
                     </div>

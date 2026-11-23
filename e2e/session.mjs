@@ -163,8 +163,13 @@ check(
 await page.keyboard.press("Escape");
 
 await page.unroute(`${DAV}/**`);
+const retryStarted = Date.now();
 await page.click(".backend-banner .backend-retry");
+await page.waitForSelector(".backend-retry .spinner", { timeout: 2000 });
+check("retry button shows a spinner", true);
 await page.waitForSelector(".backend-banner", { state: "detached", timeout: 20000 });
+const retryElapsed = Date.now() - retryStarted;
+check("retry spinner stays up for at least 100ms", retryElapsed >= 100, `${retryElapsed}ms`);
 check(
   "retry after reconnect restores the live session",
   !(await page.locator("button.new-event").isDisabled())

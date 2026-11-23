@@ -87,6 +87,17 @@ fn legacy_copy(text: &str) -> bool {
     ok
 }
 
+/// Resolve after `ms` milliseconds (browser timer).
+pub async fn sleep_ms(ms: u32) {
+    let promise = js_sys::Promise::new(&mut |resolve, _reject| {
+        let _ = window().set_timeout_with_callback_and_timeout_and_arguments_0(
+            &resolve,
+            ms.min(i32::MAX as u32) as i32,
+        );
+    });
+    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+}
+
 /// Current instant (from the JS clock, which works on wasm).
 pub fn now_utc() -> DateTime<Utc> {
     DateTime::from_timestamp_millis(js_sys::Date::now() as i64).expect("valid timestamp")

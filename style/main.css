@@ -920,6 +920,35 @@ input[type="checkbox"]:focus-visible {
   font-style: italic;
 }
 
+/* Adwaita-style spinner: a ring with one accent-coloured arc. */
+.spinner {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner-small {
+  width: 13px;
+  height: 13px;
+  border-width: 1.7px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.6s;
+  }
+}
+
 .backend-banner {
   display: flex;
   align-items: center;
