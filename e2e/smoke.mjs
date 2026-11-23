@@ -92,6 +92,14 @@ check(
   monthTitle === "ChefDAV – November 2026" && !monthTitle.includes("·"),
   monthTitle
 );
+const displayWordSpacing = await page.evaluate(
+  () => getComputedStyle(document.querySelector(".month-title")).wordSpacing
+);
+check(
+  "Klarissa headings use tighter word spacing",
+  parseFloat(displayWordSpacing) < 0,
+  displayWordSpacing
+);
 
 await page.keyboard.press("ArrowRight");
 await page.waitForFunction(() => location.pathname.endsWith("/month/2026-12"));
@@ -127,6 +135,12 @@ check("ArrowRight steps one week", true);
 await page.keyboard.press("ArrowLeft");
 await page.waitForFunction(() => location.pathname.endsWith("/week/2026-11-09"));
 check("ArrowLeft steps back one week", true);
+const weekRange = (await page.textContent(".month-title")).trim();
+check(
+  "week range has no spaces around the dash",
+  weekRange === "9–15 November 2026",
+  weekRange
+);
 
 await page.click('.segmented-btn:has-text("Day")');
 await page.waitForSelector(".week-view", { timeout: 10000 });

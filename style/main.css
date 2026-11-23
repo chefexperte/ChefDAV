@@ -31,6 +31,18 @@ button {
   font-family: var(--font-ui);
 }
 
+/* Klarissa has a very wide space glyph; pull its word gaps in by 30%. */
+h1,
+h2,
+h3,
+.brand-name,
+.month-title,
+.title-part,
+.agenda-date,
+.empty-title {
+  word-spacing: var(--display-word-spacing);
+}
+
 /* Adwaita focus ring: accent color at 50% */
 :focus-visible {
   outline: 2px solid var(--focus-ring);

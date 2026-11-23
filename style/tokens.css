@@ -105,6 +105,10 @@
 
   --font-display: "Klarissa", "Montserrat", "Segoe UI", sans-serif;
   --font-ui: "Montserrat", "Segoe UI", -apple-system, sans-serif;
+  /* Klarissa's space glyph is 0.58 em (Montserrat is ~0.25 em). Tighten word
+     gaps by 30 % (0.58 × 0.30 = 0.174 em) without modifying the font file,
+     which its license forbids. */
+  --display-word-spacing: -0.174em;
 }
 
 [data-theme="dark"] {

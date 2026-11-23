@@ -172,14 +172,14 @@ pub fn week_label(lang: Lang, days: &[NaiveDate]) -> String {
     if first.month() == last.month() {
         match lang {
             Lang::De => format!(
-                "{}. – {}. {} {}",
+                "{}.–{}. {} {}",
                 first.day(),
                 last.day(),
                 month_name(lang, first.month()),
                 first.year()
             ),
             Lang::En => format!(
-                "{} – {} {} {}",
+                "{}–{} {} {}",
                 first.day(),
                 last.day(),
                 month_name(lang, first.month()),
@@ -189,7 +189,7 @@ pub fn week_label(lang: Lang, days: &[NaiveDate]) -> String {
     } else if first.year() == last.year() {
         match lang {
             Lang::De => format!(
-                "{}. {} – {}. {} {}",
+                "{}. {}–{}. {} {}",
                 first.day(),
                 month_name(lang, first.month()),
                 last.day(),
@@ -197,7 +197,7 @@ pub fn week_label(lang: Lang, days: &[NaiveDate]) -> String {
                 first.year()
             ),
             Lang::En => format!(
-                "{} {} – {} {} {}",
+                "{} {}–{} {} {}",
                 first.day(),
                 month_name(lang, first.month()),
                 last.day(),
@@ -208,7 +208,7 @@ pub fn week_label(lang: Lang, days: &[NaiveDate]) -> String {
     } else {
         match lang {
             Lang::De => format!(
-                "{}. {} {} – {}. {} {}",
+                "{}. {} {}–{}. {} {}",
                 first.day(),
                 month_name(lang, first.month()),
                 first.year(),
@@ -217,7 +217,7 @@ pub fn week_label(lang: Lang, days: &[NaiveDate]) -> String {
                 last.year()
             ),
             Lang::En => format!(
-                "{} {} {} – {} {} {}",
+                "{} {} {}–{} {} {}",
                 first.day(),
                 month_name(lang, first.month()),
                 first.year(),
@@ -611,5 +611,34 @@ pub fn t(lang: Lang, key: &str) -> &'static str {
         (_, "no_events_slot") => "No events at this time",
         (_, "new_all_day_event") => "New all-day event",
         _ => "?",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn day(year: i32, month: u32, day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(year, month, day).expect("valid test date")
+    }
+
+    #[test]
+    fn week_ranges_have_no_spaces_around_the_dash() {
+        let same_month = caldav::time::week_days(day(2026, 11, 23));
+        assert_eq!(
+            week_label(Lang::De, &same_month),
+            "23.–29. November 2026"
+        );
+        assert_eq!(week_label(Lang::En, &same_month), "23–29 November 2026");
+
+        let across_months = caldav::time::week_days(day(2026, 11, 30));
+        assert_eq!(
+            week_label(Lang::De, &across_months),
+            "30. November–6. Dezember 2026"
+        );
+        assert_eq!(
+            week_label(Lang::En, &across_months),
+            "30 November–6 December 2026"
+        );
     }
 }

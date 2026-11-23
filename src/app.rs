@@ -315,7 +315,7 @@ mod tests {
             "ChefDAV – Mo 9. November 2026"
         );
         assert!(page_title(Lang::En, true, false, ViewMode::Week, day(), None)
-            .starts_with("ChefDAV – 9 – 15 November 2026"));
+            .starts_with("ChefDAV – 9–15 November 2026"));
         assert_eq!(
             page_title(Lang::De, true, false, ViewMode::Tasks, day(), None),
             "ChefDAV – Aufgaben"

@@ -6,6 +6,10 @@ All notable, user-visible changes to ChefDAV.
 
 ### Changes
 
+- Week ranges in the toolbar and tab title use a compact dash without
+  surrounding spaces: "23.–29. November", "23–29 November 2026".
+- Klarissa headings use 30 % tighter word spacing, because the font's space
+  glyph is much wider than the UI face. The licensed font file is unchanged.
 - List view day headings now use the browser's locale-aware
   `Intl.DateTimeFormat` (German shows "Do., 19. November", English "Thu 19
   November"). They update immediately on a language switch, as do the task
