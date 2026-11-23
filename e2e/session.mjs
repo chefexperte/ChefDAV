@@ -24,7 +24,13 @@ const page = await context.newPage();
 await pinClock(page);
 const errors = [];
 page.on("console", (m) => {
-  if (m.type() === "error" && !m.text().includes("401 (Unauthorized)")) errors.push(m.text());
+  if (
+    m.type() === "error" &&
+    !m.text().includes("401 (Unauthorized)") &&
+    !m.text().includes("net::ERR_FAILED")
+  ) {
+    errors.push(m.text());
+  }
 });
 page.on("pageerror", (e) => errors.push(String(e)));
 
@@ -119,6 +125,49 @@ await page.waitForSelector(".month-grid", { timeout: 20000 });
 check(
   "re-enabling 'stay logged in' restores auto-login",
   (await page.locator(".login-card form").count()) === 0
+);
+
+// ---------- reload while the backend is unreachable ----------
+// The cached calendar must open read-only, not the login page. The saved
+// password is still there, but it cannot be verified until the server is back.
+await page.waitForSelector(".chip", { timeout: 20000 });
+await page.waitForTimeout(800); // let the async IndexedDB cache write finish
+await page.route(`${DAV}/**`, (route) => route.abort());
+await page.reload({ waitUntil: "domcontentloaded" });
+await page.waitForSelector(".backend-banner", { timeout: 20000 });
+await page.waitForSelector(".month-grid", { timeout: 20000 });
+await page.waitForSelector(".cal-item", { timeout: 20000 });
+check(
+  "offline reload opens the cached calendar instead of the login page",
+  (await page.locator(".login-card form").count()) === 0
+);
+const offlineBanner = (await page.textContent(".backend-banner")).trim();
+check(
+  "offline reload warns that the server is unreachable",
+  offlineBanner.includes("unreachable") ||
+    offlineBanner.includes("not available") ||
+    offlineBanner.includes("nicht erreichbar"),
+  offlineBanner
+);
+check(
+  "offline reload is read-only",
+  await page.locator("button.new-event").isDisabled()
+);
+await page.click(".chip");
+await page.waitForSelector(".details-head", { timeout: 10000 });
+check(
+  "cached event details are marked read-only",
+  (await page.locator(".details-readonly").count()) === 1 &&
+    (await page.locator('.modal-actions button:has-text("Edit")').count()) === 0
+);
+await page.keyboard.press("Escape");
+
+await page.unroute(`${DAV}/**`);
+await page.click(".backend-banner .backend-retry");
+await page.waitForSelector(".backend-banner", { state: "detached", timeout: 20000 });
+check(
+  "retry after reconnect restores the live session",
+  !(await page.locator("button.new-event").isDisabled())
 );
 
 check("no console errors", errors.length === 0, errors.join(" | "));

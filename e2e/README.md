@@ -12,8 +12,9 @@ Playwright suites that drive the real app against the real dev stack:
 - `fixed-backend.mjs`: with `BACKEND_URL` set the login screen has no server
   field; without it the field is back. The configured case intercepts
   `/config.json`, so no files are written.
-- `session.mjs`: auto-login, logout, opting out, and the theme/language
-  controls on the login page.
+- `session.mjs`: auto-login, logout, opting out, the theme/language controls on
+  the login page, and opening the cache read-only when the backend is
+  unreachable.
 - `location.mjs`: OpenStreetMap preview for coordinates and the search fallback
   for plain venue names.
 - `audit.mjs`: screenshots plus layout and translation checks. It expects the

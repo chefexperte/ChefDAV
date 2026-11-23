@@ -511,7 +511,8 @@ pub fn EventModal() -> impl IntoView {
     // empty selection only means "not loaded yet", and the effect above fills
     // it as soon as the list arrives.
     let show_read_only = Memo::new(move |_| {
-        read_only.get()
+        !state.cache_only.get()
+            && read_only.get()
             && !no_calendar.get()
             && (existing.get().is_some() || state.calendars_loaded.get())
     });
@@ -744,6 +745,11 @@ pub fn EventModal() -> impl IntoView {
                 <h3>{move || if is_edit { crate::i18n::t(state.lang.get(), "edit_event") } else { crate::i18n::t(state.lang.get(), "new_event") }}</h3>
                 <Show when=move || no_calendar.get() fallback=|| ()>
                     <p class="banner-info">{move || crate::i18n::t(state.lang.get(), "create_calendar_first")}</p>
+                </Show>
+                <Show when=move || state.cache_only.get() fallback=|| ()>
+                    <p class="banner-info">
+                        {move || crate::i18n::t(state.lang.get(), "offline_cache_read_only")}
+                    </p>
                 </Show>
                 <Show when=move || show_read_only.get() fallback=|| ()>
                     <p class="banner-info">{move || crate::i18n::t(state.lang.get(), "read_only_calendar")}</p>

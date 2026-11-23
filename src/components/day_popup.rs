@@ -101,14 +101,16 @@ pub fn DayPopup() -> impl IntoView {
                     </ul>
                 </Show>
                 <div class="popover-actions">
-                    <button class="popup-action" on:click=new_event>
-                        <span class="popup-icon"><crate::components::icons::IconPlus /></span>
-                        <span>{move || crate::i18n::t(state.lang.get(), "new_event")}</span>
-                    </button>
-                    <button class="popup-action" on:click=new_task>
-                        <span class="popup-icon"><crate::components::icons::IconTaskAdd /></span>
-                        <span>{move || crate::i18n::t(state.lang.get(), "new_task")}</span>
-                    </button>
+                    <Show when=move || !state.cache_only.get() fallback=|| ()>
+                        <button class="popup-action" on:click=new_event>
+                            <span class="popup-icon"><crate::components::icons::IconPlus /></span>
+                            <span>{move || crate::i18n::t(state.lang.get(), "new_event")}</span>
+                        </button>
+                        <button class="popup-action" on:click=new_task>
+                            <span class="popup-icon"><crate::components::icons::IconTaskAdd /></span>
+                            <span>{move || crate::i18n::t(state.lang.get(), "new_task")}</span>
+                        </button>
+                    </Show>
                     <button class="popup-action" on:click=go_day>
                         <span class="popup-icon"><crate::components::icons::IconArrowRight /></span>
                         <span>{move || crate::i18n::t(state.lang.get(), "go_to_day")}</span>

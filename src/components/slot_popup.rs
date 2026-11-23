@@ -110,18 +110,20 @@ pub fn SlotPopup() -> impl IntoView {
                         />
                     </ul>
                 </Show>
-                <div class="popover-actions">
-                    <button class="popup-action" on:click=new_event>
-                        <span class="popup-icon"><crate::components::icons::IconPlus /></span>
-                        <span>
-                            {move || if all_day {
-                                crate::i18n::t(state.lang.get(), "new_all_day_event")
-                            } else {
-                                crate::i18n::t(state.lang.get(), "new_event")
-                            }}
-                        </span>
-                    </button>
-                </div>
+                <Show when=move || !state.cache_only.get() fallback=|| ()>
+                    <div class="popover-actions">
+                        <button class="popup-action" on:click=new_event>
+                            <span class="popup-icon"><crate::components::icons::IconPlus /></span>
+                            <span>
+                                {move || if all_day {
+                                    crate::i18n::t(state.lang.get(), "new_all_day_event")
+                                } else {
+                                    crate::i18n::t(state.lang.get(), "new_event")
+                                }}
+                            </span>
+                        </button>
+                    </div>
+                </Show>
             </div>
         </div>
     }

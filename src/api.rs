@@ -19,7 +19,7 @@ use crate::browser;
 use crate::state::{
     color_for, AppState, CalState, DisplayEvent, SearchHit, Session, TodoItem, ViewMode,
 };
-use crate::store::{self, CachedEvent, CachedTodo, CalendarCache, OutboxOp};
+use crate::store::{self, CachedEvent, CachedTodo, CalendarCache, OutboxOp, StoredCreds};
 
 /// Fetch the deployment's runtime configuration (`/config.json`).
 ///
@@ -220,7 +220,107 @@ pub async fn login_classified(
     })
 }
 
+/// Rebuild a [`Session`] from the credentials and cached calendars when the
+/// backend cannot be reached at startup. `None` means there is no cache for
+/// this server (or it belongs to another server), so the login page is the
+/// only sensible place to be.
+pub async fn cached_session(creds: &StoredCreds, server: &str) -> Option<Session> {
+    let server_url = Url::parse(server.trim().trim_end_matches('/')).ok()?;
+    let cals: Vec<CalendarInfo> = store::kv_get("cache_calendars").await.ok().flatten()?;
+    if cals.is_empty() {
+        return None;
+    }
+    // A changed BACKEND_URL must not show the old server's cached calendars.
+    let origin = server_url.origin();
+    let all_from_server = cals.iter().all(|c| {
+        Url::parse(&c.href)
+            .map(|u| u.origin() == origin)
+            .unwrap_or(false)
+    });
+    if !all_from_server {
+        return None;
+    }
+    let from_server = |raw: Option<String>| -> Option<Url> {
+        let url = Url::parse(raw.as_deref()?).ok()?;
+        (url.origin() == origin).then_some(url)
+    };
+    // Older saved logins have no discovery results; the calendar hrefs still
+    // reveal the home collection (`/alice/personal/` → `/alice/`).
+    let home = from_server(creds.home.clone()).or_else(|| {
+        let first = Url::parse(&cals.first()?.href).ok()?;
+        let parent = first.join("../").ok()?;
+        (parent.origin() == origin).then_some(parent)
+    })?;
+    let principal = from_server(creds.principal.clone()).unwrap_or_else(|| home.clone());
+    Some(Session {
+        server: server_url,
+        username: creds.username.clone(),
+        password: creds.password.clone(),
+        principal,
+        home,
+    })
+}
+
+/// Try the saved login again after starting from the cache. On success the
+/// real session replaces the placeholder, which lets the shell sync normally.
+pub async fn retry_cached_session(state: &AppState) -> bool {
+    if !state.cache_only.get_untracked() {
+        return false;
+    }
+    let Ok(Some(creds)) = store::kv_get::<StoredCreds>("creds").await else {
+        return false;
+    };
+    let server = if crate::config::server_is_fixed() {
+        crate::config::initial_server()
+    } else {
+        creds.server.clone()
+    };
+    match login_classified(
+        &server,
+        &creds.username,
+        &creds.password,
+        state.lang.get_untracked(),
+    )
+    .await
+    {
+        Ok(session) => {
+            let _ = store::kv_set(
+                "creds",
+                &StoredCreds {
+                    server: server.clone(),
+                    username: creds.username.clone(),
+                    password: creds.password.clone(),
+                    principal: Some(session.principal.to_string()),
+                    home: Some(session.home.to_string()),
+                },
+            )
+            .await;
+            state.session.set(Some(session));
+            state.cache_only.set(false);
+            state.backend_down.set(false);
+            state.login_error.set(None);
+            true
+        }
+        // Keep the cached view; a rejected password must not blank it.
+        Err(_) => false,
+    }
+}
+
+/// The offline cache is browse-only: no write may be queued from it, because
+/// the saved credentials were never verified in this tab.
+fn ensure_writable(state: &AppState) -> Result<()> {
+    if state.cache_only.get_untracked() {
+        return Err(DavError::Transport(
+            "the server is unreachable; the cached calendar is read-only".into(),
+        ));
+    }
+    Ok(())
+}
+
 pub async fn refresh_calendars(state: &AppState) {
+    if state.cache_only.get_untracked() {
+        return;
+    }
     let Some(session) = state.session.get() else {
         return;
     };
@@ -300,10 +400,64 @@ fn display_events(
     out
 }
 
+/// Rebuild `state.events` from the IndexedDB cache and the current calendar
+/// visibility. Offline mode uses this for show/hide and navigation, so the
+/// cached data behaves like the live list without touching the server.
+async fn restore_cached_events(state: &AppState) {
+    let caches = store::cache_load().await;
+    let mut events = Vec::new();
+    for cache in &caches {
+        if let Some(cal) = state
+            .calendars
+            .get()
+            .iter()
+            .find(|c| c.info.href == cache.calendar_href)
+        {
+            if cal.visible.get() {
+                events.extend(display_events(cache, &cal.info, &cal.color, &state.tz));
+            }
+        }
+    }
+    state.remap_open_modal(Some(&events), None);
+    state.events.set(events);
+}
+
+/// Same for tasks: the cache always holds everything, visibility decides what
+/// the view shows.
+async fn restore_cached_todos(state: &AppState) {
+    let cached_todos = store::todos_cache_load().await;
+    let mut todos = Vec::new();
+    for ct in cached_todos {
+        if let Some(cal) = state
+            .calendars
+            .get()
+            .iter()
+            .find(|c| c.info.href == ct.calendar_href)
+        {
+            for t in caldav::ics::parse_cached_todo(&ct.ics, &state.tz) {
+                todos.push(TodoItem {
+                    href: ct.href.clone(),
+                    etag: ct.etag.clone(),
+                    todo: t,
+                    calendar_href: ct.calendar_href.clone(),
+                    color: cal.color.clone(),
+                    read_only: cal.read_only(),
+                });
+            }
+        }
+    }
+    state.remap_open_modal(None, Some(&todos));
+    state.todos.set(todos);
+}
+
 /// Refresh the visible calendars. Uses the per-calendar sync-token for
 /// incremental updates; falls back to a full fetch when the token is missing
 /// or rejected.
 pub async fn refresh_events(state: &AppState) {
+    if state.cache_only.get_untracked() {
+        restore_cached_events(state).await;
+        return;
+    }
     let Some(session) = state.session.get() else {
         return;
     };
@@ -440,6 +594,10 @@ pub async fn refresh_events(state: &AppState) {
 
 /// Fetch all tasks for visible calendars that support VTODO.
 pub async fn refresh_todos(state: &AppState) {
+    if state.cache_only.get_untracked() {
+        restore_cached_todos(state).await;
+        return;
+    }
     let Some(session) = state.session.get() else {
         return;
     };
@@ -500,6 +658,9 @@ pub async fn fetch_event_by_uid(
     cal: &CalendarInfo,
     uid: &str,
 ) -> Option<DisplayEvent> {
+    if state.cache_only.get_untracked() {
+        return None;
+    }
     let session = state.session.get()?;
     let url = Url::parse(&cal.href).ok()?;
     let c = client(&session);
@@ -548,6 +709,9 @@ pub async fn fetch_todo_by_uid(
     cal: &CalendarInfo,
     uid: &str,
 ) -> Option<TodoItem> {
+    if state.cache_only.get_untracked() {
+        return None;
+    }
     let session = state.session.get()?;
     let url = Url::parse(&cal.href).ok()?;
     let c = client(&session);
@@ -656,6 +820,7 @@ pub async fn save_event(
     etag: Option<&str>,
     overrides: &[VEvent],
 ) -> Result<bool> {
+    ensure_writable(state)?;
     let session = state
         .session
         .get()
@@ -707,6 +872,7 @@ pub async fn save_override(
     draft: &EventDraft,
     cancelled: bool,
 ) -> Result<()> {
+    ensure_writable(state)?;
     let session = state
         .session
         .get()
@@ -747,6 +913,7 @@ pub async fn save_override(
 }
 
 pub async fn delete_event(state: &AppState, href: &str, etag: Option<&str>) -> Result<bool> {
+    ensure_writable(state)?;
     let session = state
         .session
         .get()
@@ -777,6 +944,7 @@ pub async fn save_todo(
     draft: &TodoDraft,
     etag: Option<&str>,
 ) -> Result<bool> {
+    ensure_writable(state)?;
     let session = state
         .session
         .get()
@@ -807,6 +975,7 @@ pub async fn save_todo(
 }
 
 pub async fn delete_todo(state: &AppState, href: &str, etag: Option<&str>) -> Result<bool> {
+    ensure_writable(state)?;
     let session = state
         .session
         .get()
@@ -859,6 +1028,7 @@ pub async fn toggle_todo(state: &AppState, index: usize) -> Result<bool> {
 
 /// Create a new calendar collection (MKCALENDAR) in the user's home.
 pub async fn create_calendar(state: &AppState, name: &str) -> Result<()> {
+    ensure_writable(state)?;
     let session = state
         .session
         .get()
@@ -878,6 +1048,7 @@ pub async fn update_calendar(
     name: &str,
     color: Option<&str>,
 ) -> Result<()> {
+    ensure_writable(state)?;
     let session = state
         .session
         .get()
@@ -893,6 +1064,7 @@ pub async fn update_calendar(
 }
 
 pub async fn rename_calendar(state: &AppState, href: &str, name: &str) -> Result<()> {
+    ensure_writable(state)?;
     let session = state
         .session
         .get()
@@ -904,6 +1076,7 @@ pub async fn rename_calendar(state: &AppState, href: &str, name: &str) -> Result
 }
 
 pub async fn delete_calendar(state: &AppState, href: &str) -> Result<()> {
+    ensure_writable(state)?;
     let session = state
         .session
         .get()
@@ -939,6 +1112,7 @@ pub async fn bulk_delete_events(state: &AppState, hrefs: &[String]) -> Result<us
 
 /// Move a non-recurring event by `delta_days` (drag & drop).
 pub async fn move_event(state: &AppState, href: &str, delta_days: i64) -> Result<bool> {
+    ensure_writable(state)?;
     let Some(ev) = state.events.get().iter().find(|e| e.href == href).cloned() else {
         return Err(DavError::Transport("event not found".into()));
     };
@@ -992,6 +1166,9 @@ fn resolve_resource(calendar_href: &str, uid: &str) -> Result<Url> {
 /// Retry outboxed writes. Stops at the first network failure and keeps the
 /// remaining operations for the next attempt.
 pub async fn flush_outbox(state: &AppState) {
+    if state.cache_only.get_untracked() {
+        return;
+    }
     let ops = store::outbox_load().await;
     if ops.is_empty() {
         state.pending.set(0);
@@ -1065,6 +1242,12 @@ pub async fn flush_outbox(state: &AppState) {
 /// before the caller refreshes from the server.
 pub async fn restore_cache(state: &AppState) {
     if let Ok(Some(cals)) = store::kv_get::<Vec<CalendarInfo>>("cache_calendars").await {
+        let offline = state.cache_only.get_untracked();
+        if offline && !cals.is_empty() {
+            // The cached list is complete enough for the read-only shell; do
+            // not leave the editor thinking no calendar has loaded yet.
+            state.calendars_loaded.set(true);
+        }
         let old_visible: Vec<(String, bool)> = state
             .calendars
             .get()
@@ -1074,7 +1257,13 @@ pub async fn restore_cache(state: &AppState) {
         let new: Vec<CalState> = cals
             .into_iter()
             .enumerate()
-            .map(|(i, info)| {
+            .map(|(i, mut info)| {
+                if offline {
+                    // The server could not confirm its privileges. Treat every
+                    // cached calendar as read-only; the retry refreshes this
+                    // from the real list.
+                    info.read_only = true;
+                }
                 let visible = old_visible
                     .iter()
                     .find(|(h, _)| *h == info.href)
@@ -1090,45 +1279,7 @@ pub async fn restore_cache(state: &AppState) {
             .collect();
         state.calendars.set(new);
     }
-    let caches = store::cache_load().await;
-    let mut events = Vec::new();
-    for cache in &caches {
-        if let Some(cal) = state
-            .calendars
-            .get()
-            .iter()
-            .find(|c| c.info.href == cache.calendar_href)
-        {
-            if cal.visible.get() {
-                events.extend(display_events(cache, &cal.info, &cal.color, &state.tz));
-            }
-        }
-    }
-    state.remap_open_modal(Some(&events), None);
-    state.events.set(events);
-
-    let cached_todos = store::todos_cache_load().await;
-    let mut todos = Vec::new();
-    for ct in cached_todos {
-        if let Some(cal) = state
-            .calendars
-            .get()
-            .iter()
-            .find(|c| c.info.href == ct.calendar_href)
-        {
-            for t in caldav::ics::parse_cached_todo(&ct.ics, &state.tz) {
-                todos.push(TodoItem {
-                    href: ct.href.clone(),
-                    etag: ct.etag.clone(),
-                    todo: t,
-                    calendar_href: ct.calendar_href.clone(),
-                    color: cal.color.clone(),
-                    read_only: cal.read_only(),
-                });
-            }
-        }
-    }
-    state.remap_open_modal(None, Some(&todos));
-    state.todos.set(todos);
+    restore_cached_events(state).await;
+    restore_cached_todos(state).await;
     state.pending.set(store::outbox_load().await.len());
 }

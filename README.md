@@ -64,6 +64,10 @@ Basic auth.
   shows read-only calendars with a lock.
 - **Protocol, ICS and recurrence logic live in `crates/caldav`**, a pure-Rust
   crate with native unit tests. The browser code is UI and glue.
+- **Reloading without a backend still works.** When "Stay logged in" is on and
+  the saved login cannot reach Radicale, the last cached calendar opens
+  read-only with a warning banner and a retry button. Once the server answers
+  again, the app verifies the saved login and resumes normal syncing.
 
 ## Deploy with Docker Compose
 

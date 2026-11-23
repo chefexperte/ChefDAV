@@ -563,7 +563,10 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                 <div
                     class="week-allday-cols"
                     on:pointerdown=move |ev: web_sys::PointerEvent| {
-                        if ev.pointer_type() != "mouse" || ev.button() != 0 {
+                        if ev.pointer_type() != "mouse"
+                            || ev.button() != 0
+                            || state.cache_only.get_untracked()
+                        {
                             return;
                         }
                         let target = ev
@@ -901,7 +904,10 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                         let shown = Memo::new(move |_| laid_out.get().0);
                         let bars = Memo::new(move |_| laid_out.get().1);
                         let start_drag = move |ev: web_sys::PointerEvent| {
-                            if ev.pointer_type() != "mouse" || ev.button() != 0 {
+                            if ev.pointer_type() != "mouse"
+                                || ev.button() != 0
+                                || state.cache_only.get_untracked()
+                            {
                                 return;
                             }
                             // Do not start a selection on an event or a "+N more" bar.

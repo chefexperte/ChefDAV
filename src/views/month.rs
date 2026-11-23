@@ -408,7 +408,10 @@ pub fn MonthView() -> impl IntoView {
                                     // no "+N more" when the bars already fill all 3 slots
                                     let show_more = Memo::new(move |_| more_count.get() > 0 && chip_slots.get() >= 1);
                                     let start_create = move |ev: web_sys::PointerEvent| {
-                                        if ev.pointer_type() != "mouse" || ev.button() != 0 {
+                                        if ev.pointer_type() != "mouse"
+                                            || ev.button() != 0
+                                            || state.cache_only.get_untracked()
+                                        {
                                             return;
                                         }
                                         let target = ev

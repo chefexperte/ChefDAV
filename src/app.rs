@@ -67,7 +67,22 @@ pub fn App() -> impl IntoView {
                         creds.server.clone()
                     };
                     match api::login_classified(&server, &creds.username, &creds.password, lang).await {
-                        Ok(session) => state.session.set(Some(session)),
+                        Ok(session) => {
+                            // Remember the discovery results so a later reload
+                            // can open the cache even when the backend is down.
+                            let _ = store::kv_set(
+                                "creds",
+                                &StoredCreds {
+                                    server: server.clone(),
+                                    username: creds.username.clone(),
+                                    password: creds.password.clone(),
+                                    principal: Some(session.principal.to_string()),
+                                    home: Some(session.home.to_string()),
+                                },
+                            )
+                            .await;
+                            state.session.set(Some(session));
+                        }
                         Err((_, DavError::Unauthorized)) => {
                             // The saved password no longer works: forget it but
                             // keep server/username for the login form.
@@ -76,7 +91,24 @@ pub fn App() -> impl IntoView {
                                 crate::i18n::t(lang, "session_expired").to_string(),
                             ));
                         }
-                        Err((reason, _)) => {
+                        Err((reason, e)) => {
+                            // The backend is unreachable, but the password and
+                            // the cache are still here: open the cached calendar
+                            // read-only instead of trapping the user on a login
+                            // page that cannot work until the server is back.
+                            if api::backend_unavailable(&e) {
+                                if let Some(session) =
+                                    api::cached_session(&creds, &server).await
+                                {
+                                    state.cache_only.set(true);
+                                    state.backend_down.set(true);
+                                    state.error.set(None);
+                                    state.login_error.set(None);
+                                    state.session.set(Some(session));
+                                    state.restoring.set(false);
+                                    return;
+                                }
+                            }
                             state.login_error.set(Some(api::error_text(reason, lang).to_string()));
                         }
                     }

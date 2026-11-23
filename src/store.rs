@@ -84,11 +84,20 @@ pub async fn kv_delete(key: &str) -> Result<(), String> {
 
 /// Credentials at rest. NOTE: stored in plain IndexedDB for now; the
 /// encryption flow (`caldav::crypto`) is kept for later but not wired up.
+///
+/// `principal` and `home` are the discovery results from the last successful
+/// login. They let a reload open the cached calendar when the backend is
+/// unreachable, without asking the server again. Older entries lack them;
+/// `#[serde(default)]` keeps those readable.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StoredCreds {
     pub server: String,
     pub username: String,
     pub password: String,
+    #[serde(default)]
+    pub principal: Option<String>,
+    #[serde(default)]
+    pub home: Option<String>,
 }
 
 /// Non-secret part of the last login, kept for prefilling the form after the

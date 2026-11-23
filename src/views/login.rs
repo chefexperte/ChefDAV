@@ -117,18 +117,25 @@ pub fn LoginPage() -> impl IntoView {
                     store::settings_save(&settings).await;
                     if remember {
                         // NOTE: plain IndexedDB — not encrypted (temporary).
+                        // The discovery URLs let an offline reload open the
+                        // cache without contacting the server.
                         let _ = store::kv_set(
                             "creds",
                             &StoredCreds {
                                 server: server_s.clone(),
                                 username: user.clone(),
                                 password: pass.clone(),
+                                principal: Some(session.principal.to_string()),
+                                home: Some(session.home.to_string()),
                             },
                         )
                         .await;
                     } else {
                         let _ = store::kv_delete("creds").await;
                     }
+                    state.cache_only.set(false);
+                    state.backend_down.set(false);
+                    state.login_error.set(None);
                     state.session.set(Some(session));
                 }
                 Err((reason, e)) => {

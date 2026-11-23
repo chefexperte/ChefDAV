@@ -261,6 +261,11 @@ pub fn Shell() -> impl IntoView {
             let st = state;
             spawn_local(async move {
                 api::restore_cache(&st).await;
+                // A cache-only session has no verified server connection yet;
+                // the banner offers a retry instead of failing every request.
+                if st.cache_only.get_untracked() {
+                    return;
+                }
                 api::refresh_calendars(&st).await;
                 api::flush_outbox(&st).await;
                 api::refresh_events(&st).await;
@@ -274,7 +279,7 @@ pub fn Shell() -> impl IntoView {
         let _vis: Vec<bool> = state.calendars.get().iter().map(|c| c.visible.get()).collect();
         let _ = state.anchor.get();
         let _ = state.view.get();
-        if state.session.get().is_some() {
+        if state.session.get().is_some() && !state.cache_only.get_untracked() {
             let st = state;
             spawn_local(async move {
                 api::refresh_events(&st).await;
@@ -293,7 +298,15 @@ pub fn Shell() -> impl IntoView {
         if let Some(win) = web_sys::window() {
             let online = Closure::<dyn FnMut(web_sys::Event)>::new(move |_| {
                 st.online.set(true);
-                spawn_local(async move { api::flush_outbox(&st).await });
+                spawn_local(async move {
+                    if st.cache_only.get_untracked() {
+                        // A reload without a backend starts read-only; when the
+                        // browser reconnects, verify the saved login again.
+                        api::retry_cached_session(&st).await;
+                    } else {
+                        api::flush_outbox(&st).await;
+                    }
+                });
             });
             let offline = Closure::<dyn FnMut(web_sys::Event)>::new(move |_| {
                 st.online.set(false);
@@ -326,6 +339,9 @@ pub fn Shell() -> impl IntoView {
                     match ev.key().as_str() {
                         "n" => {
                             ev.prevent_default();
+                            if st.cache_only.get_untracked() {
+                                return;
+                            }
                             let date = caldav::time::today(&st.tz, crate::browser::now_utc());
                             st.new_event_time.set(None);
                             st.new_event_end_time.set(None);
@@ -396,9 +412,19 @@ pub fn Shell() -> impl IntoView {
             st.calendars.set(Vec::new());
             st.events.set(Vec::new());
             st.todos.set(Vec::new());
+            st.cache_only.set(false);
+            st.backend_down.set(false);
+            st.calendars_loaded.set(false);
             st.login_error.set(None);
             st.restoring.set(false);
             nav("/login", Default::default());
+        });
+    };
+
+    let retry_connection = move |_| {
+        let st = state;
+        spawn_local(async move {
+            api::retry_cached_session(&st).await;
         });
     };
 
@@ -446,7 +472,18 @@ pub fn Shell() -> impl IntoView {
                 </a>
                 <button
                     class="btn btn-primary btn-block new-event"
+                    disabled=move || state.cache_only.get()
+                    title=move || {
+                        if state.cache_only.get() {
+                            crate::i18n::t(state.lang.get(), "read_only")
+                        } else {
+                            crate::i18n::t(state.lang.get(), "new_event")
+                        }
+                    }
                     on:click=move |_| {
+                        if state.cache_only.get() {
+                            return;
+                        }
                         let date = caldav::time::today(&state.tz, crate::browser::now_utc());
                         state.new_event_time.set(None);
                         state.new_event_end_time.set(None);
@@ -467,8 +504,12 @@ pub fn Shell() -> impl IntoView {
                     </span>
                     <button
                         class="btn-icon-plain"
+                        disabled=move || state.cache_only.get()
                         title=move || crate::i18n::t(state.lang.get(), "new_calendar")
                         on:click=move |_| {
+                            if state.cache_only.get() {
+                                return;
+                            }
                             state.sidebar_open.set(false);
                             state.new_calendar.set(true);
                         }
@@ -512,6 +553,7 @@ pub fn Shell() -> impl IntoView {
                                     </label>
                                     <button
                                         class="cal-menu-btn"
+                                        class:hidden=move || state.cache_only.get()
                                         title=move || crate::i18n::t(state.lang.get(), "rename_or_delete")
                                         on:click=move |_| {
                                             let found = state
@@ -570,9 +612,23 @@ pub fn Shell() -> impl IntoView {
             <main class="main">
                 <Toolbar />
                 <Show when=move || state.backend_down.get() fallback=|| ()>
-                    <p class="banner-error backend-banner" role="status">
-                        {move || crate::i18n::t(state.lang.get(), "backend_unavailable")}
-                    </p>
+                    <div class="banner-error backend-banner" role="status">
+                        <span>
+                            {move || crate::i18n::t(
+                                state.lang.get(),
+                                if state.cache_only.get() {
+                                    "offline_cache_read_only"
+                                } else {
+                                    "backend_unavailable"
+                                },
+                            )}
+                        </span>
+                        <Show when=move || state.cache_only.get() fallback=|| ()>
+                            <button class="btn btn-ghost backend-retry" on:click=retry_connection>
+                                {move || crate::i18n::t(state.lang.get(), "retry")}
+                            </button>
+                        </Show>
+                    </div>
                 </Show>
                 <Outlet />
             </main>

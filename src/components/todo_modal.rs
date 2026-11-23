@@ -150,7 +150,15 @@ pub fn TodoModal() -> impl IntoView {
         <div class="modal-overlay" on:click=close>
             <div class="modal modal-small" on:click=move |e| e.stop_propagation() role="dialog" aria-modal="true">
                 <h3>{move || if is_edit { crate::i18n::t(state.lang.get(), "edit_task") } else { crate::i18n::t(state.lang.get(), "new_task") }}</h3>
-                <Show when=move || read_only.get() fallback=|| ()>
+                <Show when=move || state.cache_only.get() fallback=|| ()>
+                    <p class="banner-info">
+                        {move || crate::i18n::t(state.lang.get(), "offline_cache_read_only")}
+                    </p>
+                </Show>
+                <Show
+                    when=move || read_only.get() && !state.cache_only.get()
+                    fallback=|| ()
+                >
                     <p class="banner-info">{move || crate::i18n::t(state.lang.get(), "read_only_calendar")}</p>
                 </Show>
                 <fieldset class="modal-fields" disabled=move || read_only.get()>

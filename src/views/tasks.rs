@@ -55,7 +55,18 @@ pub fn TasksView() -> impl IntoView {
             <div class="tasks-head">
                 <button
                     class="btn btn-primary"
+                    disabled=move || state.cache_only.get()
+                    title=move || {
+                        if state.cache_only.get() {
+                            crate::i18n::t(state.lang.get(), "read_only")
+                        } else {
+                            crate::i18n::t(state.lang.get(), "new_task")
+                        }
+                    }
                     on:click=move |_| {
+                        if state.cache_only.get() {
+                            return;
+                        }
                         let date = caldav::time::today(&state.tz, crate::browser::now_utc());
                         state.modal.set(Some(ModalState::NewTodo { date }));
                     }

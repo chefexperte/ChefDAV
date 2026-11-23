@@ -277,16 +277,18 @@ pub fn EventDetails() -> impl IntoView {
                                         }
                                     }}
                                 </button>
-                                <button
-                                    class="btn btn-ghost"
-                                    title=move || crate::i18n::t(state.lang.get(), "new_event_same_time")
-                                    on:click=new_like_this
-                                >
-                                    <svg viewBox="0 0 16 16" aria-hidden="true">
-                                        <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-                                    </svg>
-                                    {move || crate::i18n::t(state.lang.get(), "new_event")}
-                                </button>
+                                <Show when=move || !state.cache_only.get() fallback=|| ()>
+                                    <button
+                                        class="btn btn-ghost"
+                                        title=move || crate::i18n::t(state.lang.get(), "new_event_same_time")
+                                        on:click=new_like_this
+                                    >
+                                        <svg viewBox="0 0 16 16" aria-hidden="true">
+                                            <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                                        </svg>
+                                        {move || crate::i18n::t(state.lang.get(), "new_event")}
+                                    </button>
+                                </Show>
                                 <Show when=move || !read_only fallback=|| ()>
                                     <button
                                         class="btn btn-primary"

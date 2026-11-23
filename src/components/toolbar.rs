@@ -159,6 +159,9 @@ pub fn Toolbar() -> impl IntoView {
     let selected = Memo::new(move |_| state.selected.get());
     let clear_selection = move |_| state.selected.set(Vec::new());
     let delete_selected = move |_| {
+        if state.cache_only.get() {
+            return;
+        }
         let hrefs = state.selected.get();
         if hrefs.is_empty() {
             return;
@@ -323,7 +326,13 @@ pub fn Toolbar() -> impl IntoView {
                     <span class="selection-count">
                         {move || format!("{} {}", state.selected.get().len(), crate::i18n::t(state.lang.get(), "selected"))}
                     </span>
-                    <button class="btn btn-danger" on:click=delete_selected>{move || crate::i18n::t(state.lang.get(), "delete_selected")}</button>
+                    <button
+                        class="btn btn-danger"
+                        disabled=move || state.cache_only.get()
+                        on:click=delete_selected
+                    >
+                        {move || crate::i18n::t(state.lang.get(), "delete_selected")}
+                    </button>
                     <button class="btn btn-ghost" on:click=clear_selection>{move || crate::i18n::t(state.lang.get(), "clear")}</button>
                 </div>
             </Show>

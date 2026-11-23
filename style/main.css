@@ -921,7 +921,24 @@ input[type="checkbox"]:focus-visible {
 }
 
 .backend-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 14px;
+}
+
+.backend-banner .backend-retry {
+  flex: none;
+  min-height: 28px;
+  padding: 3px 10px;
+  color: var(--danger);
+  font-size: 12.5px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+}
+
+.backend-banner .backend-retry:hover {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 
 .banner-error {

@@ -4,7 +4,14 @@ All notable, user-visible changes to ChefDAV.
 
 ## Unreleased
 
-Nothing yet.
+### Changes
+
+- Reloading while the CalDAV backend is unreachable no longer strands you on a
+  login page that cannot work. With "Stay logged in" on, the last cached
+  calendar opens read-only behind a warning banner, and **Try again** (or the
+  browser coming back online) verifies the saved login and resumes syncing.
+  The saved login now also keeps the discovered principal/home URL, so this
+  works without contacting the server first.
 
 ## 0.3.1 — 2026-11-20
 
