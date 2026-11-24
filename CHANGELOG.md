@@ -11,7 +11,8 @@ All notable, user-visible changes to ChefDAV.
   timeline opens at 06:00 on view load (not when opening an event or stepping
   through dates), but starts at midnight when the visible range contains today
   before 06:00. The 06:00 position is now also correct on a phone-width
-  viewport.
+  viewport, and horizontal scrolling there no longer breaks the sticky
+  header.
 - The German all-day gutter label wraps between "Ganz" and "tägig" instead of
   spilling into the first day column.
 - Read-only padlocks on tall timed events sit at the right edge, vertically

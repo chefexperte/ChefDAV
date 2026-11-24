@@ -304,7 +304,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
         spawn_local(async move {
             // Let the grid render and get its final height first. The view may
             // have been left in the meantime; do not touch disposed NodeRefs.
-            browser::sleep_ms(0).await;
+            browser::sleep_ms(16).await;
             if sticky_ref.is_disposed() || timeline_ref.is_disposed() {
                 return;
             }
@@ -322,13 +322,31 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
             else {
                 return;
             };
-            let current = scroller.scroll_top() as f64;
             let target = timeline.get_bounding_client_rect().top()
                 - scroller.get_bounding_client_rect().top()
-                + current
+                + scroller.scroll_top() as f64
                 - sticky.client_height() as f64
                 + start_hour as f64 * HOUR_HEIGHT;
-            scroller.set_scroll_top(target.max(0.0) as i32);
+            let target = target.max(0.0);
+            scroller.set_scroll_top(target as i32);
+
+            // A browser that laid the new view out late can clamp the first
+            // assignment. Retry once with fresh geometry, but only while this
+            // WeekView is still mounted, so switching views cannot scroll the
+            // next one.
+            browser::sleep_ms(80).await;
+            if sticky_ref.is_disposed() || timeline_ref.is_disposed() {
+                return;
+            }
+            let retry = (timeline.get_bounding_client_rect().top()
+                - scroller.get_bounding_client_rect().top()
+                + scroller.scroll_top() as f64
+                - sticky.client_height() as f64
+                + start_hour as f64 * HOUR_HEIGHT)
+                .max(0.0);
+            if retry > 5.0 && (scroller.scroll_top() as f64) < retry - 5.0 {
+                scroller.set_scroll_top(retry as i32);
+            }
         });
     });
 

@@ -720,6 +720,7 @@ input[type="checkbox"]:focus-visible {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: auto;
   padding-bottom: 40px;
 }
 
@@ -3230,8 +3231,11 @@ input[type="checkbox"]:focus-visible {
     min-width: 620px;
   }
 
+  /* Horizontal scrolling lives on .main-scroll, not on .week-view: an
+     overflow-x scroller here would also become the vertical scrollport and
+     break the sticky day/all-day header. */
   .week-view {
-    overflow-x: auto;
+    min-width: 620px;
   }
 
   .week-head,
@@ -3241,10 +3245,7 @@ input[type="checkbox"]:focus-visible {
   }
 
   /* Day view is a single column: it fits without horizontal scrolling. */
-  .week-view.single-day {
-    overflow-x: visible;
-  }
-
+  .week-view.single-day,
   .week-view.single-day .week-head,
   .week-view.single-day .week-allday,
   .week-view.single-day .week-timeline {

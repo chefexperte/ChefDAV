@@ -82,6 +82,15 @@ await page.setViewportSize({ width: 390, height: 844 });
 await page.goto(new URL("week/2026-11-09", APP).href, { waitUntil: "networkidle" });
 const mobileScroll = await weekScroll();
 check("mobile week also starts at 06:00", mobileScroll > 200, `${mobileScroll}px`);
+await page.evaluate(() => document.querySelector(".main-scroll").scrollBy(0, 150));
+await page.waitForTimeout(50);
+const mobileSticky = await page.evaluate(() => {
+  const scroller = document.querySelector(".main-scroll").getBoundingClientRect().top;
+  return Math.round(
+    document.querySelector(".week-sticky").getBoundingClientRect().top - scroller
+  );
+});
+check("mobile header and all-day row are sticky", Math.abs(mobileSticky) <= 1, `${mobileSticky}px`);
 
 check("no console errors", errors.length === 0, errors.join(" | "));
 await browser.close();
