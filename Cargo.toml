@@ -1,6 +1,6 @@
 [package]
 name = "chef-dav"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 license = "MIT"
 description = "Client-side-only CalDAV calendar frontend (Rust -> WASM) for Radicale"

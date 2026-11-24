@@ -4,6 +4,10 @@ All notable, user-visible changes to ChefDAV.
 
 ## Unreleased
 
+Nothing yet.
+
+## 0.4.0 — 2026-11-24
+
 ### Changes
 
 - In week/day view the day-number header and all-day row stay sticky while the
