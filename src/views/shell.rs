@@ -629,7 +629,6 @@ pub fn Shell() -> impl IntoView {
             </Show>
             <main class="main">
                 <Toolbar />
-                <div class="main-scroll">
                 <Show
                     when=move || state.backend_down.get() || retrying.get()
                     fallback=|| ()
@@ -668,7 +667,8 @@ pub fn Shell() -> impl IntoView {
                         </Show>
                     </div>
                 </Show>
-                <Outlet />
+                <div class="main-scroll">
+                    <Outlet />
                 </div>
             </main>
         </div>

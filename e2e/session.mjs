@@ -179,6 +179,25 @@ check(
 );
 await page.keyboard.press("Escape");
 
+// The warning must not be scrolled away by the week view's 06:00 jump.
+await page.click(".segmented-btn >> nth=1"); // Week
+await page.waitForSelector(".week-view", { timeout: 10000 });
+await page.click(".segmented-btn >> nth=0"); // Month
+await page.waitForSelector(".month-grid", { timeout: 10000 });
+await page.waitForFunction(
+  () => document.querySelector(".main-scroll")?.scrollTop === 0,
+  null,
+  { timeout: 2000 }
+);
+check(
+  "server warning survives a view switch",
+  await page.locator(".backend-banner").isVisible()
+);
+check(
+  "a new view starts at the content top",
+  (await page.evaluate(() => document.querySelector(".main-scroll").scrollTop)) === 0
+);
+
 await page.unroute(`${DAV}/**`);
 const retryStarted = Date.now();
 await page.click(".backend-banner .backend-retry");

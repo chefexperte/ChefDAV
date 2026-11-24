@@ -171,6 +171,12 @@ await page.click('.segmented-btn:has-text("List")');
 await page.waitForSelector(".agenda", { timeout: 10000 });
 await page.waitForSelector(".agenda-day, .empty-state", { timeout: 10000 });
 check("agenda view renders", true, await page.textContent(".month-title"));
+const agendaInset = await page.evaluate(() => {
+  const card = document.querySelector(".agenda-list").getBoundingClientRect();
+  const scroller = document.querySelector(".main-scroll").getBoundingClientRect();
+  return Math.round(card.left - scroller.left);
+});
+check("list card has room for its left shadow", agendaInset >= 10, `${agendaInset}px`);
 
 await page.click('.segmented-btn:has-text("Month")');
 await page.waitForSelector(".month-grid", { timeout: 10000 });

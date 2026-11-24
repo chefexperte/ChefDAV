@@ -721,7 +721,10 @@ input[type="checkbox"]:focus-visible {
   min-height: 0;
   overflow-y: auto;
   overflow-x: auto;
-  padding-bottom: 40px;
+  /* Extend into the main padding just enough for card shadows to breathe;
+     the matching negative margin keeps the content aligned with the toolbar. */
+  padding: 0 14px 40px;
+  margin: 0 -14px;
 }
 
 /* ---------- toolbar ---------- */
@@ -3223,7 +3226,8 @@ input[type="checkbox"]:focus-visible {
   }
 
   .main-scroll {
-    padding-bottom: 30px;
+    padding: 0 12px 30px;
+    margin: 0 -12px;
   }
 
   .month-scroll .month-grid,
