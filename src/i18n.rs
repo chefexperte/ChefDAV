@@ -310,6 +310,9 @@ pub fn t(lang: Lang, key: &str) -> &'static str {
         (Lang::De, "start") => "Beginn",
         (Lang::De, "end") => "Ende",
         (Lang::De, "all_day") => "Ganztägig",
+        // Zero-width space: the narrow week gutter can wrap between the two
+        // halves instead of spilling over the first day column.
+        (Lang::De, "all_day_gutter") => "Ganz\u{200B}tägig",
         (Lang::De, "calendar") => "Kalender",
         (Lang::De, "location") => "Ort",
         (Lang::De, "optional") => "Optional",
@@ -496,6 +499,7 @@ pub fn t(lang: Lang, key: &str) -> &'static str {
         (_, "start") => "Start",
         (_, "end") => "End",
         (_, "all_day") => "All day",
+        (_, "all_day_gutter") => "All day",
         (_, "calendar") => "Calendar",
         (_, "location") => "Location",
         (_, "optional") => "Optional",

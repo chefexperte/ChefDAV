@@ -15,10 +15,11 @@ use caldav::recurrence::{expand_series, Occurrence};
 use caldav::time::{agenda_range, today, week_days, week_range};
 use chrono::{Datelike, Duration, NaiveDate, Timelike};
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use wasm_bindgen::JsCast;
 
 use crate::browser;
-use crate::state::{AppState, ModalState, SlotPopupState};
+use crate::state::{AppState, ModalState, SlotPopupState, ViewMode};
 
 const HOUR_HEIGHT: f64 = 42.0; // px per hour in the timeline
 const MAX_COLUMNS_WEEK: usize = 2;
@@ -277,6 +278,49 @@ fn layout(
 pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
     let state = use_context::<AppState>().unwrap();
     let tz = state.tz;
+    let sticky_top: NodeRef<leptos::html::Div> = NodeRef::new();
+    let timeline: NodeRef<leptos::html::Div> = NodeRef::new();
+
+    // Start the timeline at 06:00 so the night is not what greets the user.
+    // If the visible range contains today and it is still before 06:00, start
+    // at midnight instead. Runs on mount and whenever the week/day changes.
+    Effect::new(move |_| {
+        let view = state.view.get();
+        if view != ViewMode::Week && view != ViewMode::Day {
+            return;
+        }
+        let anchor = state.anchor.get();
+        let now = browser::now_utc().with_timezone(&tz);
+        let today = now.date_naive();
+        let contains_today = if n_days == 1 {
+            anchor == today
+        } else {
+            week_days(anchor).contains(&today)
+        };
+        let start_hour = if contains_today && now.hour() < 6 { 0 } else { 6 };
+        let sticky_ref = sticky_top;
+        let timeline_ref = timeline;
+        spawn_local(async move {
+            // Let the grid render and get its final height first. The view may
+            // have been left in the meantime; do not touch disposed NodeRefs.
+            browser::sleep_ms(0).await;
+            if sticky_ref.is_disposed() || timeline_ref.is_disposed() {
+                return;
+            }
+            let (Some(sticky), Some(timeline)) = (sticky_ref.get(), timeline_ref.get()) else {
+                return;
+            };
+            let Some(win) = web_sys::window() else {
+                return;
+            };
+            let scroll_y = win.scroll_y().unwrap_or(0.0);
+            let target = timeline.get_bounding_client_rect().top() + scroll_y
+                - sticky.client_height() as f64
+                + start_hour as f64 * HOUR_HEIGHT;
+            let _ = win.scroll_to_with_x_and_y(win.scroll_x().unwrap_or(0.0), target.max(0.0));
+        });
+    });
+
     // The day view is full width, so it can afford more side-by-side events
     // than the 7-column week view.
     let max_columns = if n_days == 1 {
@@ -536,6 +580,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
             class:dragging=move || drag_ctx.get().is_some() || allday_ctx.get().is_some()
             style=format!("--cols:{n_days}")
         >
+            <div class="week-sticky" node_ref=sticky_top>
             // Day view: no day header — the toolbar title already shows the date.
             <Show when=move || n_days == 7 fallback=|| ()>
             <div class="week-head">
@@ -559,7 +604,9 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
             </Show>
 
             <div class="week-allday">
-                <div class="week-gutter">{move || crate::i18n::t(state.lang.get(), "all_day_lower")}</div>
+                <div class="week-gutter week-gutter-allday">
+                    {move || crate::i18n::t(state.lang.get(), "all_day_gutter")}
+                </div>
                 <div
                     class="week-allday-cols"
                     on:pointerdown=move |ev: web_sys::PointerEvent| {
@@ -849,8 +896,13 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                 />
                 </div>
             </div>
+            </div>
 
-            <div class="week-timeline" style=format!("--hour-height:{}px", HOUR_HEIGHT)>
+            <div
+                class="week-timeline"
+                node_ref=timeline
+                style=format!("--hour-height:{}px", HOUR_HEIGHT)
+            >
                 <div class="time-gutter">
                     <For
                         each=move || hours.clone()
@@ -1091,6 +1143,7 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
                                                 class:compact=compact
                                                 class:cont-top=cont_start
                                                 class:cont-bottom=cont_end
+                                                class:read-only=read_only
                                                 class:selected=move || selected.get()
                                                 title=tooltip
                                                 draggable=draggable

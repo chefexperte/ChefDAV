@@ -1354,6 +1354,14 @@ input[type="checkbox"]:focus-visible {
   grid-template-columns: 56px repeat(var(--cols, 7), 1fr);
 }
 
+/* Day numbers and the all-day row stay visible while the timeline scrolls. */
+.week-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--card);
+}
+
 .week-head {
   border-bottom: 1px solid var(--line);
 }
@@ -1407,6 +1415,14 @@ input[type="checkbox"]:focus-visible {
 .week-allday {
   border-bottom: 1px solid var(--line);
   min-height: 30px;
+}
+
+/* The 56px gutter cannot fit "GANZTÄGIG" on one line in German. The label
+   carries a zero-width break point (i18n) and may use two lines; never spill
+   into the first day column. */
+.week-gutter-allday {
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .week-allday {
@@ -1636,6 +1652,24 @@ input[type="checkbox"]:focus-visible {
   font-size: 10.5px;
   min-width: 0;
   flex: 1;
+}
+
+/* Read-only padlock: right-aligned and vertically centred, also on tall
+   multi-line cards where the flex column would otherwise put it on a new
+   line below the title. Reserve the right padding so text never runs under it. */
+.timed-event.read-only {
+  padding-right: 22px;
+}
+
+.timed-event.read-only .lock {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.timed-event.read-only.compact {
+  padding-right: 20px;
 }
 
 /* ---------- agenda ---------- */

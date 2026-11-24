@@ -20,6 +20,8 @@ Playwright suites that drive the real app against the real dev stack:
   offline, and reconnects again afterwards.
 - `pending.mjs`: queued offline creates stay visible after a reload, open like
   normal events, and can be discarded one by one from the pending dialog.
+- `timeline.mjs`: week/day view starts at 06:00, except before 06:00 when the
+  visible range contains today; sticky header is covered by smoke.
 - `location.mjs`: OpenStreetMap preview for coordinates and the search fallback
   for plain venue names.
 - `audit.mjs`: screenshots plus layout and translation checks. It expects the
@@ -68,6 +70,7 @@ node fixed-backend.mjs
 node session.mjs
 node offline-shell.mjs
 node pending.mjs
+node timeline.mjs
 node location.mjs
 node links.mjs
 node multiday.mjs

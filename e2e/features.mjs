@@ -856,6 +856,15 @@ check(
   germanDay.includes("19. November"),
   germanDay
 );
+await page.click('.segmented-btn:has-text("Woche")');
+await page.waitForSelector(".week-view", { timeout: 10000 });
+const gutterFits = await page.evaluate(() => {
+  const el = document.querySelector(".week-gutter-allday");
+  return !!el && el.scrollWidth <= el.clientWidth + 1;
+});
+check("German all-day gutter wraps inside its column", gutterFits);
+await page.click('.segmented-btn:has-text("Liste")');
+await page.waitForSelector(".agenda", { timeout: 10000 });
 await page.click('.prefs-row button:has-text("Deutsch")');
 await page.waitForTimeout(300);
 const englishAgain = (await allDayDay.locator(".agenda-date").textContent()).trim();

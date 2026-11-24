@@ -141,6 +141,16 @@ check(
   weekRange === "9–15 November 2026",
   weekRange
 );
+await page.waitForTimeout(150);
+const weekScroll = await page.evaluate(() => window.scrollY);
+check("week view pre-scrolls to 06:00", weekScroll > 50, `${weekScroll}px`);
+await page.evaluate(() => window.scrollBy(0, 220));
+await page.waitForTimeout(50);
+const stickyTop = await page.evaluate(() =>
+  Math.round(document.querySelector(".week-sticky").getBoundingClientRect().top)
+);
+check("week header and all-day row are sticky", Math.abs(stickyTop) <= 1, `${stickyTop}px`);
+await page.evaluate(() => window.scrollTo(0, 0));
 
 await page.click('.segmented-btn:has-text("Day")');
 await page.waitForSelector(".week-view", { timeout: 10000 });

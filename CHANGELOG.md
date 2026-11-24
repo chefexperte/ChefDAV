@@ -6,6 +6,13 @@ All notable, user-visible changes to ChefDAV.
 
 ### Changes
 
+- In week/day view the day-number header and all-day row stay sticky while
+  the timeline scrolls. The timeline opens at 06:00 instead of midnight, but
+  starts at midnight when the visible range contains today before 06:00.
+- The German all-day gutter label wraps between "Ganz" and "tägig" instead of
+  spilling into the first day column.
+- Read-only padlocks on tall timed events sit at the right edge, vertically
+  centred, instead of dropping below the title on a new line.
 - Week ranges in the toolbar and tab title use a compact dash without
   surrounding spaces: "23.–29. November", "23–29 November 2026".
 - Klarissa headings use 30 % tighter word spacing, because the font's space

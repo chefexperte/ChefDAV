@@ -119,6 +119,7 @@ jobs:
           node session.mjs
           node offline-shell.mjs
           node pending.mjs
+          node timeline.mjs
           node location.mjs
           node links.mjs
           node multiday.mjs

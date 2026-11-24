@@ -355,7 +355,7 @@ trunk build && python3 scripts/serve.py 3100 dist &
 cd e2e && npm install && npx playwright install chromium
 npm test && node features.mjs && node recurrence.mjs && node visibility.mjs \
   && node fixed-backend.mjs && node session.mjs && node offline-shell.mjs \
-  && node pending.mjs && node location.mjs && node audit.mjs
+  && node pending.mjs && node timeline.mjs && node location.mjs && node audit.mjs
 ```
 
 ## Project layout
