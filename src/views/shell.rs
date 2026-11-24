@@ -629,6 +629,7 @@ pub fn Shell() -> impl IntoView {
             </Show>
             <main class="main">
                 <Toolbar />
+                <div class="main-scroll">
                 <Show
                     when=move || state.backend_down.get() || retrying.get()
                     fallback=|| ()
@@ -668,6 +669,7 @@ pub fn Shell() -> impl IntoView {
                     </div>
                 </Show>
                 <Outlet />
+                </div>
             </main>
         </div>
         <Show when=move || state.shortcuts_open.get() fallback=|| ()>

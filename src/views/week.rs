@@ -283,13 +283,14 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
 
     // Start the timeline at 06:00 so the night is not what greets the user.
     // If the visible range contains today and it is still before 06:00, start
-    // at midnight instead. Runs on mount and whenever the week/day changes.
+    // at midnight instead. This is a one-shot on view load (or reload): clicking
+    // an event or stepping through dates must not jump the timeline.
     Effect::new(move |_| {
-        let view = state.view.get();
+        let view = state.view.get_untracked();
         if view != ViewMode::Week && view != ViewMode::Day {
             return;
         }
-        let anchor = state.anchor.get();
+        let anchor = state.anchor.get_untracked();
         let now = browser::now_utc().with_timezone(&tz);
         let today = now.date_naive();
         let contains_today = if n_days == 1 {
@@ -310,14 +311,24 @@ pub fn WeekView(#[prop(default = 7)] n_days: usize) -> impl IntoView {
             let (Some(sticky), Some(timeline)) = (sticky_ref.get(), timeline_ref.get()) else {
                 return;
             };
-            let Some(win) = web_sys::window() else {
+            let Some(doc) = web_sys::window().and_then(|win| win.document()) else {
                 return;
             };
-            let scroll_y = win.scroll_y().unwrap_or(0.0);
-            let target = timeline.get_bounding_client_rect().top() + scroll_y
+            let Some(scroller) = doc
+                .query_selector(".main-scroll")
+                .ok()
+                .flatten()
+                .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
+            else {
+                return;
+            };
+            let current = scroller.scroll_top() as f64;
+            let target = timeline.get_bounding_client_rect().top()
+                - scroller.get_bounding_client_rect().top()
+                + current
                 - sticky.client_height() as f64
                 + start_hour as f64 * HOUR_HEIGHT;
-            let _ = win.scroll_to_with_x_and_y(win.scroll_x().unwrap_or(0.0), target.max(0.0));
+            scroller.set_scroll_top(target.max(0.0) as i32);
         });
     });
 

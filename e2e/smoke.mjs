@@ -142,15 +142,24 @@ check(
   weekRange
 );
 await page.waitForTimeout(150);
-const weekScroll = await page.evaluate(() => window.scrollY);
-check("week view pre-scrolls to 06:00", weekScroll > 50, `${weekScroll}px`);
-await page.evaluate(() => window.scrollBy(0, 220));
-await page.waitForTimeout(50);
-const stickyTop = await page.evaluate(() =>
-  Math.round(document.querySelector(".week-sticky").getBoundingClientRect().top)
+const weekScroll = await page.evaluate(
+  () => document.querySelector(".main-scroll").scrollTop
 );
-check("week header and all-day row are sticky", Math.abs(stickyTop) <= 1, `${stickyTop}px`);
-await page.evaluate(() => window.scrollTo(0, 0));
+check("week view pre-scrolls to 06:00", weekScroll > 50, `${weekScroll}px`);
+await page.evaluate(() => document.querySelector(".main-scroll").scrollBy(0, 220));
+await page.waitForTimeout(50);
+const stickyOffset = await page.evaluate(() => {
+  const scroll = document.querySelector(".main-scroll").getBoundingClientRect().top;
+  return Math.round(
+    document.querySelector(".week-sticky").getBoundingClientRect().top - scroll
+  );
+});
+check("week header and all-day row are sticky", Math.abs(stickyOffset) <= 1, `${stickyOffset}px`);
+const toolbarTop = await page.evaluate(() =>
+  Math.round(document.querySelector(".toolbar").getBoundingClientRect().top)
+);
+check("toolbar stays visible while the view scrolls", toolbarTop >= 0 && toolbarTop < 100, `${toolbarTop}px`);
+await page.evaluate(() => document.querySelector(".main-scroll").scrollTo(0, 0));
 
 await page.click('.segmented-btn:has-text("Day")');
 await page.waitForSelector(".week-view", { timeout: 10000 });

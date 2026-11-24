@@ -37,7 +37,7 @@ async function login() {
 async function weekScroll() {
   await page.waitForSelector(".week-view", { timeout: 10000 });
   await page.waitForTimeout(200);
-  return page.evaluate(() => window.scrollY);
+  return page.evaluate(() => document.querySelector(".main-scroll").scrollTop);
 }
 
 await login();
@@ -45,21 +45,43 @@ await login();
 // Noon on the pinned day: the week contains today and it is after 06:00.
 await page.click('.segmented-btn:has-text("Week")');
 const noonScroll = await weekScroll();
-check("week starts at 06:00 after the morning", noonScroll > 250, `${noonScroll}px`);
+check("week starts at 06:00 after the morning", noonScroll > 200, `${noonScroll}px`);
+
+// Opening an event must not re-run the initial scroll.
+await page.locator(".timed-event", { hasText: "Weekly sync" }).first().click();
+await page.waitForSelector(".details-modal", { timeout: 10000 });
+const afterClick = await page.evaluate(
+  () => document.querySelector(".main-scroll").scrollTop
+);
+check(
+  "opening an event does not jump the timeline",
+  Math.abs(afterClick - noonScroll) <= 1,
+  `${noonScroll}px → ${afterClick}px`
+);
+await page.keyboard.press("Escape");
+await page.waitForSelector(".details-modal", { state: "detached", timeout: 10000 });
 
 // Same day at 04:30: do not jump to 06:00.
 await page.click('.segmented-btn:has-text("Month")');
 await page.waitForSelector(".month-grid", { timeout: 10000 });
-await page.evaluate(() => window.scrollTo(0, 0));
+await page.evaluate(() => document.querySelector(".main-scroll").scrollTo(0, 0));
 await page.clock.setFixedTime(new Date(2026, 10, 9, 4, 30, 0));
 await page.click('.segmented-btn:has-text("Week")');
 const earlyScroll = await weekScroll();
-check("today before 06:00 starts at midnight", earlyScroll < 250, `${earlyScroll}px`);
+check("today before 06:00 starts at midnight", earlyScroll < 50, `${earlyScroll}px`);
 
-// A different week at 04:30 no longer contains today, so 06:00 is used.
-await page.click('button[title="Next"]');
+// A different week at 04:30, loaded fresh, no longer contains today.
+await page.goto(new URL("week/2026-11-16", APP).href, { waitUntil: "networkidle" });
 const otherWeekScroll = await weekScroll();
-check("a week without today still starts at 06:00", otherWeekScroll > 250, `${otherWeekScroll}px`);
+check("a week without today still starts at 06:00", otherWeekScroll > 200, `${otherWeekScroll}px`);
+
+// The old window-scroll implementation landed at ~02:45 on a phone; the
+// inner scroll container must give the same 06:00 line on a narrow viewport.
+await page.clock.setFixedTime(new Date(2026, 10, 9, 12, 0, 0));
+await page.setViewportSize({ width: 390, height: 844 });
+await page.goto(new URL("week/2026-11-09", APP).href, { waitUntil: "networkidle" });
+const mobileScroll = await weekScroll();
+check("mobile week also starts at 06:00", mobileScroll > 200, `${mobileScroll}px`);
 
 check("no console errors", errors.length === 0, errors.join(" | "));
 await browser.close();

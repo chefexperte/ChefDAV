@@ -533,7 +533,9 @@ input[type="checkbox"]:focus-visible {
 .app-shell {
   display: grid;
   grid-template-columns: 250px 1fr;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -702,11 +704,23 @@ input[type="checkbox"]:focus-visible {
 }
 
 .main {
-  padding: 22px 26px 40px;
+  padding: 22px 26px 0;
   max-width: 1200px;
   width: 100%;
   min-width: 0;
+  height: 100%;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* The toolbar stays put; only the view below it scrolls. */
+.main-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 40px;
 }
 
 /* ---------- toolbar ---------- */
@@ -3204,7 +3218,11 @@ input[type="checkbox"]:focus-visible {
   }
 
   .main {
-    padding: 14px 12px 30px;
+    padding: 14px 12px 0;
+  }
+
+  .main-scroll {
+    padding-bottom: 30px;
   }
 
   .month-scroll .month-grid,

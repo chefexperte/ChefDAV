@@ -6,9 +6,12 @@ All notable, user-visible changes to ChefDAV.
 
 ### Changes
 
-- In week/day view the day-number header and all-day row stay sticky while
-  the timeline scrolls. The timeline opens at 06:00 instead of midnight, but
-  starts at midnight when the visible range contains today before 06:00.
+- In week/day view the day-number header and all-day row stay sticky while the
+  timeline scrolls, and the navigation toolbar stays visible above it. The
+  timeline opens at 06:00 on view load (not when opening an event or stepping
+  through dates), but starts at midnight when the visible range contains today
+  before 06:00. The 06:00 position is now also correct on a phone-width
+  viewport.
 - The German all-day gutter label wraps between "Ganz" and "tägig" instead of
   spilling into the first day column.
 - Read-only padlocks on tall timed events sit at the right edge, vertically

@@ -541,20 +541,26 @@ await page.waitForSelector(".week-view", { timeout: 30000 });
 await waitFor(() => document.querySelectorAll(".day-column .timed-event").length >= 3, null, 20000);
 const sticky = await page.evaluate(() => {
   const pos = getComputedStyle(document.querySelector(".timed-event .te-title")).position;
-  window.scrollTo(0, document.documentElement.scrollHeight); // scroll to the bottom
-  // an event whose top scrolled above the viewport (the long 00:30 event)
+  const scroller = document.querySelector(".main-scroll");
+  const scrollerTop = scroller.getBoundingClientRect().top;
+  scroller.scrollTo(0, scroller.scrollHeight); // scroll to the bottom
+  // an event whose top scrolled above the scroll viewport (the long 00:30 event)
   const ev = [...document.querySelectorAll(".timed-event")].find(
-    (e) => !e.classList.contains("compact") && e.getBoundingClientRect().top < -5
+    (e) => !e.classList.contains("compact") && e.getBoundingClientRect().top < scrollerTop - 5
   );
   if (!ev) return { pos, stuck: false };
   const titleTop = ev.querySelector(".te-title").getBoundingClientRect().top;
   const evTop = ev.getBoundingClientRect().top;
-  window.scrollTo(0, 0);
-  return { pos, stuck: true, evTop, titleTop };
+  scroller.scrollTo(0, 0);
+  return { pos, stuck: true, evTop, titleTop, scrollerTop };
 });
 check(
   "timed event title sticks to the top while scrolling the timeline",
-  !!sticky && sticky.pos === "sticky" && sticky.stuck && sticky.evTop < 0 && Math.abs(sticky.titleTop) <= 3,
+  !!sticky &&
+    sticky.pos === "sticky" &&
+    sticky.stuck &&
+    sticky.evTop < sticky.scrollerTop &&
+    Math.abs(sticky.titleTop - sticky.scrollerTop) <= 3,
   JSON.stringify(sticky)
 );
 
@@ -624,7 +630,7 @@ check("calendar deleted", (await page.locator(".cal-name", { hasText: renamed })
 // ---------- drag on the week timeline creates an event ----------
 await page.goto(APP + "/week/2026-11-09", { waitUntil: "networkidle" });
 await page.waitForSelector(".week-timeline", { timeout: 20000 });
-await page.evaluate(() => window.scrollTo(0, 0));
+await page.evaluate(() => document.querySelector(".main-scroll").scrollTo(0, 0));
 await page.waitForTimeout(600);
 const dayCol = page.locator(".day-column").first();
 const cb = await dayCol.boundingBox();
